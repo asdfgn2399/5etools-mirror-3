@@ -1,6 +1,7 @@
 desktop.ini
 node_modules
 img
+5etools (My Test Mirrior) Localhost.bat
 
 # IntelliJ project files
 .idea/
@@ -26,3 +27,8 @@ sw-injector.js
 
 # Log files
 *.log
+
+
+# API Keys
+js/config.js
+env

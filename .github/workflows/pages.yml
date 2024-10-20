@@ -35,7 +35,7 @@ jobs:
          -  name: Set Deployed Flag and Image Root
             run: |
                bash ./.github/set-deployed-flag.sh ${{ github.ref_name }}
-               bash ./.github/set-img-root.sh ${{ github.repository_owner }}
+               bash ./.github/set-img-root.sh 5etools-mirror-3
 
          # Notably: remove anything which should not be added to the service worker manifest:
          #  - `homebrew`
@@ -55,10 +55,13 @@ jobs:
                sed -i 's/sw.js//g' .gitignore
                sed -i 's/sw-injector.js//g' .gitignore
 
+         -  name: Export API Key
+            run: bash ./.github/setEnvironment.sh ${{ secrets.FIREBASECONFIG }}
+
          -  name: Build SEO Pages
             env:
                VET_SEO_IS_DEV_MODE: true
-               VET_BASE_SITE_URL: "https://${{ github.repository_owner }}.github.io/"
+               VET_BASE_SITE_URL: "https://5e.tools/"
                VET_SEO_IS_SKIP_UA_ETC: true
             run: |
                npm run build:seo -- ${{ github.ref_name }}
@@ -68,18 +71,17 @@ jobs:
                rm -rf node_modules node
                ls -lah
 
-         # TODO(Future)
-#         -  name: Setup Pages
-#            uses: actions/configure-pages@master
-#
-#         -  name: Upload artifact
-#            uses: actions/upload-pages-artifact@master
-#            with:
-#               path: '.'
-#
-#         -  name: Deploy to GitHub Pages
-#            id: deployment
-#            uses: actions/deploy-pages@master
-#            with:
-#               # Timeout in millis (10 mins)
-#               timeout: 600000
+         -  name: Setup Pages
+            uses: actions/configure-pages@main
+
+         -  name: Upload artifact
+            uses: actions/upload-pages-artifact@main
+            with:
+               path: '.'
+
+         -  name: Deploy to GitHub Pages
+            id: deployment
+            uses: actions/deploy-pages@main
+            with:
+               # Timeout in millis (10 mins)
+               timeout: 600000

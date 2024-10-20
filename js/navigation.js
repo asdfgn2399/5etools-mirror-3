@@ -1,5 +1,84 @@
 "use strict";
 
+function FIREBASEarraysToObjects(obj, undo) {
+	if (obj !== null && obj !== undefined) var keys = Object.keys(obj)
+	else return obj
+	var keys = Object.keys(obj)
+	keys.forEach(key => {
+		var val = obj[key]
+		var oldKey = key
+		if (undo) {
+			key = key.replaceAll('<&period&>', '.')
+			key = key.replaceAll('<&dollarsign&>', '$')
+			key = key.replaceAll('<&leftbracket&>', '[')
+			key = key.replaceAll('<&rightbracket&>', ']')
+			key = key.replaceAll('<&backslash&>', '/')
+			if (key !== oldKey) {
+				delete obj[oldKey]
+			}
+		} else {
+			key = key.replaceAll('.', '<&period&>')
+			key = key.replaceAll('$', '<&dollarsign&>')
+			key = key.replaceAll('[', '<&leftbracket&>')
+			key = key.replaceAll(']', '<&rightbracket&>')
+			key = key.replaceAll('/', '<&backslash&>')
+			if (key !== oldKey) {
+				delete obj[oldKey]
+			}
+		}
+
+		if (Array.isArray(val) && undo !== true) {
+			val = arrayToObject(val)
+		} else if (typeof val === 'object' && val?.isArray === true) {
+			val = objectToArray(val)
+		} 
+
+		if (typeof val === 'object') {
+			val = FIREBASEarraysToObjects(val, undo)
+		}
+
+		obj[key] = val
+	})
+
+	// console.log(obj)
+	return obj
+}
+
+function objectToArray(obj) {
+	var newArray = [];
+	delete obj.isArray
+	var keys = Object.keys(obj);
+	// alert(keys)
+	for (let i = 0; i < keys.length; i++) {
+		let key = keys[i];
+		if (key.substring(0, 6) == 'index-') {
+			var index = key.substring(6, key.length)
+			newArray[Number(index)] = obj[key]
+		} else {
+			newArray[key] = obj[key]
+		}
+	}
+	// console.log(newArray)
+	return newArray
+}
+
+function arrayToObject(array) {
+	var newObj = {isArray: true}
+	for (let i = 0; i < array.length; i++) {
+		newObj['index-' + i] = array[i];
+	}
+	return newObj
+}
+
+function addElement(type, params) {
+	var newElement = document.createElement(type)
+	var keys = Object.keys(params)
+	keys.forEach(key => {
+		newElement.setAttribute(key, params[key])
+	});
+	return document.body.appendChild(newElement)
+}
+
 class NavBar {
 	static init () {
 		this._initInstallPrompt();
@@ -9,6 +88,27 @@ class NavBar {
 	}
 
 	static _onDomContentLoaded () {
+		if (Date.now() > Number(localStorage.UIDtimestamp) + 3600000) localStorage.userUID = 'loggedOut';
+		addElement('script', {
+			src: "https://www.gstatic.com/firebasejs/8.2.4/firebase.js"
+		}).onload = function() {
+			import("../env/env.js").then((env) => {
+				var vals = env.environment.apiKey.split(',')
+				var keys = ['apiKey', 'authDomain', 'databaseURL', 'projectId', 'storageBucket', 'messagingSenderId', 'appId'];
+				var firebaseConfig = {};
+				for (let i = 0; i < keys.length; i++) {
+					firebaseConfig[keys[i]] = vals[i]
+				} 
+				firebase.initializeApp(firebaseConfig);
+				NavBar.firebaseDatabase = firebase.database();
+				NavBar.usersRef = NavBar.firebaseDatabase.ref('users');
+				NavBar.userDataRef = NavBar.firebaseDatabase.ref('userData');
+			})
+		};
+		addElement('link', {
+			rel: "stylesheet",
+			href: "css/navSignIn.css"
+		});
 		NavBar._initElements();
 		NavBar.highlightCurrentPage();
 	}
@@ -42,6 +142,10 @@ class NavBar {
 			$(`.page__nav-hidden-mobile`).toggleClass("block", $(btnShowHide).hasClass("active"));
 		};
 		document.getElementById("navigation").prepend(btnShowHide);
+		const signInPopup = document.createElement("div")
+		signInPopup.id = "navPopup"
+		signInPopup.className = "nav-popup sign-in-menu"
+		document.getElementById("navigation").append(signInPopup);
 
 		this._addElement_li(null, "index.html", "Home", {isRoot: true});
 
@@ -156,6 +260,97 @@ class NavBar {
 					ConfigUi.show();
 					NavBar._closeAllDropdowns();
 				},
+			},
+		);
+		this._addElement_divider(NavBar._CAT_SETTINGS);
+		this._addElement_dropdown(NavBar._CAT_SETTINGS, NavBar._CAT_ACCOUNT, {isSide: true});
+		this._addElement_label(NavBar._CAT_ACCOUNT, `<p>WARNING: Account System is under development. Expect bugs. <b>Keep a backup of your saved state.</b></p><p>Contact asdfgn2399 on discord for support.</p>`);
+		this._addElement_button(
+			NavBar._CAT_ACCOUNT,
+			{
+				html: localStorage.userUID !== 'loggedOut' ? 'Log Out' : 'Sign In',
+				id: "signInButton",
+				click: async () => {
+					if (localStorage.userUID == 'loggedOut') {
+						document.getElementById('navPopup').innerHTML = NavBar.initPopup('signIn');
+						document.getElementById('navPopup').style.top = '175%'
+						document.getElementById('navPopup').click();
+					} else {
+						if (localStorage.userUID) {
+							var data = ""
+							NavBar.usersRef.child(localStorage.userUID).once('value', (snap) => {
+								data = snap.val()
+							});
+						};
+						firebase.auth().signOut().then(() => {
+							document.getElementById("signInButton").innerHTML = 'Sign In';
+							document.getElementById("signInButton").title = 'Sign in to your account';
+							localStorage.userUID = 'loggedOut';
+							NavBar._closeAllDropdowns();
+							if (data != "") {
+								JqueryUtil.doToast({
+									content: `Successfully signed out '${data.email}'`,
+									type: 'success'
+								})
+							}
+						}).catch((error) => {
+							console.error(error)
+							JqueryUtil.doToast({
+								content: `An error has occured! Check the console (Ctrl + Shift + J) for more information`,
+								type: "danger",
+								autoHideTime: 5_000 /* 5 seconds */,
+							})
+						})
+					}
+				},
+				title: localStorage.userUID !== 'loggedOut' ? "Log out of your account" : "Sign in to your account",
+			}
+		);
+		this._addElement_button(
+			NavBar._CAT_ACCOUNT,
+			{
+				html: "Create Account",
+				click: async () => {
+					document.getElementById('navPopup').innerHTML = NavBar.initPopup('create');
+					document.getElementById('navPopup').style.top = '175%'
+					document.getElementById('navPopup').click();
+				},
+				title: "Create an account",
+			}
+		);
+		this._addElement_divider(NavBar._CAT_ACCOUNT);
+		this._addElement_button(
+			NavBar._CAT_ACCOUNT,
+			{
+				html: "Save State to Account",
+				click: async (evt) => {
+					if (localStorage.userUID !== 'loggedOut') {
+						NavBar.InteractionManager._pOnClick_button_saveStateFile(evt, true)
+					} else {
+						JqueryUtil.doToast({
+							content: `You are not signed in! Please sign in and try again`,
+							type: "warning",
+						})
+					}
+				},
+				title: "Save any locally-stored data (loaded homebrew, active blocklists, DM Screen configuration,...) to your account",
+			},
+		);
+		this._addElement_button(
+			NavBar._CAT_ACCOUNT,
+			{
+				html: "Load Saved State from Account",
+				click: async (evt) => {
+					if (localStorage.userUID !== 'loggedOut') {
+						NavBar.InteractionManager._pOnClick_button_loadStateFile(evt, true)
+					} else {
+						JqueryUtil.doToast({
+							content: `You are not signed in! Please sign in and try again`,
+							type: "warning",
+						})
+					}
+				},
+				title: "Load previously-saved data (loaded homebrew, active blocklists, DM Screen configuration,...) from your account",
 			},
 		);
 		this._addElement_divider(NavBar._CAT_SETTINGS);
@@ -579,6 +774,8 @@ class NavBar {
 
 		if (options.context) eleSpan.oncontextmenu = options.context;
 
+		if (options.id && !document.getElementById(options.id)) eleSpan.setAttribute("id", options.id);
+
 		if (options.title) li.setAttribute("title", options.title);
 
 		li.appendChild(eleSpan);
@@ -797,6 +994,84 @@ class NavBar {
 			delete NavBar._timersOpen[k];
 		});
 	}
+	
+	static initPopup (type) {
+		const isCreating = type == "create"
+		const title = isCreating ? 'Create a 5etools account' : 'Sign In to your 5etools account';
+		const btnTxt = isCreating ? 'Create account' : 'Sign In'
+		return `<h3>${title}</h3>
+    <button onclick="document.getElementById('navPopup').style.top = '-500px';" class="btn close-menu-button">X</button>
+		<label for="popupEmail">Email Address:</label><br>
+    <input id="popupEmail" type="text" placeholder="e.g. yourname@example.com"><br>
+		<label for="popupPassword">Password:</label><br>
+    <input id="popupPassword" type="text" placeholder="e.g. h$kd9I8K4nb-D6r"><br>
+		<button onclick="NavBar.firebaseSignIn(popupEmail.value, popupPassword.value, ${isCreating})" class="btn bottom-right-button">${btnTxt}</button>`
+
+	}
+
+	static async firebaseSignIn (email, password, creating) {
+		if (!creating) {
+			firebase.auth().signInWithEmailAndPassword(email, password).then((userObj) => {
+				if (userObj) {
+					document.getElementById("signInButton").innerHTML = 'Log Out';
+					document.getElementById("signInButton").title = 'Log out of your account';
+					document.getElementById('navPopup').style.top = '-500px';
+					localStorage.userUID = userObj.user.uid
+					localStorage.UIDtimestamp = Date.now()
+					JqueryUtil.doToast({
+						content: `Successfully logged in as '${email}'!`,
+						type: "success",
+					})
+				}
+			}).catch((error) => {
+				if (error.code == "auth/user-not-found") {
+					JqueryUtil.doToast({
+						content: `No user found with this email! Please check your spelling and try again.`,
+						type: "danger",
+						autoHideTime: 5_000 /* 5 seconds */,
+					})
+				} else if (error.code == "auth/wrong-password") {
+					JqueryUtil.doToast({
+						content: `Incorrect password for '${email}'! Please check your spelling and try again.`,
+						type: "danger",
+						autoHideTime: 5_000 /* 5 seconds */,
+					})
+				} else if (error.code == "auth/invalid-email") {
+					JqueryUtil.doToast({
+						content: `Please enter a valid email address and try again.`,
+						type: "danger",
+						autoHideTime: 5_000 /* 5 seconds */,
+					})
+				} else {
+					console.error(error)
+					JqueryUtil.doToast({
+						content: `An error has occured! Check the console (Ctrl + Shift + J) for more information`,
+						type: "danger",
+						autoHideTime: 5_000 /* 5 seconds */,
+					})
+				}
+			})
+		} else {
+			firebase.auth().createUserWithEmailAndPassword(email, password).then((userObj) => {
+				if (userObj) {
+					document.getElementById("signInButton").innerHTML = 'Log Out';
+					document.getElementById("signInButton").title = 'Log out of your account';
+					document.getElementById('navPopup').style.top = '-500px';
+					localStorage.userUID = userObj.user.uid
+					localStorage.UIDtimestamp = Date.now()
+					var newUserData = {}; 
+					newUserData['5etools'] = {siteVersion: VERSION_NUMBER, timestamp: Date.now()}
+					NavBar.userDataRef.child(localStorage.userUID).set(newUserData)
+					NavBar.usersRef.child(localStorage.userUID).set({email: email, signUpDate: Date.now()})
+					// console.log(localStorage.userUID)
+					JqueryUtil.doToast({
+						content: `Successfully created account with '${email}'!`,
+						type: "success",
+					})
+				}
+			})
+		}
+	}
 }
 NavBar._DROP_TIME = 250;
 NavBar._MIN_MOVE_PX = 3;
@@ -812,6 +1087,7 @@ NavBar._CAT_ADVENTURES = "Adventures";
 NavBar._CAT_REFERENCES = "References";
 NavBar._CAT_UTILITIES = "Utilities";
 NavBar._CAT_SETTINGS = "Settings";
+NavBar._CAT_ACCOUNT = "Account";
 NavBar._CAT_CACHE = "Preload Data";
 
 NavBar._navbar = null;
@@ -840,19 +1116,40 @@ NavBar.InteractionManager = class {
 		styleSwitcher.toggleWide();
 	}
 
-	static async _pOnClick_button_saveStateFile (evt) {
+	static async _pOnClick_button_saveStateFile (evt, toFirebase) {
 		evt.preventDefault();
 		const sync = StorageUtil.syncGetDump();
 		const async = await StorageUtil.pGetDump();
 		const dump = {sync, async};
-		DataUtil.userDownload("5etools", dump, {fileType: "5etools"});
+		if (toFirebase) {
+			var asyncData = JSON.parse(JSON.stringify(FIREBASEarraysToObjects(async, false)))
+			NavBar.userDataRef.child(localStorage.userUID + '/5etools').set({sync: FIREBASEarraysToObjects(sync, false), async: asyncData, siteVersion: VERSION_NUMBER, timestamp: Date.now()})
+			document.getElementById('navPopup').click();
+			JqueryUtil.doToast({
+				content: `Successfully saved state!`,
+				type: "success",
+			})
+		} else {
+			DataUtil.userDownload("5etools", dump, {fileType: "5etools"});
+		}
 	}
 
-	static async _pOnClick_button_loadStateFile (evt) {
+	static async _pOnClick_button_loadStateFile (evt, isLoadedFromFirebase) {
 		evt.preventDefault();
-		const {jsons, errors} = await InputUiUtil.pGetUserUploadJson({expectedFileTypes: ["5etools"]});
-
-		DataUtil.doHandleFileLoadErrorsGeneric(errors);
+		
+		if (isLoadedFromFirebase) {
+			await NavBar.userDataRef.child(localStorage.userUID + '/5etools').once('value', function (snapshot) {
+				NavBar.currentFirebaseData = snapshot.val()
+				NavBar.currentAsyncStateData = FIREBASEarraysToObjects(NavBar.currentFirebaseData.async, true)
+				NavBar.currentSyncStateData = FIREBASEarraysToObjects(NavBar.currentFirebaseData.sync, true)
+			})
+			var jsons = [{sync: NavBar.currentSyncStateData, async: NavBar.currentAsyncStateData}]
+			// let printWindow = window.open();
+			// printWindow.document.write('<html><meta charset="utf-8"/><title>Test</title><div>' + JSON.stringify(jsons) + '</div>');
+		} else {
+			var {jsons, errors} = await DataUtil.pUserUpload({expectedFileTypes: ["5etools"]});
+			DataUtil.doHandleFileLoadErrorsGeneric(errors);
+		}
 
 		if (!jsons?.length) return;
 		const dump = jsons[0];
