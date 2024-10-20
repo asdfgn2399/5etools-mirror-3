@@ -1122,13 +1122,14 @@ NavBar.InteractionManager = class {
 		const async = await StorageUtil.pGetDump();
 		const dump = {sync, async};
 		if (toFirebase) {
+			var doContinue = true;
 			await NavBar.userDataRef.child(localStorage.userUID + '/5etools').once('value', function (snapshot) {
 				NavBar.currentFirebaseData = snapshot.val()
 				if (NavBar.currentFirebaseData.siteVersion.substring(0, 1) !== VERSION_NUMBER.substring(0, 1)) {
-					const doContinue = confirm("This saved state doesn't match the primary version of your account (2014 vs 2024)! Do you want to continue? This will change the version associated with your account.")
-					if (!doContinue) return;
+					doContinue = confirm("This saved state doesn't match the primary version of your account (2014 vs 2024)! Do you want to continue? This will change the version associated with your account.")
 				}
 			})
+			if (!doContinue) return;
 			var asyncData = JSON.parse(JSON.stringify(FIREBASEarraysToObjects(async, false)))
 			NavBar.userDataRef.child(localStorage.userUID + '/5etools').set({sync: FIREBASEarraysToObjects(sync, false), async: asyncData, siteVersion: VERSION_NUMBER, timestamp: Date.now()})
 			document.getElementById('navPopup').click();
