@@ -28,7 +28,9 @@ sw-injector.js
 # Log files
 *.log
 
-
 # API Keys
 js/config.js
 env
+
+# Dev scripts
+dev-*.sh

@@ -19,13 +19,8 @@ class PageFilterBestiary extends PageFilterBase {
 	// region static
 	static sortMonsters (a, b, o) {
 		if (o.sortBy === "count") return SortUtil.ascSort(a.data.count, b.data.count) || SortUtil.compareListNames(a, b);
-		switch (o.sortBy) {
-			case "name": return SortUtil.compareListNames(a, b);
-			case "type": return SortUtil.ascSort(a.values.type, b.values.type) || SortUtil.compareListNames(a, b);
-			case "source": return SortUtil.ascSort(a.values.source, b.values.source) || SortUtil.compareListNames(a, b);
-			case "cr": return SortUtil.ascSortCr(a.values.cr, b.values.cr) || SortUtil.compareListNames(a, b);
-			case "page": return SortUtil.ascSort(a.values.page, b.values.page) || SortUtil.compareListNames(a, b);
-		}
+		if (o.sortBy === "cr") return SortUtil.ascSortCr(a.values.cr, b.values.cr) || SortUtil.compareListNames(a, b);
+		return SortUtil.listSort(a, b, o);
 	}
 
 	static ascSortMiscFilter (a, b) {
@@ -329,6 +324,7 @@ class PageFilterBestiary extends PageFilterBase {
 			}
 		}
 		if (mon.isNpc) mon._fMisc.push("Adventure NPC");
+		if (mon.isNamedCreature) mon._fMisc.push("Named Creature");
 		const legGroup = DataUtil.monster.getLegendaryGroup(mon);
 		if (legGroup) {
 			if (legGroup.lairActions) mon._fMisc.push("Lair Actions");
@@ -696,6 +692,7 @@ class ModalFilterBestiary extends ModalFilterBase {
 				hash,
 				source,
 				sourceJson: mon.source,
+				page: mon.page,
 				type,
 				cr,
 			},

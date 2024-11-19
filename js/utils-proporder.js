@@ -75,6 +75,8 @@ function getFnListSort (prop) {
 		case "deck":
 		case "citation":
 		case "foundryMap":
+		case "facility":
+		case "facilityFluff":
 			return SortUtil.ascSortGenericEntity.bind(SortUtil);
 		case "deity":
 			return SortUtil.ascSortDeity.bind(SortUtil);
@@ -103,10 +105,10 @@ function getFnListSort (prop) {
 				|| SortUtil.ascSort(a.level, b.level)
 				|| SortUtil.ascSort(a.header || 0, b.header || 0)
 				|| SortUtil.ascSortGenericEntity(a, b);
-		case "subrace": return (a, b) => SortUtil.ascSortLower(a.raceName, b.raceName)
-			|| SortUtil.ascSortLower(a.raceSource, b.raceSource)
+		case "subrace": return (a, b) => SortUtil.ascSortLower(a.raceName || "", b.raceName || "")
+			|| SortUtil.ascSortLower(a.raceSource || "", b.raceSource || "")
 			|| SortUtil.ascSortLower(a.name || "", b.name || "")
-			|| SortUtil.ascSortLower(a.source, b.source);
+			|| SortUtil.ascSortLower(a.source || "", b.source || "");
 		case "backgroundFeature": return (a, b) => SortUtil.ascSortLower(a.backgroundName, b.backgroundName)
 			|| SortUtil.ascSortLower(a.backgroundSource, b.backgroundSource)
 			|| SortUtil.ascSortGenericEntity(a, b);
@@ -351,6 +353,8 @@ PropOrder._META = [
 	"currencyConversions",
 	"fonts",
 
+	"edition",
+
 	"status",
 	"unlisted",
 
@@ -566,7 +570,7 @@ PropOrder._MONSTER = [
 			"_implementations",
 			...PropOrder._MONSTER,
 		],
-		fnSort: (a, b) => SortUtil.ascSortLower(a.name || "", b.name || "") || SortUtil.ascSortLower(a.source || "", b.source || ""),
+		fnSort: getFnListSort("monster"),
 	}),
 ];
 PropOrder._MONSTER__COPY_MOD = [
@@ -614,12 +618,14 @@ PropOrder._MONSTER_TEMPLATE = [
 PropOrder._MAKE_BREW_CREATURE_TRAIT = [
 	"name",
 	"source",
+	"reprintedAs",
 
 	"entries",
 ];
 PropOrder._MAKE_BREW_CREATURE_ACTION = [
 	"name",
 	"source",
+	"reprintedAs",
 
 	"entries",
 ];
@@ -967,7 +973,15 @@ PropOrder._CLASS = [
 
 	"startingProficiencies",
 	"languageProficiencies",
-	"startingEquipment",
+	new PropOrder._ObjectKey("startingEquipment", {
+		order: [
+			"additionalFromBackground",
+			"default",
+			"goldAlternative",
+			"defaultData",
+			"entries",
+		],
+	}),
 
 	"multiclassing",
 
@@ -1127,6 +1141,8 @@ PropOrder._ENTRY_DATA_OBJECT = [
 	"senses",
 
 	"resources",
+
+	"additionalSpells",
 ];
 PropOrder._CLASS_FEATURE = [
 	"name",
@@ -1378,6 +1394,8 @@ PropOrder._DISEASE = [
 	"otherSources",
 	"reprintedAs",
 
+	"type",
+
 	"color",
 
 	"entries",
@@ -1495,6 +1513,8 @@ PropOrder._DEITY = [
 	"domains",
 	"province",
 	"dogma",
+	"worshipers",
+	"plane",
 	"symbol",
 	"symbolImg",
 	"favoredWeapons",
@@ -1568,6 +1588,21 @@ PropOrder._FEAT = [
 	"fluff",
 
 	...PropOrder._PROPS_FOUNDRY_DATA,
+
+	new PropOrder._ArrayKey("_versions", {
+		fnGetOrder: () => [
+			"name",
+			"source",
+			new PropOrder._ObjectKey("_mod", {
+				fnGetOrder: () => PropOrder._FEAT__COPY_MOD,
+			}),
+			"_preserve",
+			"_abstract",
+			"_implementations",
+			...PropOrder._FEAT,
+		],
+		fnSort: getFnListSort("feat"),
+	}),
 ];
 PropOrder._FEAT__COPY_MOD = [
 	"*",
@@ -1585,6 +1620,7 @@ PropOrder._VEHICLE = [
 	"basicRules",
 	"freeRules2024",
 	"otherSources",
+	"reprintedAs",
 
 	"vehicleType",
 
@@ -1714,6 +1750,7 @@ PropOrder._ITEM = [
 	"conditionImmune",
 
 	"detail1",
+	"detail2",
 
 	"tier",
 	"rarity",
@@ -1735,6 +1772,7 @@ PropOrder._ITEM = [
 	"value",
 	"valueMult",
 	"valueExpression",
+	"valueRarity",
 	"quantity",
 	"currencyConversion",
 
@@ -1772,6 +1810,8 @@ PropOrder._ITEM = [
 
 	"carryingCapacity",
 	"speed",
+
+	"barDimensions",
 
 	"ability",
 	"grantsProficiency",
@@ -1828,6 +1868,7 @@ PropOrder._ITEM = [
 	"entries",
 	"additionalEntries",
 	"items",
+	"itemsHidden",
 
 	"ammoType",
 	"poisonTypes",
@@ -1867,6 +1908,8 @@ PropOrder._MAGICVARIANT = [
 	"name",
 	"alias",
 	"source",
+
+	"edition",
 
 	"type",
 
@@ -1998,6 +2041,7 @@ PropOrder._OBJECT = [
 	"basicRules",
 	"freeRules2024",
 	"otherSources",
+	"reprintedAs",
 
 	"size",
 	"objectType",
@@ -2230,7 +2274,7 @@ PropOrder._RACE_SUBRACE = [
 			"_implementations",
 			...PropOrder._RACE,
 		],
-		fnSort: (a, b) => SortUtil.ascSortLower(a.name || "", b.name || "") || SortUtil.ascSortLower(a.source || "", b.source || ""),
+		fnSort: getFnListSort("subrace"),
 	}),
 ];
 PropOrder._RACE = [
@@ -2304,7 +2348,7 @@ PropOrder._TABLE = [
 	"caption",
 
 	"colLabels",
-	"colLabelGroups",
+	"colLabelRows",
 	"colStyles",
 
 	"rowLabels",
@@ -2331,15 +2375,16 @@ PropOrder._TRAP = [
 	"basicRules",
 	"freeRules2024",
 	"otherSources",
+	"reprintedAs",
 
 	"trapHazType",
 
-	"tier",
-	"level",
-	"threat",
+	"rating",
+
 	"effect",
 
 	"trigger",
+	"duration",
 
 	"initiative",
 	"initiativeNote",
@@ -2372,6 +2417,8 @@ PropOrder._HAZARD = [
 	"reprintedAs",
 
 	"trapHazType",
+
+	"rating",
 
 	"entries",
 
@@ -2554,6 +2601,35 @@ PropOrder._FOUNDRY_MAP = [
 	"walls",
 ];
 
+PropOrder._FACILITY = [
+	"name",
+	"alias",
+
+	"source",
+	"page",
+	"srd",
+	"srd52",
+	"basicRules",
+	"freeRules2024",
+	"otherSources",
+	"reprintedAs",
+
+	"facilityType",
+
+	"level",
+	"prerequisite",
+	"space",
+	"hirelings",
+	"orders",
+
+	"entries",
+
+	"hasFluff",
+	"hasFluffImages",
+
+	"fluff",
+];
+
 PropOrder._PROP_TO_LIST = {
 	"_meta": PropOrder._META,
 	"_test": PropOrder._TEST,
@@ -2653,6 +2729,8 @@ PropOrder._PROP_TO_LIST = {
 	"encounter": PropOrder._ENCOUNTER,
 	"citation": PropOrder._CITATION,
 	"foundryMap": PropOrder._FOUNDRY_MAP,
+	"facility": PropOrder._FACILITY,
+	"facilityFluff": PropOrder._GENERIC_FLUFF,
 };
 
 PropOrder._ROOT = [
@@ -2731,6 +2809,9 @@ PropOrder._ROOT = [
 	PropOrder._ArrayKey.getRootKey("card"),
 
 	PropOrder._ArrayKey.getRootKey("deity"),
+
+	PropOrder._ArrayKey.getRootKey("facility"),
+	PropOrder._ArrayKey.getRootKey("facilityFluff"),
 
 	PropOrder._ArrayKey.getRootKey("language"),
 	PropOrder._ArrayKey.getRootKey("languageScript"),

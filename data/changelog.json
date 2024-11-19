@@ -2823,5 +2823,44 @@
 		"ver": "2.2.3",
 		"date": "2024-10-17",
 		"txt": "- Added \"Zoom to Fit\" button to Dynamic Map Viewer; made \"Reset Zoom\" button reset to \"fill\" size (rather than 100% zoom)\n- Adjusted Dynamic Map Viewer zoom in/out amount to feel more natural\n- Added Languages support to Blocklist\n- Added \"Camouflage\" tag to Bestiary \"Traits\" filter\n- Converted Items page \"Base Item\" filter to searchable type\n- Fixed common cases of Dynamic Map Viewer \"white screen\" when zooming in too far on some images\n- Fixed Classes page \"Toggle Spell Points Mode\" option producing broken results when used on a non-spellcasting class with spellcasting subclasses (e.g. Fighter; Rogue)\n- Fixed duplicate filter matches (e.g. \"Ranger\" (PHB'14) and \"Ranger\" (PHB'24) on the same spell) producing incorrect filter results in some cases\n- (Brew) Improved speed of loading many brews from a prerelease content/homebrew list exported as url\n- (Brew) Added file verification/warning when attempting to upload a non-homebrew file (e.g. a file from \"Utilities\" -> \"Export State to File\") as a homebrew file\n- (Brew) Added redirect when pasting a prerelease content/homebrew list exported as url into the \"Load from URL\" modal\n- (Brew) Added numeric-prefix sorting to list page \"Source\" filters\n- (Brew) Added workaround for spell class sources, which auto-generates XPHB equivalents for PHB entries\n- (Brew) Added rudimentary `@itemProperty` tagging to Text Converters\n- (Brew) Added support for `\"itemProperty\"` tag in `\"statblock\"` entries \n- (Brew) Fixed crash when using `_append<fluffProp>`\n- (Fixed typos/added tags)"
+	},
+	{
+		"ver": "2.3.0",
+		"date": "2024-10-24",
+		"title": "Eating Cardboard",
+		"txt": "- Added Heroes' Feast: The Deck of Many Morsels (thanks @ Lyra)\n- Added 2024 DM Screen (thanks @ Lyra)\n- Added Armor Class filter to Items page\n- Added more PHB'24 creature art; tokens\n- Improved Spell-Summoned Creature Scaler handling of PHB'24 statblock multiattacks\n- Fixed Classes page \"Toggle Spell Points Mode\" option only showing subclass spell points columns\n- (Fixed typos/added tags)"
+	},
+	{
+		"ver": "2.4.0",
+		"date": "2024-10-31",
+		"title": "Mad Sciontist",
+		"txt": "- Added \"Scions of Elemental Evil\" content (which includes a small amount of MM'24 and DMG'24 content)\n- Added page numbers to Quests from the Infinite Staircase adventure content\n- Added Bestiary \"Named Creature\" filter\n- Fixed \"Export as Image\" window resize behaviour on Firefox\n- Fixed Bestiary statblock copy-paste formatting regression when pasting to external editors\n- Fixed \"Source\" filter item ordering\n- (Brew) Improved Creature Text Converter handling of alternate \"Gear\" formats\n- (Brew) Added `\"_versions\"` support to `\"feat\"`s, which may subsequently be linked from `\"background[].feats\"`\n- (Fixed typos/added tags)"
+	},
+	{
+		"ver": "2.4.1",
+		"date": "2024-11-01",
+		"txt": "- Statgen now uses '24 \"Backgrounds and Species from Older Books\" rules when using \"Modern\" style\n- Fixed Statgen crash when selecting backgrounds with specific feat versions\n- (Fixed typos/added tags)"
+	},
+	{
+		"ver": "2.4.2",
+		"date": "2024-11-04",
+		"txt": "- Fixed Items page failing to render range for items with range but no ammunition\n- Fixed Bestiary failing to render \"mythic encounter\" XP\n- (Brew) Fixed Backgrounds page crash on `\"one\"`-edition background with no ability scores\n- (Fixed typos/added tags)"
+	},
+	{
+		"ver": "2.5.0",
+		"date": "2024-11-18",
+		"title": "My Home Is My Castle",
+		"titleAlt": "Castle Doctrine",
+		"txt": "- Added Dungeon Master's Guide (2024) content\n  - Added book/items/traps/hazards/etc.\n  - Added Bastions page <https://5e.tools/bastions.html>\n  - Added DMG'24 random magic item tables to Loot Generator page, and allowed generated loot to benefit from '24 redirects _[note that some spell scroll/enspelled items do not yet generate attached spells correctly]_\n- Improved loading performance of various pages _[some more than others; the items page got a 300ms speedup on my machine]_\n- Sorting a list page by \"Source\" now uses sorts by \"source\" -> \"page\" -> \"name\", rather than \"source\" -> \"name\"\n- The Classes page \"Show Subclass Sources\" option is now enabled by default\n- Switched to transparent background for 600+ Bestiary images (thanks @ anon)\n- Fixed Vehicles page tokens persisting when changing statblock\n- (Brew) Improved Text Converter handling of entries after lists\n- (Brew) Improved Item Text Converter handling of various '24 item conventions\n- (Brew) Improved Creature Text Converter handling of '24 ability scores; initiative\n- (Brew) Added `\"itemsHidden\"` on `\"itemGroup\"`s, allowing the \"Multiple variations of this item exist ...\" text to be hidden\n- (Brew) Fixed \"Export Prerelease Content/Homebrew List as URL\" always exporting a blank URL\n- (Fixed typos/added tags)"
+	},
+	{
+		"ver": "2.5.1",
+		"date": "2024-11-18",
+		"txt": "- (Fixed typos/added tags)"
+	},
+	{
+		"ver": "2.5.2",
+		"date": "2024-11-19",
+		"txt": "- Fixed Bastion page \"Type\" filter\n- Switched to transparent background for DMG'24 items (thanks @ anon)\n- (Fixed typos/added tags)"
 	}
 ]

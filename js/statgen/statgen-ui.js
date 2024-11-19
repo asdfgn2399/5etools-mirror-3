@@ -3,6 +3,8 @@ import {StatGenUiRenderLevelOneBackground} from "./statgen-ui-comp-levelone-back
 import {StatGenUiRenderLevelOneRace} from "./statgen-ui-comp-levelone-race.js";
 import {StatGenUiRenderableCollectionPbRules} from "./statgen-ui-comp-pbrules.js";
 import {MAX_CUSTOM_FEATS, MODE_NONE} from "./statgen-ui-consts.js";
+import {VetoolsConfig} from "../utils-config/utils-config-config.js";
+import {SITE_STYLE__ONE} from "../consts.js";
 
 export class StatGenUi extends BaseComponent {
 	static _STANDARD_ARRAY = [15, 14, 13, 12, 10, 8];
@@ -911,9 +913,8 @@ export class StatGenUi extends BaseComponent {
 							${$wrpsBase}
 						</div>
 
-						${$wrpRaceOuter}
-
 						${$wrpBackgroundOuter}
+						${$wrpRaceOuter}
 
 						<div class="ve-flex-col mr-3">
 							<div class="my-1 statgen-pb__header"></div>
@@ -934,8 +935,8 @@ export class StatGenUi extends BaseComponent {
 						</div>
 					</div>
 
-					${$stgRaceSel}
 					${$stgBackgroundSel}
+					${$stgRaceSel}
 				</div>
 
 				${$vrPbCustom}
@@ -946,12 +947,13 @@ export class StatGenUi extends BaseComponent {
 
 			<hr class="hr-3">
 
+			${$dispPreviewBackground}
+			
+			${$hrPreviewBackground}
+
 			${$dispPreviewRace}
 			${$hrPreviewRaceTashas}
 			${$dispTashas}
-
-			${$dispPreviewBackground}
-			${$hrPreviewBackground}
 
 			${$wrpAsi}
 		</div>`;
@@ -1118,7 +1120,10 @@ export class StatGenUi extends BaseComponent {
 
 		return race.ability
 			.map(fromRace => {
-				if (this._state.common_isTashas) {
+				if (
+					this._state.common_isTashas
+					&& this._state.common_isAllowTashasRules
+				) {
 					const weights = [];
 
 					if (fromRace.choose && fromRace.choose.weighted && fromRace.choose.weighted.weights) {
@@ -1290,6 +1295,8 @@ export class StatGenUi extends BaseComponent {
 
 		MiscUtil.getOrSet(saved, "state", {});
 
+		saved.state.common_isAllowTashasRules = VetoolsConfig.get("styleSwitcher", "style") !== SITE_STYLE__ONE;
+
 		const handleEntityHash = ({propHash, page, propData, propIxEntity}) => {
 			if (!saved[propHash]) return;
 
@@ -1418,6 +1425,7 @@ export class StatGenUi extends BaseComponent {
 		return {
 			// region Common
 			common_isPreviewRace: false,
+			common_isAllowTashasRules: VetoolsConfig.get("styleSwitcher", "style") !== SITE_STYLE__ONE,
 			common_isTashas: false,
 			common_isShowTashasRules: false,
 			common_ixRace: null,
