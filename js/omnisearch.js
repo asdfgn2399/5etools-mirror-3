@@ -103,7 +103,7 @@ class Omnisearch {
 			tag: "input",
 			clazz: "form-control search omni__input",
 			placeholder: this._PLACEHOLDER_TEXT,
-			title: `Hotkey: F. Disclaimer: unlikely to search everywhere. Use with caution.`,
+			title: `Search Everywhere. Hotkey: F. Disclaimer: unlikely to search everywhere. Use with caution.`,
 			type: "search",
 		})
 			.disableSpellcheck();
@@ -321,7 +321,7 @@ class Omnisearch {
 
 			results = results
 				.filter(r => !categoryTerm || (r.doc.cf.toLowerCase() === categoryTerm))
-				.filter(r => !sourceTerms.length || (r.doc.s && sourceTerms.includes(r.doc.s.toLowerCase())))
+				.filter(r => !sourceTerms.length || (r.doc.s && sourceTerms.includes(Parser.sourceJsonToAbv(r.doc.s).toLowerCase())))
 				.filter(r => !pageRanges.length || (r.doc.p && pageRanges.some(range => r.doc.p >= range[0] && r.doc.p <= range[1])));
 		} else {
 			results = this._searchIndex.search(

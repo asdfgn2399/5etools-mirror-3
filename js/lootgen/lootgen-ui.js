@@ -5,6 +5,7 @@ import {
 	LOOT_TABLES_TYPE__XGE_FAUX,
 	LOOT_TABLES_TYPE__XDMG_THEMES,
 } from "./lootgen-const.js";
+import {PILL_STATE__IGNORE} from "../filter/filter-constants.js";
 
 export class LootGenUi extends BaseComponent {
 	static _CHALLENGE_RATING_RANGES = {
@@ -122,6 +123,7 @@ export class LootGenUi extends BaseComponent {
 
 		this._dataSpellsFiltered = [...spells];
 		this._dataItemsFiltered = [...items];
+		this._dataItemsFilteredLegacy = [...items];
 
 		this._lt_tableMetas = null;
 
@@ -169,7 +171,7 @@ export class LootGenUi extends BaseComponent {
 			.flatMap(theme => {
 				return ["Common", "Uncommon", "Rare", "Very Rare", "Legendary"]
 					.map(rarity => ({
-						name: `${theme} Tables; ${theme} - ${rarity}`,
+						name: `${theme} - ${rarity}`,
 						type: `${theme.toLowerCase()}.${rarity.toLowerCase()}`,
 						theme,
 						rarity,
@@ -210,6 +212,16 @@ export class LootGenUi extends BaseComponent {
 		const f = this._modalFilterItems.pageFilter.filterBox.getValues();
 		this._dataItemsFiltered = this._dataItems.filter(it => this._modalFilterItems.pageFilter.toDisplay(f, it));
 
+		const filterExpression = this._modalFilterItems.pageFilter.filterBox.getFilterTagExpression({isAddSearchTerm: false});
+		this._dataItemsFilteredLegacy = this._modalFilterItems.getEntitiesMatchingFilterExpression({
+			filterExpression,
+			valuesOverride: {
+				"Miscellaneous": {
+					"Reprinted": PILL_STATE__IGNORE,
+				},
+			},
+		});
+
 		const xgeTables = this._getXgeFauxTables();
 
 		this._lt_tableMetas = [
@@ -225,7 +237,7 @@ export class LootGenUi extends BaseComponent {
 					rarity,
 					tableEntry,
 					table: this._data.magicItems.find(it => it.type === type),
-					tag: `{@table ${theme} Tables; ${theme} - ${rarity}|XDMG|${theme} - ${rarity}}`,
+					tag: `{@table ${theme} - ${rarity}|XDMG|${theme} - ${rarity}}`,
 				};
 			}),
 			...tablesMagicItemsDmg.map(({type, tableEntry}) => {
@@ -253,7 +265,8 @@ export class LootGenUi extends BaseComponent {
 	_getXgeFauxTables () {
 		const byTier = {};
 
-		this._dataItemsFiltered
+		// Use "legacy" item set, as "tier" info no longer used
+		this._dataItemsFilteredLegacy
 			.forEach(item => {
 				const tier = item.tier || "other";
 				const rarity = item.rarity || (Renderer.item.isMundane(item) ? "unknown" : "unknown (magic)");
