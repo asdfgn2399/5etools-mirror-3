@@ -781,7 +781,7 @@
 					"type": "entries",
 					"name": "Special",
 					"entries": [
-						"If you attack with a double-bladed scimitar as part of the {@action Attack} action on your turn, you can use a bonus action immediately after to make a melee attack with it. This attack deals {@dice 1d4} slashing damage on a hit, instead of {@dice 2d4}."
+						"If you attack with a double-bladed scimitar as part of the {@action Attack} action on your turn, you can use a bonus action immediately after to make a melee attack with it. This attack deals {@damage 1d4} slashing damage on a hit, instead of {@damage 2d4}."
 					]
 				}
 			],
@@ -895,6 +895,7 @@
 			"rarity": "none",
 			"weight": 0.3125,
 			"age": "futuristic",
+			"cellEnergy": true,
 			"miscTags": [
 				"CNS"
 			]
@@ -908,6 +909,7 @@
 			"rarity": "none",
 			"weight": 0.5,
 			"age": "futuristic",
+			"cellEnergy": true,
 			"miscTags": [
 				"CNS"
 			]
@@ -1778,7 +1780,10 @@
 			"property": [
 				"H|XPHB",
 				"R|XPHB",
-				"2H|XPHB"
+				{
+					"uid": "2H|XPHB",
+					"note": "unless mounted"
+				}
 			],
 			"mastery": [
 				"Topple|XPHB"
@@ -2361,6 +2366,7 @@
 			"rarity": "none",
 			"weight": 0.1,
 			"age": "modern",
+			"bulletFirearm": true,
 			"miscTags": [
 				"CNS"
 			]
@@ -2374,6 +2380,7 @@
 			"rarity": "none",
 			"weight": 1,
 			"age": "modern",
+			"bulletFirearm": true,
 			"packContents": [
 				{
 					"item": "modern bullet",
@@ -2903,6 +2910,7 @@
 			"weight": 0.2,
 			"value": 30,
 			"age": "renaissance",
+			"bulletFirearm": true,
 			"miscTags": [
 				"CNS"
 			]
@@ -2920,6 +2928,7 @@
 			"weight": 2,
 			"value": 300,
 			"age": "renaissance",
+			"bulletFirearm": true,
 			"packContents": [
 				{
 					"item": "renaissance bullet",

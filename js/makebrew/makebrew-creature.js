@@ -126,10 +126,10 @@ export class CreatureBuilder extends BuilderBase {
 				delete scaled._displayName;
 				this.setStateFromLoaded({s: scaled, m: meta});
 			} else this.setStateFromLoaded({s: creature, m: meta});
-		} else if (creature.summonedByClass && !opts.isForce) {
+		} else if ((creature.summonedByClass || creature.summonedScaleByPlayerLevel) && !opts.isForce) {
 			const fauxSel = Renderer.monster.getSelSummonClassLevel(creature);
 			const values = [...fauxSel.options].map(it => it.value === "-1" ? "\u2014" : Number(it.value));
-			const scaleTo = await InputUiUtil.pGetUserEnum({values: values, title: "At Class Level...", default: values[0], isResolveItem: true});
+			const scaleTo = await InputUiUtil.pGetUserEnum({values: values, title: creature.summonedByClass ? `At Class Level...` : `At Player Level...`, default: values[0], isResolveItem: true});
 
 			if (scaleTo != null) {
 				const scaled = await ScaleClassSummonedCreature.scale(creature, scaleTo);
@@ -231,7 +231,7 @@ export class CreatureBuilder extends BuilderBase {
 						? `${itemTypeAbv === Parser.ITM_TYP_ABV__MELEE_WEAPON ? `reach 5 ft. or ` : ""}range ${item.range} ft.`
 						: "reach 5 ft.";
 					const dmgAvg = Number(mDice.groups.count) * ((Number(mDice.groups.face) + 1) / 2);
-					const isFinesse = (item?.property || []).some(uid => DataUtil.itemProperty.unpackUid(uid).abbreviation === Parser.ITM_PROP_ABV__FINESSE);
+					const isFinesse = (item?.property || []).some(property => DataUtil.itemProperty.unpackUid(property?.uid || property).abbreviation === Parser.ITM_PROP_ABV__FINESSE);
 
 					return {
 						name: item.name,
@@ -464,6 +464,7 @@ export class CreatureBuilder extends BuilderBase {
 		this.__$getShortNameInput(cb).appendTo(infoTab.$wrpTab);
 		this._$selSource = this.$getSourceInput(cb).appendTo(infoTab.$wrpTab);
 		BuilderUi.$getStateIptString("Page", cb, this._state, {}, "page").appendTo(infoTab.$wrpTab);
+		this.__$getAlignmentPrefixInput(cb).appendTo(infoTab.$wrpTab);
 		this.__$getAlignmentInput(cb).appendTo(infoTab.$wrpTab);
 		this.__$getCrInput(cb).appendTo(infoTab.$wrpTab);
 		this.__$getProfNoteInput(cb).appendTo(infoTab.$wrpTab);
@@ -509,6 +510,15 @@ export class CreatureBuilder extends BuilderBase {
 				placeholder: "If left blank, defaults to 3.",
 			},
 			"legendaryActions",
+		).appendTo(abilTab.$wrpTab);
+		BuilderUi.$getStateIptNumber(
+			"Legendary Action (Lair) Count",
+			cb,
+			this._state,
+			{
+				title: "If specified, this will override the default number (3) of legendary actions available for the creature when in its lair.",
+			},
+			"legendaryActionsLair",
 		).appendTo(abilTab.$wrpTab);
 		BuilderUi.$getStateIptBoolean(
 			"Name is Proper Noun",
@@ -905,6 +915,23 @@ export class CreatureBuilder extends BuilderBase {
 		const $stageMatchesName = $$`<label class="ve-flex-v-center"><div class="mr-2">Enabled</div>${$cbFullName}</label>`
 			.toggleVe(initialMode === "1")
 			.appendTo($rowInner);
+
+		return $row;
+	}
+
+	__$getAlignmentPrefixInput (cb) {
+		const [$row, $rowInner] = BuilderUi.getLabelledRowTuple("Alignment Prefix", {title: `An additional prefix to display before alignment, for example "Typically ".`});
+
+		const $ipt = $(`<input class="form-control form-control--minimal input-xs mr-2">`)
+			.val(this._state.alignmentPrefix || "")
+			.change(() => {
+				const val = $ipt.val();
+				if (val) this._state.alignmentPrefix = val;
+				else delete this._state.alignmentPrefix;
+				cb();
+			});
+
+		$$`<div class="ve-flex-v-center">${$ipt}</div>`.appendTo($rowInner);
 
 		return $row;
 	}
@@ -1713,17 +1740,28 @@ export class CreatureBuilder extends BuilderBase {
 	__$getPassivePerceptionInput (cb) {
 		const [$row, $rowInner] = BuilderUi.getLabelledRowTuple("Passive Perception");
 
-		const hook = () => {
-			if (this._meta.autoCalc.passivePerception) {
-				const pp = Math.round((() => {
-					if (this._state.skill && this._state.skill.perception && this._state.skill.perception.trim()) return Number(this._state.skill.perception);
-					else return Parser.getAbilityModNumber(Renderer.monster.getSafeAbilityScore(this._state, "wis", {defaultScore: 10}));
-				})() + 10);
+		const getAutoPassivePerception = () => {
+			if (!this._meta.autoCalc.passivePerception) return null;
 
-				$iptPerception.val(pp);
-				this._state.passive = pp;
-				cb();
+			if (this._state.skill?.perception?.trim()) {
+				if (isNaN(this._state.skill.perception)) return null;
+
+				return Math.round(Number(this._state.skill.perception) + 10);
 			}
+
+			const wisScore = Renderer.monster.getSafeAbilityScore(this._state, "wis", {defaultScore: null});
+			if (wisScore == null) return null;
+
+			return Parser.getAbilityModNumber(wisScore) + 10;
+		};
+
+		const hook = () => {
+			const pp = getAutoPassivePerception();
+			if (pp == null) return;
+
+			$iptPerception.val(pp);
+			this._state.passive = pp;
+			cb();
 		};
 		this._addHook("state", "wis", hook);
 		this._addHook("state", "skill", hook);
@@ -1734,7 +1772,8 @@ export class CreatureBuilder extends BuilderBase {
 					$btnAuto.removeClass("active");
 					this._meta.autoCalc.passivePerception = false;
 				}
-				this._state.passive = UiUtil.strToInt($iptPerception.val());
+				const val = $iptPerception.val();
+				this._state.passive = isNaN(val) ? val : UiUtil.strToInt($iptPerception.val());
 				cb();
 			})
 			.val(this._state.passive || 0);
@@ -2344,6 +2383,11 @@ export class CreatureBuilder extends BuilderBase {
 				mode: "frequency",
 			},
 			{
+				display: "\uD835\uDC65/long rest (/each) spells",
+				type: "restLong",
+				mode: "frequency",
+			},
+			{
 				display: "\uD835\uDC65/week (/each) spells",
 				type: "weekly",
 				mode: "frequency",
@@ -2356,6 +2400,12 @@ export class CreatureBuilder extends BuilderBase {
 			{
 				display: "\uD835\uDC65/year (/each) spells",
 				type: "yearly",
+				mode: "frequency",
+			},
+			null,
+			{
+				display: "\uD835\uDC65/legendary action(s) (/each) spells",
+				type: "legendary",
 				mode: "frequency",
 			},
 		];
@@ -2441,9 +2491,11 @@ export class CreatureBuilder extends BuilderBase {
 			if (trait.will) doAddSpellRow({mode: "basic", type: "will"}, trait.will);
 			if (trait.daily) handleFrequency("daily");
 			if (trait.rest) handleFrequency("rest");
+			if (trait.restLong) handleFrequency("restLong");
 			if (trait.weekly) handleFrequency("weekly");
 			if (trait.monthly) handleFrequency("monthly");
 			if (trait.yearly) handleFrequency("yearly");
+			if (trait.legendary) handleFrequency("legendary");
 			if (trait.spells) {
 				Object.entries(trait.spells).forEach(([k, v]) => {
 					const level = Number(k);
@@ -2542,9 +2594,11 @@ export class CreatureBuilder extends BuilderBase {
 						switch (meta.type) {
 							case "daily": return "/Day";
 							case "rest": return "/Rest";
+							case "restLong": return "/Long Rest";
 							case "weekly": return "/Week";
 							case "monthly": return "/Month";
 							case "yearly": return "/Year";
+							case "legendary": return "/Legendary Action(s)";
 						}
 					})();
 

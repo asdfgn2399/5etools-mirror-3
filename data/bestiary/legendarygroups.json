@@ -34,6 +34,35 @@
 			]
 		},
 		{
+			"name": "Aboleth",
+			"source": "XMM",
+			"page": 12,
+			"regionalEffects": [
+				"The region containing an aboleth's lair is warped by it, creating the following effects:",
+				{
+					"type": "list",
+					"style": "list-hang-notitle",
+					"items": [
+						{
+							"type": "item",
+							"name": "Foul Water",
+							"entries": [
+								"Water sources within 1 mile of the lair are supernaturally fouled. Creatures other than the aboleth and its allies that drink such water must succeed on a {@dc 15} Constitution saving throw or have the {@condition Poisoned|XPHB} condition for 1 hour."
+							]
+						},
+						{
+							"type": "item",
+							"name": "Psionic Projection",
+							"entries": [
+								"While in its lair, the aboleth can cast {@spell Project Image|XPHB}, requiring no spell components and using Intelligence as the spellcasting ability (spell save {@dc 16}). When casting the spell this way, the spell's range is 1 mile, and the aboleth can use its telepathy as if it were in the illusion's space."
+							]
+						}
+					]
+				},
+				"If the aboleth dies or moves its lair elsewhere, these effects end immediately."
+			]
+		},
+		{
 			"name": "Aerisi Kalinoth",
 			"source": "PotA",
 			"page": 192,
@@ -412,6 +441,35 @@
 			]
 		},
 		{
+			"name": "Arch-hag",
+			"source": "XMM",
+			"page": 20,
+			"regionalEffects": [
+				"The region containing an arch-hag's lair is altered by its presence, creating the following effects:",
+				{
+					"type": "list",
+					"style": "list-hang-notitle",
+					"items": [
+						{
+							"type": "item",
+							"name": "Lapsus Linguae",
+							"entries": [
+								"Creatures (excluding the hag and its allies) within 1 mile of the lair subtract {@dice 1d10} from any ability check they make when they take the {@action Influence|XPHB} action."
+							]
+						},
+						{
+							"type": "item",
+							"name": "Meddlesome Magic",
+							"entries": [
+								"Whenever a creature other than the hag or its allies finishes a {@variantrule Long Rest|XPHB} while within 1 mile of the lair, the next time that creature casts a spell using a spell slot, it also casts {@spell Confusion|XPHB} centered on itself. The spell uses the creature's spellcasting ability and doesn't require {@status Concentration|XPHB}."
+							]
+						}
+					]
+				},
+				"If the arch-hag is destroyed or moves its lair elsewhere, these effects end immediately."
+			]
+		},
+		{
 			"name": "Archdevil",
 			"source": "CoA",
 			"page": 235,
@@ -539,12 +597,12 @@
 						{
 							"type": "item",
 							"name": "Cocoon",
-							"entry": "Aurnozci targets one Medium or smaller creature it can see within 60 feet of itself and encases the creature in a constricting cocoon. The target must succeed on a {@dc 23} Strength saving throw or have the restrained condition for 1 minute. A target that starts its turn restrained in this way takes 9 ({@dice 2d8}) bludgeoning damage. A creature can use its action to try to tear apart the cocoon, ending the cocoon's effect with a successful {@dc 23} Strength (Athletics) check."
+							"entry": "Aurnozci targets one Medium or smaller creature it can see within 60 feet of itself and encases the creature in a constricting cocoon. The target must succeed on a {@dc 23} Strength saving throw or have the restrained condition for 1 minute. A target that starts its turn restrained in this way takes 9 ({@damage 2d8}) bludgeoning damage. A creature can use its action to try to tear apart the cocoon, ending the cocoon's effect with a successful {@dc 23} Strength (Athletics) check."
 						},
 						{
 							"type": "item",
 							"name": "Insect Swarm",
-							"entry": "Aurnozci creates a 30-foot-radius sphere of stinging wasps centered on a point within 300 feet of itself. The sphere spreads around corners. The sphere remains for 10 minutes or until Aurnozci uses this lair action again. The sphere's area is heavily obscured and is difficult terrain. When the sphere appears, each creature in it must make a {@dc 20} Constitution saving throw, taking 16 ({@dice 3d10}) piercing damage and 16 ({@dice 3d10}) poison damage on a failed save, or half as much damage on a successful one. A creature must also make this saving throw when it enters the sphere's area for the first time on a turn or starts its turn there."
+							"entry": "Aurnozci creates a 30-foot-radius sphere of stinging wasps centered on a point within 300 feet of itself. The sphere spreads around corners. The sphere remains for 10 minutes or until Aurnozci uses this lair action again. The sphere's area is heavily obscured and is difficult terrain. When the sphere appears, each creature in it must make a {@dc 20} Constitution saving throw, taking 16 ({@damage 3d10}) piercing damage and 16 ({@damage 3d10}) poison damage on a failed save, or half as much damage on a successful one. A creature must also make this saving throw when it enters the sphere's area for the first time on a turn or starts its turn there."
 						}
 					]
 				}
@@ -558,7 +616,7 @@
 						{
 							"type": "item",
 							"name": "Boiling Water",
-							"entry": "Bodies of water on Xulregg perpetually boil, and even bottled liquids steam when exposed to the layer's atmosphere. Being immersed in water there doesn't confer resistance to fire damage, and a creature that starts its turn in water takes 7 ({@dice 2d6}) fire damage. A creature that imbibes a liquid (such as a potion) takes 3 ({@dice 1d6}) fire damage."
+							"entry": "Bodies of water on Xulregg perpetually boil, and even bottled liquids steam when exposed to the layer's atmosphere. Being immersed in water there doesn't confer resistance to fire damage, and a creature that starts its turn in water takes 7 ({@damage 2d6}) fire damage. A creature that imbibes a liquid (such as a potion) takes 3 ({@damage 1d6}) fire damage."
 						},
 						{
 							"type": "item",
@@ -661,12 +719,12 @@
 						{
 							"type": "item",
 							"name": "Discover Secrets.",
-							"entry": "The baernaloth uses Spellcasting to cast detect thoughts. A creature targeted by the spell cast in this way takes 13 ({@dice 3d8}) psychic damage."
+							"entry": "The baernaloth uses Spellcasting to cast detect thoughts. A creature targeted by the spell cast in this way takes 13 ({@damage 3d8}) psychic damage."
 						},
 						{
 							"type": "item",
 							"name": "Recurring Wound.",
-							"entry": "A creature that doesn't have all its hit points and that the baernaloth can see in its lair must make a {@dc 19} Constitution saving throw, taking 22 ({@dice 4d10}) necrotic damage on a failed save, or half as much damage on a successful one."
+							"entry": "A creature that doesn't have all its hit points and that the baernaloth can see in its lair must make a {@dc 19} Constitution saving throw, taking 22 ({@damage 4d10}) necrotic damage on a failed save, or half as much damage on a successful one."
 						}
 					]
 				}
@@ -925,7 +983,7 @@
 							"type": "item",
 							"name": "Quake",
 							"entries": [
-								"A minor quake starts on a point the Bear King can see within 120 feet of him. Each creature within 20 feet of that point must succeed on a {@dc 17} Strength saving throw or take 7 ({@dice 2d6}) bludgeoning damage and fall prone."
+								"A minor quake starts on a point the Bear King can see within 120 feet of him. Each creature within 20 feet of that point must succeed on a {@dc 17} Strength saving throw or take 7 ({@damage 2d6}) bludgeoning damage and fall prone."
 							]
 						},
 						{
@@ -1002,6 +1060,35 @@
 					]
 				},
 				"If the beholder dies, these effects fade over the course of {@dice 1d10} days."
+			]
+		},
+		{
+			"name": "Beholder",
+			"source": "XMM",
+			"page": 35,
+			"regionalEffects": [
+				"The region containing a beholder's lair is twisted by its presence, creating the following effects:",
+				{
+					"type": "list",
+					"style": "list-hang-notitle",
+					"items": [
+						{
+							"type": "item",
+							"name": "Scopophobia",
+							"entries": [
+								"Creatures within 1 mile of the lair feel as if they're being watched. Any creature (excluding the beholder and its allies) that finishes a {@variantrule Short Rest|XPHB} while within 1 mile of the lair must succeed on a {@dc 13} Wisdom saving throw or gain no benefit from that rest."
+							]
+						},
+						{
+							"type": "item",
+							"name": "Warping Terrain",
+							"entries": [
+								"Minor warps in reality occur near the lair; any creature (excluding the beholder) within 1 mile of the lair that makes a {@variantrule D20 Test|XPHB} and rolls a 1 has the {@condition Prone|XPHB} condition."
+							]
+						}
+					]
+				},
+				"If the beholder dies or moves its lair elsewhere, these effects end immediately."
 			]
 		},
 		{
@@ -1256,6 +1343,35 @@
 			]
 		},
 		{
+			"name": "Black Dragon",
+			"source": "XMM",
+			"page": 40,
+			"regionalEffects": [
+				"The region containing an adult or ancient black dragon's lair is warped by its presence, creating the following effects:",
+				{
+					"type": "list",
+					"style": "list-hang-notitle",
+					"items": [
+						{
+							"type": "item",
+							"name": "Acrid Haze",
+							"entries": [
+								"Odorous and stifling fog covers the area within 1 mile of the lair, rendering that area {@variantrule Lightly Obscured|XPHB}. Travel for creatures other than the dragon and its allies takes twice the usual time in that area."
+							]
+						},
+						{
+							"type": "item",
+							"name": "Foul Water",
+							"entries": [
+								"Water sources within 1 mile of the lair are supernaturally fouled. A creature that drinks such water must succeed on a {@dc 15} Constitution saving throw or have the {@condition Poisoned|XPHB} condition for 1 hour."
+							]
+						}
+					]
+				},
+				"If the dragon dies or moves its lair elsewhere, these effects end immediately."
+			]
+		},
+		{
 			"name": "Blightscale Dragon",
 			"source": "GHLoE",
 			"lairActions": [
@@ -1263,7 +1379,7 @@
 				{
 					"type": "list",
 					"items": [
-						"Insects burst from a hive built on a surface that the dragon can see within 120 feet of it. Any creature within 20 feet of the hive must succeed on a {@dc 15} Constitution saving throw, taking 10 ({@dice 3d6}) piercing damage on a failed save, or half as much damage on a successful one. A creature that ends its turn in the cloud takes 10 ({@dice 3d6}) piercing damage. The insects disperse on initiative count 20 of the next round. They disperse early if subjected to intense wind or a damaging area effect.",
+						"Insects burst from a hive built on a surface that the dragon can see within 120 feet of it. Any creature within 20 feet of the hive must succeed on a {@dc 15} Constitution saving throw, taking 10 ({@damage 3d6}) piercing damage on a failed save, or half as much damage on a successful one. A creature that ends its turn in the cloud takes 10 ({@damage 3d6}) piercing damage. The insects disperse on initiative count 20 of the next round. They disperse early if subjected to intense wind or a damaging area effect.",
 						"Puslike fluid erupts in a 20-foot radius centered on a point on the ground the dragon can see within 120 feet of it. That area becomes difficult terrain, and a creature moving through this terrain must succeed on a {@dc 15} Strength saving throw or be grappled (escape {@dc 15}) by the sucking glop and restrained while grappled in this way. Another creature can pull a restrained target free by taking an action and succeeding on a {@dc 15} Strength (",
 						"{@skill Athletics}",
 						") check. The ground dries sufficiently to return to normal on initiative count 20 of the next round.",
@@ -1359,6 +1475,35 @@
 			]
 		},
 		{
+			"name": "Blue Dragon",
+			"source": "XMM",
+			"page": 50,
+			"regionalEffects": [
+				"The region containing an adult or ancient blue dragon's lair is changed by its presence, creating the following effects:",
+				{
+					"type": "list",
+					"style": "list-hang-notitle",
+					"items": [
+						{
+							"type": "item",
+							"name": "Sinkholes",
+							"entries": [
+								"Sinkholes form more frequently in the area within 1 mile of the lair. Whenever a creature in that area other than the dragon and its allies finishes a {@variantrule Long Rest|XPHB}, roll {@dice 1d20}. On a 1, a sinkhole opens beneath the creature, and the creature must succeed on a {@dc 15} Dexterity saving throw or fall {@dice 2d4 × 10} feet into the sinkhole."
+							]
+						},
+						{
+							"type": "item",
+							"name": "Spiteful Storms",
+							"entries": [
+								"Dust devils and thunderstorms rage within 1 mile of the lair. The area is {@variantrule Lightly Obscured|XPHB}."
+							]
+						}
+					]
+				},
+				"If the dragon dies or moves its lair elsewhere, these effects end immediately."
+			]
+		},
+		{
 			"name": "Brass Dragon",
 			"source": "MM",
 			"page": 105,
@@ -1441,6 +1586,35 @@
 					],
 					"source": "FTD"
 				}
+			]
+		},
+		{
+			"name": "Brass Dragon",
+			"source": "XMM",
+			"page": 56,
+			"regionalEffects": [
+				"The area containing an adult or ancient brass dragon's lair is altered by its presence, creating the following effects:",
+				{
+					"type": "list",
+					"style": "list-hang-notitle",
+					"items": [
+						{
+							"type": "item",
+							"name": "Mirages",
+							"entries": [
+								"While in its lair, the dragon can cast {@spell Major Image|XPHB}, requiring no Material components and using the same spellcasting ability as its Spellcasting action. When casting the spell this way, the spell's range is 1 mile, and the dragon doesn't need to see the spot where the illusion appears."
+							]
+						},
+						{
+							"type": "item",
+							"name": "Refreshing Water",
+							"entries": [
+								"Water within 1 mile of the lair is magically refreshing. A creature that drinks such water gains {@dice 2d4} {@variantrule Temporary Hit Points|XPHB}, and the dragon is immediately aware of the creature's presence."
+							]
+						}
+					]
+				},
+				"If the dragon dies or moves its lair elsewhere, these effects end immediately."
 			]
 		},
 		{
@@ -1534,6 +1708,35 @@
 			]
 		},
 		{
+			"name": "Bronze Dragon",
+			"source": "XMM",
+			"page": 60,
+			"regionalEffects": [
+				"The region containing an adult or ancient bronze dragon's lair is changed by its presence, creating the following effects:",
+				{
+					"type": "list",
+					"style": "list-hang-notitle",
+					"items": [
+						{
+							"type": "item",
+							"name": "Buoying Currents",
+							"entries": [
+								"Creatures within 1 mile of the lair that lack a {@variantrule Swim Speed|XPHB} ignore the extra cost of movement while swimming."
+							]
+						},
+						{
+							"type": "item",
+							"name": "Sun and Storms",
+							"entries": [
+								"While in its lair, the dragon can cast {@spell Control Weather|XPHB}, requiring no Material components and using the same spellcasting ability as its Spellcasting action. When casting the spell this way, the dragon can control the weather within 1 mile of its lair, regardless if the dragon is inside or outside."
+							]
+						}
+					]
+				},
+				"If the dragon dies or moves its lair elsewhere, these effects end immediately."
+			]
+		},
+		{
 			"name": "Captain N'ghathrod",
 			"source": "WDMM",
 			"page": 250,
@@ -1560,14 +1763,14 @@
 							"type": "item",
 							"name": "Cave-In",
 							"entries": [
-								"The ceiling collapses above one creature the dragon can see within 120 feet of it. The creature must make a {@dc 15} Dexterity saving throw. On a failure, a creature takes 10 ({@dice 3d6}) bludgeoning damage and is knocked prone and buried. On a success, a creature takes half the damage and isn't knocked prone or buried. A buried creature is restrained and unable to breathe or stand up. A creature, including the buried creature, can take an action to free the buried creature by succeeding on a {@dc 15} Strength check."
+								"The ceiling collapses above one creature the dragon can see within 120 feet of it. The creature must make a {@dc 15} Dexterity saving throw. On a failure, a creature takes 10 ({@damage 3d6}) bludgeoning damage and is knocked prone and buried. On a success, a creature takes half the damage and isn't knocked prone or buried. A buried creature is restrained and unable to breathe or stand up. A creature, including the buried creature, can take an action to free the buried creature by succeeding on a {@dc 15} Strength check."
 							]
 						},
 						{
 							"type": "item",
 							"name": "Release the Vermin",
 							"entries": [
-								"A 20-foot radius sphere of insects appears centered on a point the dragon can see within 120 feet of it. When a creature enters the cloud of insects for the first time on a turn or starts its turn there, that creature must make a {@dc 15} Constitution saving throw, taking 11 ({@dice 2d10}) piercing damage on a failed save, or half as much damage on a successful one. The cloud of insects lasts until initiative count 20 on the next round."
+								"A 20-foot radius sphere of insects appears centered on a point the dragon can see within 120 feet of it. When a creature enters the cloud of insects for the first time on a turn or starts its turn there, that creature must make a {@dc 15} Constitution saving throw, taking 11 ({@damage 2d10}) piercing damage on a failed save, or half as much damage on a successful one. The cloud of insects lasts until initiative count 20 on the next round."
 							]
 						},
 						{
@@ -1689,6 +1892,35 @@
 					],
 					"source": "FTD"
 				}
+			]
+		},
+		{
+			"name": "Copper Dragon",
+			"source": "XMM",
+			"page": 80,
+			"regionalEffects": [
+				"The region containing an adult or ancient copper dragon's lair is changed by its presence, creating the following effects:",
+				{
+					"type": "list",
+					"style": "list-hang-notitle",
+					"items": [
+						{
+							"type": "item",
+							"name": "Chatty Critters",
+							"entries": [
+								"Tiny Beasts magically gain the ability to speak and understand Draconic while within 6 miles of the lair."
+							]
+						},
+						{
+							"type": "item",
+							"name": "Giggle Fits",
+							"entries": [
+								"Whenever a creature other than the dragon and its allies is within 1 mile of the lair and rolls a 1 on a {@variantrule D20 Test|XPHB}, it must succeed on a {@dc 15} Wisdom saving throw or have the {@condition Incapacitated|XPHB} condition until the end of its next turn, as it is wracked with laughter."
+							]
+						}
+					]
+				},
+				"If the dragon dies or moves its lair elsewhere, these effects end immediately."
 			]
 		},
 		{
@@ -1840,6 +2072,35 @@
 			]
 		},
 		{
+			"name": "Death Tyrant",
+			"source": "XMM",
+			"page": 94,
+			"regionalEffects": [
+				"The region containing a death tyrant's lair is warped by its presence, creating the following effects:",
+				{
+					"type": "list",
+					"style": "list-hang-notitle",
+					"items": [
+						{
+							"type": "item",
+							"name": "Negative Energy Suffusion",
+							"entries": [
+								"Whenever a creature within 1 mile of the lair regains {@variantrule Hit Points|XPHB} from a spell, it subtracts {@dice 1d10} from the number of {@variantrule Hit Points|XPHB} regained."
+							]
+						},
+						{
+							"type": "item",
+							"name": "Scopophobia",
+							"entries": [
+								"Creatures within 1 mile of the lair feel as if they're being watched. Any creature (excluding the death tyrant and its allies) that finishes a {@variantrule Short Rest|XPHB} while within 1 mile of the lair must succeed on a {@dc 15} Wisdom saving throw or gain no benefit from that rest."
+							]
+						}
+					]
+				},
+				"If the death tyrant dies or moves its lair elsewhere, these effects end immediately."
+			]
+		},
+		{
 			"name": "Deep Dragon",
 			"source": "FTD",
 			"page": 174,
@@ -1919,6 +2180,35 @@
 					]
 				},
 				"If the demilich is destroyed, these effects fade over the course of 10 days."
+			]
+		},
+		{
+			"name": "Demilich",
+			"source": "XMM",
+			"page": 96,
+			"regionalEffects": [
+				"The region containing a demilich's lair is twisted by its presence, creating the following effects:",
+				{
+					"type": "list",
+					"style": "list-hang-notitle",
+					"items": [
+						{
+							"type": "item",
+							"name": "Enervating Domain",
+							"entries": [
+								"Whenever a creature other than the demilich or one of its allies finishes a {@variantrule Long Rest|XPHB} within 1 mile of the lair, the creature must succeed on a {@dc 20} Constitution saving throw or have its {@variantrule Hit Points|XPHB|Hit Point} maximum reduced by {@dice 1d4}. This reduction lasts until the creature finishes a {@variantrule Long Rest|XPHB} outside that area."
+							]
+						},
+						{
+							"type": "item",
+							"name": "Travel Ward",
+							"entries": [
+								"Creatures can't use teleportation or planar travel to enter or exit the lair."
+							]
+						}
+					]
+				},
+				"If the demilich dies or moves its lair elsewhere, these effects end immediately."
 			]
 		},
 		{
@@ -2067,7 +2357,7 @@
 							"type": "item",
 							"name": "Split the Earth",
 							"entries": [
-								"A small fissure of lava opens beneath one creature Mechuiti can see within 120 feet of him. The target must make a {@dc 24} Dexterity saving throw, taking 28 ({@dice 8d6}) fire damage on a failed save, or half as much damage on a successful one."
+								"A small fissure of lava opens beneath one creature Mechuiti can see within 120 feet of him. The target must make a {@dc 24} Dexterity saving throw, taking 28 ({@damage 8d6}) fire damage on a failed save, or half as much damage on a successful one."
 							]
 						},
 						{
@@ -2130,7 +2420,7 @@
 							"type": "item",
 							"name": "Collapse Passage",
 							"entries": [
-								"A section of ceiling in the lair collapses, raining debris onto a point Qorgeth can see within 120 feet of it. Each creature within 20 feet of that point must succeed on a {@dc 21} Dexterity saving throw or take 18 ({@dice 4d8}) bludgeoning damage and be restrained by the debris. A creature, including the restrained creature, can use an action to free the restrained creature by succeeding on a {@dc 21} Strength check."
+								"A section of ceiling in the lair collapses, raining debris onto a point Qorgeth can see within 120 feet of it. Each creature within 20 feet of that point must succeed on a {@dc 21} Dexterity saving throw or take 18 ({@damage 4d8}) bludgeoning damage and be restrained by the debris. A creature, including the restrained creature, can use an action to free the restrained creature by succeeding on a {@dc 21} Strength check."
 							]
 						},
 						{
@@ -2144,7 +2434,7 @@
 							"type": "item",
 							"name": "Worm Infestation",
 							"entries": [
-								"Thick tangles of demonic worms erupt from the floor, wall, or ceiling near up to three creatures Qorgeth can see within 60 feet of it. Qorgeth commands the tangles to make one melee attack roll (+11 to hit) against each target before disappearing. On a hit, the target takes 14 ({@dice 4d6}) piercing damage."
+								"Thick tangles of demonic worms erupt from the floor, wall, or ceiling near up to three creatures Qorgeth can see within 60 feet of it. Qorgeth commands the tangles to make one melee attack roll (+11 to hit) against each target before disappearing. On a hit, the target takes 14 ({@damage 4d6}) piercing damage."
 							]
 						}
 					]
@@ -2226,6 +2516,35 @@
 					]
 				},
 				"If Dispater dies, the effects fade over the course of {@dice 1d10} days."
+			]
+		},
+		{
+			"name": "Dracolich",
+			"source": "XMM",
+			"page": 102,
+			"regionalEffects": [
+				"The region containing a dracolich's lair is warped by its presence, creating the following effects:",
+				{
+					"type": "list",
+					"style": "list-hang-notitle",
+					"items": [
+						{
+							"type": "item",
+							"name": "Sapping Mist",
+							"entries": [
+								"The area within 1 mile of the lair is {@variantrule Lightly Obscured|XPHB} by pale fog. Whenever a creature other than the dracolich or one of its allies finishes a {@variantrule Long Rest|XPHB} in that area, it must succeed on a {@dc 15} Constitution saving throw or gain 1 {@condition Exhaustion|XPHB} level."
+							]
+						},
+						{
+							"type": "item",
+							"name": "Soul Drain",
+							"entries": [
+								"Creatures within 1 mile of the lair have {@variantrule Disadvantage|XPHB} on Death Saving Throws."
+							]
+						}
+					]
+				},
+				"If the dracolich is destroyed or moves its lair elsewhere, these effects end immediately. The effects resume if the dracolich gains a new body (see its Soul Gem trait)."
 			]
 		},
 		{
@@ -2620,7 +2939,7 @@
 							"type": "item",
 							"name": "Curtain of Fire",
 							"entries": [
-								"A wall of fire rises up from the ground within 120 feet of the dragon. The wall is up to 60 feet long, 10 feet high, and 5 feet thick, can take any shape the dragon wants, and is opaque. When the wall appears, each creature in its area must succeed on a {@dc 15} Dexterity saving throw or take 21 ({@dice 6d6}) fire damage. Each creature that enters the wall for the first time on a turn or ends its turn there takes 21 ({@dice 6d6}) fire damage. The wall is extinguished when the dragon uses this lair action again or when the dragon dies."
+								"A wall of fire rises up from the ground within 120 feet of the dragon. The wall is up to 60 feet long, 10 feet high, and 5 feet thick, can take any shape the dragon wants, and is opaque. When the wall appears, each creature in its area must succeed on a {@dc 15} Dexterity saving throw or take 21 ({@damage 6d6}) fire damage. Each creature that enters the wall for the first time on a turn or ends its turn there takes 21 ({@damage 6d6}) fire damage. The wall is extinguished when the dragon uses this lair action again or when the dragon dies."
 							]
 						},
 						{
@@ -2876,8 +3195,8 @@
 				{
 					"type": "list",
 					"items": [
-						"Tendrils of necrotic power rise and reach for living creatures within the lair. Each living creature in the lair must attempt a {@dc 21} Constitution saving throw or take 13 ({@dice 3d8}) necrotic damage and gain one level of exhaustion until initiative count 20 on the next round.",
-						"Gegazol crashes her wings upon the ground, and rime spreads in a sphere with a 120-foot radius around her. This sphere spreads around corners and creates difficult terrain made of ice. Creatures in that area must make a {@dc 21} Constitution saving throw. Those who fail take 18 ({@dice 4d8}) cold damage and are grappled (escape {@dc 21}). On a success, the creature takes half the damage and isn't grappled. The difficult terrain disappears on initiative count 20 on the next round.",
+						"Tendrils of necrotic power rise and reach for living creatures within the lair. Each living creature in the lair must attempt a {@dc 21} Constitution saving throw or take 13 ({@damage 3d8}) necrotic damage and gain one level of exhaustion until initiative count 20 on the next round.",
+						"Gegazol crashes her wings upon the ground, and rime spreads in a sphere with a 120-foot radius around her. This sphere spreads around corners and creates difficult terrain made of ice. Creatures in that area must make a {@dc 21} Constitution saving throw. Those who fail take 18 ({@damage 4d8}) cold damage and are grappled (escape {@dc 21}). On a success, the creature takes half the damage and isn't grappled. The difficult terrain disappears on initiative count 20 on the next round.",
 						"Gegazol creates an opaque wall of black ice on a solid surface she can see within 120 feet of her. The wall is made up of twenty contiguous 10-foot square panels that are each 2 feet thick. When the wall appears, each creature in its area is pushed 5 feet out of the wall's space, appearing on whichever side of the wall the creature wants. Each 10-foot section of the wall has AC 5, 60 hit points, vulnerability to fire damage, and immunity to acid, cold, necrotic, poison, and psychic damage. The wall disappears when Gegazol uses this lair action again or when she dies."
 					]
 				}
@@ -3191,6 +3510,35 @@
 			]
 		},
 		{
+			"name": "Gold Dragon",
+			"source": "XMM",
+			"page": 146,
+			"regionalEffects": [
+				"The region containing an adult or ancient gold dragon's lair is altered by its presence, creating the following effects:",
+				{
+					"type": "list",
+					"style": "list-hang-notitle",
+					"items": [
+						{
+							"type": "item",
+							"name": "Dream Messenger",
+							"entries": [
+								"While in its lair, the dragon can cast {@spell Dream|XPHB}, requiring no Material components and using Charisma as the spellcasting ability. When casting the spell this way, the dragon can target any creature within 6 miles."
+							]
+						},
+						{
+							"type": "item",
+							"name": "Foretelling Fog",
+							"entries": [
+								"The area within 1 mile of the lair is {@variantrule Lightly Obscured|XPHB} by opalescent fog. While in that area, creatures can't be {@status surprised|XPHB}, as the fog swirls into shapes that warn of danger."
+							]
+						}
+					]
+				},
+				"If the dragon dies or moves its lair elsewhere, these effects end immediately."
+			]
+		},
+		{
 			"name": "Gravekeeper",
 			"source": "DoDk",
 			"lairActions": [
@@ -3198,7 +3546,7 @@
 				{
 					"type": "list",
 					"items": [
-						"A 10 foot radius cylinder of delerium sludge spouts up from the floor and raises 30 feet into the air before bubbling back down. Any creature caught in this spout must succeed on a {@dc 18} Constitution saving throw. They take 42 ({@dice 12d6}) necrotic damage on a failed saving throw, and half as much on a successful one. In addition, characters who fail the saving throw gain one {@adventure level of contamination|DoDk|12}.",
+						"A 10 foot radius cylinder of delerium sludge spouts up from the floor and raises 30 feet into the air before bubbling back down. Any creature caught in this spout must succeed on a {@dc 18} Constitution saving throw. They take 42 ({@damage 12d6}) necrotic damage on a failed saving throw, and half as much on a successful one. In addition, characters who fail the saving throw gain one {@adventure level of contamination|DoDk|12}.",
 						"Walls within 120 feet of the Gravekeeper sprout grasping, fleshy arms. Each creature of the Gravekeepers choice that starts its turn within 10 feet of such a wall must succeed on a {@dc 15} Dexterity saving throw or be grappled. Escaping requires a successful {@dc 15} Strength (",
 						"{@skill Athletics}",
 						") or Dexterity (",
@@ -3454,6 +3802,35 @@
 					],
 					"source": "FTD"
 				}
+			]
+		},
+		{
+			"name": "Green Dragon",
+			"source": "XMM",
+			"page": 154,
+			"regionalEffects": [
+				"The region containing an adult or ancient green dragon's lair is warped by its presence, creating the following effects:",
+				{
+					"type": "list",
+					"style": "list-hang-notitle",
+					"items": [
+						{
+							"type": "item",
+							"name": "Beast Spies",
+							"entries": [
+								"Tiny Beasts magically gain the ability to understand Draconic and can communicate telepathically with the dragon while within 1 mile of the lair."
+							]
+						},
+						{
+							"type": "item",
+							"name": "Poisonous Thicket",
+							"entries": [
+								"Ordinary plants growing within 1 mile of the lair poison the air around them. Whenever a creature other than the dragon or its allies finishes a {@variantrule Long Rest|XPHB} in that area, it must succeed on a {@dc 15} Constitution saving throw or have the {@condition Poisoned|XPHB} condition for 1 hour."
+							]
+						}
+					]
+				},
+				"If the dragon dies or moves its lair elsewhere, these effects end immediately."
 			]
 		},
 		{
@@ -4024,6 +4401,35 @@
 			]
 		},
 		{
+			"name": "Kraken",
+			"source": "XMM",
+			"page": 187,
+			"regionalEffects": [
+				"The region containing a kraken's lair is twisted by its presence, creating the following effects:",
+				{
+					"type": "list",
+					"style": "list-hang-notitle",
+					"items": [
+						{
+							"type": "item",
+							"name": "Ocean Tyrant",
+							"entries": [
+								"The kraken exerts its dominance over animals in its domain. All Beasts within 1 mile of the lair have the {@condition Charmed|XPHB} condition while in that area."
+							]
+						},
+						{
+							"type": "item",
+							"name": "Sea and Storms",
+							"entries": [
+								"While in its lair, the kraken can cast {@spell Control Weather|XPHB}, requiring no spell components and using Intelligence as the spellcasting ability."
+							]
+						}
+					]
+				},
+				"If the kraken dies or moves its lair elsewhere, these effects end immediately."
+			]
+		},
+		{
 			"name": "Kyrilla, Accursed Gorgon",
 			"source": "AitFR-DN",
 			"page": 12,
@@ -4114,6 +4520,35 @@
 			]
 		},
 		{
+			"name": "Lich",
+			"source": "XMM",
+			"page": 196,
+			"regionalEffects": [
+				"The region containing a lich's lair is warped by its presence, creating the following effects:",
+				{
+					"type": "list",
+					"style": "list-hang-notitle",
+					"items": [
+						{
+							"type": "item",
+							"name": "All-Seeing",
+							"entries": [
+								"While in its lair, the lich can cast {@spell Clairvoyance|XPHB}, requiring no spell components and using the same spellcasting ability as its Spellcasting action."
+							]
+						},
+						{
+							"type": "item",
+							"name": "Inevitable Siphon",
+							"entries": [
+								"Whenever a Humanoid dies within 1 mile of the lair, its soul is immediately consumed by the lich. A Humanoid whose soul is consumed in this way can be brought back to life only by a True Resurrection or {@spell Wish|XPHB} spell."
+							]
+						}
+					]
+				},
+				"If the lich is destroyed or moves its lair elsewhere, these effects end immediately. These effects resume if the lich gains a new body (see its Spirit Jar trait)."
+			]
+		},
+		{
 			"name": "Lichen Lich",
 			"source": "CM",
 			"page": 223,
@@ -4148,7 +4583,7 @@
 							"type": "item",
 							"name": "Encourage Undergrowth",
 							"entries": [
-								"Plants erupt from a point on the ground the Lord of the Hunt can see within 120 feet of him. The area within 20 feet of that point is difficult terrain. A creature that enters the difficult terrain for the first time on a turn or starts its turn there must succeed on a {@dc 19} Dexterity saving throw or take 9 ({@dice 2d8}) poison damage and be restrained by vines. A creature, including the restrained creature, can take its action to free the restrained creature by succeeding on a {@dc 19} Strength check. The plants remain until the Lord of the Hunt uses this lair action again or until he dies."
+								"Plants erupt from a point on the ground the Lord of the Hunt can see within 120 feet of him. The area within 20 feet of that point is difficult terrain. A creature that enters the difficult terrain for the first time on a turn or starts its turn there must succeed on a {@dc 19} Dexterity saving throw or take 9 ({@damage 2d8}) poison damage and be restrained by vines. A creature, including the restrained creature, can take its action to free the restrained creature by succeeding on a {@dc 19} Strength check. The plants remain until the Lord of the Hunt uses this lair action again or until he dies."
 							]
 						},
 						{
@@ -4244,7 +4679,7 @@
 						{
 							"type": "item",
 							"name": "Slam",
-							"entry": "Malaxxix commands the palanquin to slam the ground. Each creature within 15 feet of the palanquin must make a {@dc 20} Strength saving throw. On a failed save, a creature takes 11 ({@dice 2d10}) bludgeoning damage and has the prone condition. On a successful save, a creature takes half as much damage only."
+							"entry": "Malaxxix commands the palanquin to slam the ground. Each creature within 15 feet of the palanquin must make a {@dc 20} Strength saving throw. On a failed save, a creature takes 11 ({@damage 2d10}) bludgeoning damage and has the prone condition. On a successful save, a creature takes half as much damage only."
 						},
 						{
 							"type": "item",
@@ -4508,7 +4943,7 @@
 							"type": "item",
 							"name": "Impaling Spikes",
 							"entries": [
-								"Metallic spikes sprout from the ground beneath one creature the dragon can see within 120 feet of it. The target must make a {@dc 15} Dexterity saving throw. On a failure, the creature takes 10 ({@dice 3d6}) piercing damage and is restrained as it is impaled on the magical spikes. On a success, a creature takes half the damage and isn't restrained. A creature, including the restrained target, can take its action to free the restrained target by succeeding on a {@dc 15} Strength check to break the spikes."
+								"Metallic spikes sprout from the ground beneath one creature the dragon can see within 120 feet of it. The target must make a {@dc 15} Dexterity saving throw. On a failure, the creature takes 10 ({@damage 3d6}) piercing damage and is restrained as it is impaled on the magical spikes. On a success, a creature takes half the damage and isn't restrained. A creature, including the restrained target, can take its action to free the restrained target by succeeding on a {@dc 15} Strength check to break the spikes."
 							]
 						},
 						{
@@ -4794,6 +5229,35 @@
 			]
 		},
 		{
+			"name": "Mummy Lord",
+			"source": "XMM",
+			"page": 221,
+			"regionalEffects": [
+				"The region containing a mummy lord's lair is warped by its presence, creating the following effects:",
+				{
+					"type": "list",
+					"style": "list-hang-notitle",
+					"items": [
+						{
+							"type": "item",
+							"name": "Cursed Fate",
+							"entries": [
+								"Whenever a creature other than the mummy or one of its allies casts a Divination spell while within 1 mile of the lair, the creature makes a {@dc 15} Constitution saving throw. On a failed save, the spell dissipates with no effect, and the action, {@variantrule Bonus Action|XPHB}, or {@variantrule Reaction|XPHB} used to cast the spell is wasted, but any resources used to cast it aren't expended."
+							]
+						},
+						{
+							"type": "item",
+							"name": "Soul Drain",
+							"entries": [
+								"Creatures within 1 mile of the lair have {@variantrule Disadvantage|XPHB} on Death Saving Throws."
+							]
+						}
+					]
+				},
+				"If the mummy lord is destroyed or moves its lair elsewhere, these effects end immediately. The effects resume if the mummy lord gains a new body (see its Undead Restoration trait)."
+			]
+		},
+		{
 			"name": "Murgaxor",
 			"source": "SCC",
 			"page": 180,
@@ -4811,12 +5275,12 @@
 						{
 							"type": "item",
 							"name": "Earthen Fist",
-							"entry": "A medium fist of packed earth rises from the floor in an unoccupied space that Murgaxor can see within 30 feet of him. The fist attacks when one creature of his choice is within 4 feet of the fist. The fist has a +11 bonus to hit, and on a hit, the target takes 13 ({@dice 3d8}) bludgeoning damage and is grappled (escape {@dc 15}). The fist disappears if the attack roll misses or if the grapple ends. When the fist disappears, this lair action recharges, allowing Murgaxor to use it again."
+							"entry": "A medium fist of packed earth rises from the floor in an unoccupied space that Murgaxor can see within 30 feet of him. The fist attacks when one creature of his choice is within 4 feet of the fist. The fist has a +11 bonus to hit, and on a hit, the target takes 13 ({@damage 3d8}) bludgeoning damage and is grappled (escape {@dc 15}). The fist disappears if the attack roll misses or if the grapple ends. When the fist disappears, this lair action recharges, allowing Murgaxor to use it again."
 						},
 						{
 							"type": "item",
 							"name": "Necrotic Burst",
-							"entry": "Tendrils of necrotic energy erupt from the ritual circle and lash out at any number of creatures Murgaxor can see within 15 feet of the circle. Each target must succeed on a {@dc 15} Dexterity saving throw, or it takes 5 ({@dice 1d10}) necrotic damage and can't regain hit points until the start of its next turn."
+							"entry": "Tendrils of necrotic energy erupt from the ritual circle and lash out at any number of creatures Murgaxor can see within 15 feet of the circle. Each target must succeed on a {@dc 15} Dexterity saving throw, or it takes 5 ({@damage 1d10}) necrotic damage and can't regain hit points until the start of its next turn."
 						},
 						{
 							"type": "item",
@@ -4844,7 +5308,7 @@
 						{
 							"type": "item",
 							"name": "Lightning Strike",
-							"entry": "A bolt of lightning strikes a point Nafas can see within 120 feet of him. Each creature within 10 feet of that point must succeed on a {@dc 21} Dexterity saving throw or take 16 ({@dice 3d10}) lightning damage."
+							"entry": "A bolt of lightning strikes a point Nafas can see within 120 feet of him. Each creature within 10 feet of that point must succeed on a {@dc 21} Dexterity saving throw or take 16 ({@damage 3d10}) lightning damage."
 						},
 						{
 							"type": "item",
@@ -4930,14 +5394,14 @@
 							"type": "item",
 							"name": "Open the Void",
 							"entries": [
-								"Up to three points in water the nihileth can see within 90 feet of it become conduits to the Void. Each creature within 10 feet of a point must succeed on a {@dc 15} Wisdom saving throw or take 7 ({@dice 2d6}) necrotic damage."
+								"Up to three points in water the nihileth can see within 90 feet of it become conduits to the Void. Each creature within 10 feet of a point must succeed on a {@dc 15} Wisdom saving throw or take 7 ({@damage 2d6}) necrotic damage."
 							]
 						},
 						{
 							"type": "item",
 							"name": "Void Absorbance",
 							"entries": [
-								"The nihileth can pull the life force from nearby nihilethic zombies and dominators to replenish its own life. Nihilethic dominators and zombies within 30 feet of the nihileth take a total of 21 ({@dice 6d6}) psychic damage, divided evenly between them, and the nihileth regains hp equal to that amount. If a zombie or dominator is reduced to 0 hp from this damage, it is destroyed."
+								"The nihileth can pull the life force from nearby nihilethic zombies and dominators to replenish its own life. Nihilethic dominators and zombies within 30 feet of the nihileth take a total of 21 ({@damage 6d6}) psychic damage, divided evenly between them, and the nihileth regains hp equal to that amount. If a zombie or dominator is reduced to 0 hp from this damage, it is destroyed."
 							]
 						},
 						{
@@ -5231,7 +5695,7 @@
 						{
 							"type": "item",
 							"name": "Whirlwind of Fruit",
-							"entry": "Fey fruit flies out from nearby carts, creating a whirlwind of fruit in a 10-foot-radius, 30-foot-high cylinder centered on a point within 60 feet of Pazrodine until initiative count 20 on the next round. When a creature enters the whirlwind's area for the first time on its turn or starts its turn there, it must make a {@dc 15} Dexterity saving throw, taking 11 ({@dice 2d10}) bludgeoning damage on a failed save, or half as much damage on a successful one."
+							"entry": "Fey fruit flies out from nearby carts, creating a whirlwind of fruit in a 10-foot-radius, 30-foot-high cylinder centered on a point within 60 feet of Pazrodine until initiative count 20 on the next round. When a creature enters the whirlwind's area for the first time on its turn or starts its turn there, it must make a {@dc 15} Dexterity saving throw, taking 11 ({@damage 2d10}) bludgeoning damage on a failed save, or half as much damage on a successful one."
 						}
 					]
 				}
@@ -5290,7 +5754,7 @@
 							"type": "item",
 							"name": "Wall of Shadow",
 							"entries": [
-								"An opaque wall of writhing shadows springs up from a solid surface within 120 feet of the Queen. The wall can be up to 60 feet long, 10 feet high, and 5 feet thick, and it blocks line of sight. When the wall appears, each creature in its area must succeed on a {@dc 23} Dexterity saving throw or take 18 ({@dice 4d8}) necrotic damage. Creatures in the wall's space are pushed 5 feet out of the wall's space, appearing on whichever side of the wall they choose. A creature can move through the wall, but the semi-material shadow resists intrusion. For every 1 foot a creature travels through the wall, it must spend 4 feet of movement. A creature that starts its turn in the wall or enters the wall's space for the first time on a turn must make a {@dc 23} Constitution saving throw, taking 18 ({@dice 4d8}) necrotic damage on a failed save, or half as much damage on a successful one. The wall dissipates when the Queen uses this lair action again or when she dies."
+								"An opaque wall of writhing shadows springs up from a solid surface within 120 feet of the Queen. The wall can be up to 60 feet long, 10 feet high, and 5 feet thick, and it blocks line of sight. When the wall appears, each creature in its area must succeed on a {@dc 23} Dexterity saving throw or take 18 ({@damage 4d8}) necrotic damage. Creatures in the wall's space are pushed 5 feet out of the wall's space, appearing on whichever side of the wall they choose. A creature can move through the wall, but the semi-material shadow resists intrusion. For every 1 foot a creature travels through the wall, it must spend 4 feet of movement. A creature that starts its turn in the wall or enters the wall's space for the first time on a turn must make a {@dc 23} Constitution saving throw, taking 18 ({@damage 4d8}) necrotic damage on a failed save, or half as much damage on a successful one. The wall dissipates when the Queen uses this lair action again or when she dies."
 							]
 						}
 					]
@@ -5339,7 +5803,7 @@
 							"type": "item",
 							"name": "Conjure Crystal Wall",
 							"entries": [
-								"A wall of softly glowing crystal springs up from a solid surface the Queen can see within 120 feet of her. The wall is 60 feet long, 10 feet high, 5 feet thick, blocks line of sight, and sheds dim light in a 10-foot radius. When the wall appears, each creature within its area is pushed out of the wall's space, appearing on whichever side of the wall it wants, and must succeed on a {@dc 20} Dexterity saving throw or take 14 ({@dice 4d6}) radiant damage. Each 10-foot section of the wall has AC 15, 10 hp, vulnerability to thunder damage, resistance to fire, slashing, and piercing damage, and immunity to poison and psychic damage. The wall remains until the Queen uses this lair action again, until she dismisses it as a bonus action, or until she dies."
+								"A wall of softly glowing crystal springs up from a solid surface the Queen can see within 120 feet of her. The wall is 60 feet long, 10 feet high, 5 feet thick, blocks line of sight, and sheds dim light in a 10-foot radius. When the wall appears, each creature within its area is pushed out of the wall's space, appearing on whichever side of the wall it wants, and must succeed on a {@dc 20} Dexterity saving throw or take 14 ({@damage 4d6}) radiant damage. Each 10-foot section of the wall has AC 15, 10 hp, vulnerability to thunder damage, resistance to fire, slashing, and piercing damage, and immunity to poison and psychic damage. The wall remains until the Queen uses this lair action again, until she dismisses it as a bonus action, or until she dies."
 							]
 						},
 						{
@@ -5353,7 +5817,7 @@
 							"type": "item",
 							"name": "Moonlight Blast",
 							"entries": [
-								"A searing flare of moonlight bursts from a point the Queen can see within 120 feet of her. Each creature within 15 feet of that point must succeed on a {@dc 20} Dexterity saving throw, taking 13 ({@dice 3d8}) radiant damage on a failed save, or half as much damage on a successful one. A creature not in its true form has disadvantage on the saving throw, and if it fails, it reverts to its true form."
+								"A searing flare of moonlight bursts from a point the Queen can see within 120 feet of her. Each creature within 15 feet of that point must succeed on a {@dc 20} Dexterity saving throw, taking 13 ({@damage 3d8}) radiant damage on a failed save, or half as much damage on a successful one. A creature not in its true form has disadvantage on the saving throw, and if it fails, it reverts to its true form."
 							]
 						}
 					]
@@ -5477,6 +5941,35 @@
 			]
 		},
 		{
+			"name": "Red Dragon",
+			"source": "XMM",
+			"page": 256,
+			"regionalEffects": [
+				"The region containing an adult or ancient red dragon's lair is warped by its presence, creating the following effects:",
+				{
+					"type": "list",
+					"style": "list-hang-notitle",
+					"items": [
+						{
+							"type": "item",
+							"name": "Burning Heat",
+							"entries": [
+								"The area within 1 mile of the lair is an area of extreme heat. A burning creature or object takes an additional {@damage 1d4} Fire damage at the start of each of its turns."
+							]
+						},
+						{
+							"type": "item",
+							"name": "Smoldering Haze",
+							"entries": [
+								"The area within 1 mile of the lair is {@variantrule Lightly Obscured|XPHB} with clouds of ash. Whenever a creature other than the dragon or one of its allies finishes a {@variantrule Long Rest|XPHB} in that area, that creature must succeed on a {@dc 15} Constitution saving throw or have the {@condition Poisoned|XPHB} condition for 1 hour."
+							]
+						}
+					]
+				},
+				"If the dragon dies or moves its lair elsewhere, these effects end immediately."
+			]
+		},
+		{
 			"name": "River King",
 			"source": "ToB1-2023",
 			"lairActions": [
@@ -5488,7 +5981,7 @@
 							"type": "item",
 							"name": "Flash Flooding",
 							"entries": [
-								"The fey river swells and rushes over the land, or the walls of the Hall buckle and allow the torrent in. A 60-foot line of water that is 10 feet wide rushes from a point on a wall the River King can see within 60 feet of him. Each creature in the line must succeed on a {@dc 18} Strength saving throw or be pushed up to 20 feet away from the point on the wall, in the direction of the water's flow, and take 9 ({@dice 2d8}) bludgeoning damage."
+								"The fey river swells and rushes over the land, or the walls of the Hall buckle and allow the torrent in. A 60-foot line of water that is 10 feet wide rushes from a point on a wall the River King can see within 60 feet of him. Each creature in the line must succeed on a {@dc 18} Strength saving throw or be pushed up to 20 feet away from the point on the wall, in the direction of the water's flow, and take 9 ({@damage 2d8}) bludgeoning damage."
 							]
 						},
 						{
@@ -5875,7 +6368,7 @@
 							"type": "item",
 							"name": "Create Coral Wall",
 							"entries": [
-								"The dragon creates an opaque wall of living coral on a solid surface it can see within 120 feet of it. The wall can be up to 30 feet long, 30 feet high, and 1 foot thick. When the wall appears, each creature in its area is pushed 5 feet out of the wall's space on whichever side of the wall it wants, and it must make a {@dc 15} Dexterity saving throw, taking 18 ({@dice 4d8}) slashing damage on a failed save, or half as much damage on a successful one. While the wall remains, any creature that touches the wall must also make the saving throw. Each 10-foot section of the wall has AC 5, 30 hp, resistance to fire damage, and immunity to poison damage and psychic damage. The wall lasts until the dragon uses this lair action again or until the dragon dies."
+								"The dragon creates an opaque wall of living coral on a solid surface it can see within 120 feet of it. The wall can be up to 30 feet long, 30 feet high, and 1 foot thick. When the wall appears, each creature in its area is pushed 5 feet out of the wall's space on whichever side of the wall it wants, and it must make a {@dc 15} Dexterity saving throw, taking 18 ({@damage 4d8}) slashing damage on a failed save, or half as much damage on a successful one. While the wall remains, any creature that touches the wall must also make the saving throw. Each 10-foot section of the wall has AC 5, 30 hp, resistance to fire damage, and immunity to poison damage and psychic damage. The wall lasts until the dragon uses this lair action again or until the dragon dies."
 							]
 						},
 						{
@@ -6042,6 +6535,35 @@
 			]
 		},
 		{
+			"name": "Shadow Dragon",
+			"source": "XMM",
+			"page": 274,
+			"regionalEffects": [
+				"The region around a shadow dragon's lair is twisted by its presence, creating the following effects:",
+				{
+					"type": "list",
+					"style": "list-hang-notitle",
+					"items": [
+						{
+							"type": "item",
+							"name": "Negative Energy Suffusion",
+							"entries": [
+								"Whenever a creature within 1 mile of the lair regains {@variantrule Hit Points|XPHB} from a spell, it subtracts {@dice 1d10} from the number of {@variantrule Hit Points|XPHB} regained."
+							]
+						},
+						{
+							"type": "item",
+							"name": "Stifling Shadows",
+							"entries": [
+								"Within 1 mile of the lair, effects that normally create {@variantrule Bright Light|XPHB} instead create {@variantrule Dim Light|XPHB}, and creatures there have {@variantrule Advantage|XPHB} on Dexterity ({@skill Stealth|XPHB}) checks."
+							]
+						}
+					]
+				},
+				"If the dragon dies or moves its lair elsewhere, these effects end immediately."
+			]
+		},
+		{
 			"name": "Silver Dragon",
 			"source": "MM",
 			"page": 117,
@@ -6093,6 +6615,35 @@
 			]
 		},
 		{
+			"name": "Silver Dragon",
+			"source": "XMM",
+			"page": 280,
+			"regionalEffects": [
+				"The region containing an adult or ancient silver dragon's lair is changed by its magic, creating the following effects:",
+				{
+					"type": "list",
+					"style": "list-hang-notitle",
+					"items": [
+						{
+							"type": "item",
+							"name": "Gentle Gusts",
+							"entries": [
+								"Winds buoy creatures that fall within 1 mile of the lair. Such creatures descend at a rate of 60 feet per round and take no damage from falling."
+							]
+						},
+						{
+							"type": "item",
+							"name": "Sun and Storms",
+							"entries": [
+								"While in its lair, the dragon can cast {@spell Control Weather|XPHB}, requiring no Material components and using the same spellcasting ability as its Spellcasting action."
+							]
+						}
+					]
+				},
+				"If the dragon dies or moves its lair elsewhere, these effects end immediately."
+			]
+		},
+		{
 			"name": "Snow Queen",
 			"source": "ToB1-2023",
 			"lairActions": [
@@ -6118,7 +6669,7 @@
 							"type": "item",
 							"name": "Snow Wall",
 							"entries": [
-								"A wall of dense snow erupts on a solid surface within 120 feet of the Snow Queen. The wall is up to 60 feet long, 10 feet high, and 5 feet thick, and it blocks line of sight. When the wall appears, each creature in its area must succeed on a {@dc 18} Dexterity saving throw or take 14 ({@dice 4d6}) cold damage and be pushed 5 feet out of the wall's space, appearing on whichever side of the wall it wants. A creature can move through the wall, though the wall is filled with freezing snow. For every 1 foot a creature moves through the wall, it must spend 4 feet of movement. A creature that starts its turn in the wall or enters the wall's space for the first time on a turn must make a {@dc 18} Constitution saving throw, taking 14 ({@dice 4d6}) cold damage on a failed save, or half as much damage on a successful one. Each 10-foot section of the wall has AC 5, 15 hp, vulnerability to fire damage, resistance to bludgeoning damage, and immunity to cold, poison, and psychic damage. The wall melts when the Queen uses this lair action again or when she dies."
+								"A wall of dense snow erupts on a solid surface within 120 feet of the Snow Queen. The wall is up to 60 feet long, 10 feet high, and 5 feet thick, and it blocks line of sight. When the wall appears, each creature in its area must succeed on a {@dc 18} Dexterity saving throw or take 14 ({@damage 4d6}) cold damage and be pushed 5 feet out of the wall's space, appearing on whichever side of the wall it wants. A creature can move through the wall, though the wall is filled with freezing snow. For every 1 foot a creature moves through the wall, it must spend 4 feet of movement. A creature that starts its turn in the wall or enters the wall's space for the first time on a turn must make a {@dc 18} Constitution saving throw, taking 14 ({@damage 4d6}) cold damage on a failed save, or half as much damage on a successful one. Each 10-foot section of the wall has AC 5, 15 hp, vulnerability to fire damage, resistance to bludgeoning damage, and immunity to cold, poison, and psychic damage. The wall melts when the Queen uses this lair action again or when she dies."
 							]
 						}
 					]
@@ -6173,7 +6724,7 @@
 						{
 							"type": "item",
 							"name": "Stellar Incineration.",
-							"entry": "Any creature that enters the star or starts its turn inside it takes 132 ({@dice 24d10}) radiant damage."
+							"entry": "Any creature that enters the star or starts its turn inside it takes 132 ({@damage 24d10}) radiant damage."
 						}
 					]
 				}
@@ -6194,6 +6745,35 @@
 						"The sphinx shifts itself and up to seven other creatures it can see within in its lair to another plane of existence. Once outside its lair, the sphinx can't use lair actions, but it can return to its lair as a bonus action on its turn, taking up to seven creatures with it."
 					]
 				}
+			]
+		},
+		{
+			"name": "Sphinx",
+			"source": "XMM",
+			"page": 294,
+			"regionalEffects": [
+				"The region containing a sphinx of lore's or sphinx of valor's lair is altered by its presence, creating the following effects:",
+				{
+					"type": "list",
+					"style": "list-hang-notitle",
+					"items": [
+						{
+							"type": "item",
+							"name": "Distant Sight",
+							"entries": [
+								"While in its lair, the sphinx can cast {@spell Clairvoyance|XPHB}, requiring no spell components and using the same spellcasting ability as its Spellcasting action. When cast this way, the spell's range is 1 mile."
+							]
+						},
+						{
+							"type": "item",
+							"name": "Infusion of Knowledge",
+							"entries": [
+								"Whenever the sphinx or one of its allies takes a {@action Study|XPHB} action while within 1 mile of the lair, it adds {@dice 1d6} to any ability check it makes for that action."
+							]
+						}
+					]
+				},
+				"If the sphinx dies or moves its lair elsewhere, these effects end immediately."
 			]
 		},
 		{
@@ -6424,7 +7004,7 @@
 						{
 							"type": "item",
 							"name": "Temporal Fling.",
-							"entry": "The dragon attempts to fling a creature it can see within 60 feet of itself forward through time. The target must succeed on a {@dc 18} Wisdom saving throw or take 26 ({@dice 4d12}) psychic damage and move 1 round forward in time. A target moved forward in time vanishes for the duration. When the effect ends, the target reappears in the space it left or in an unoccupied space nearest to that space if it's occupied."
+							"entry": "The dragon attempts to fling a creature it can see within 60 feet of itself forward through time. The target must succeed on a {@dc 18} Wisdom saving throw or take 26 ({@damage 4d12}) psychic damage and move 1 round forward in time. A target moved forward in time vanishes for the duration. When the effect ends, the target reappears in the space it left or in an unoccupied space nearest to that space if it's occupied."
 						},
 						{
 							"type": "item",
@@ -6531,7 +7111,7 @@
 							"type": "item",
 							"name": "Biting Brood",
 							"entries": [
-								"Hundreds of biting and stinging insects erupt from a point on the ground the hive queen can see within 120 feet of her. Each creature within 10 feet of that point must make a {@dc 17} Dexterity saving throw, taking 10 ({@dice 4d4}) piercing damage on a failed save, or half as much damage on a successful one."
+								"Hundreds of biting and stinging insects erupt from a point on the ground the hive queen can see within 120 feet of her. Each creature within 10 feet of that point must make a {@dc 17} Dexterity saving throw, taking 10 ({@damage 4d4}) piercing damage on a failed save, or half as much damage on a successful one."
 							]
 						},
 						{
@@ -6617,6 +7197,35 @@
 			]
 		},
 		{
+			"name": "Unicorn",
+			"source": "XMM",
+			"page": 313,
+			"regionalEffects": [
+				"The region containing a unicorn's lair is changed by its presence, creating the following effects:",
+				{
+					"type": "list",
+					"style": "list-hang-notitle",
+					"items": [
+						{
+							"type": "item",
+							"name": "Obscuring Foliage",
+							"entries": [
+								"The unicorn and its allies have {@variantrule Advantage|XPHB} on Dexterity ({@skill Stealth|XPHB}) checks while within 1 mile of the lair."
+							]
+						},
+						{
+							"type": "item",
+							"name": "Positive Energy",
+							"entries": [
+								"Whenever a creature within 1 mile of the lair regains {@variantrule Hit Points|XPHB} from a spell, it regains the maximum number of {@variantrule Hit Points|XPHB} possible. Additionally, the effects of curses are suppressed within 1 mile of the lair."
+							]
+						}
+					]
+				},
+				"If the unicorn dies or moves its lair elsewhere, these effects end immediately."
+			]
+		},
+		{
 			"name": "Valin Sarnaster",
 			"source": "CM",
 			"page": 182,
@@ -6660,6 +7269,42 @@
 					]
 				},
 				"If the vampire is destroyed, these effects end after {@dice 2d6} days."
+			]
+		},
+		{
+			"name": "Vampire",
+			"source": "XMM",
+			"page": 316,
+			"regionalEffects": [
+				"The region containing a vampire's lair is warped by its presence, creating the following effects:",
+				{
+					"type": "list",
+					"style": "list-hang-notitle",
+					"items": [
+						{
+							"type": "item",
+							"name": "Children of the Night",
+							"entries": [
+								"The vampire exerts influence over the animals in its domain. From dusk until dawn, Medium or smaller Beasts have the {@condition Charmed|XPHB} condition while within 1 mile of the lair."
+							]
+						},
+						{
+							"type": "item",
+							"name": "Looming Shadows",
+							"entries": [
+								"Shadows within 1 mile of the lair seem to move as if alive. Any creature (excluding the vampire and its allies) that finishes a {@variantrule Short Rest|XPHB} while within 1 mile of the lair must succeed on a {@dc 15} Wisdom saving throw or gain no benefit from that rest."
+							]
+						},
+						{
+							"type": "item",
+							"name": "Mists",
+							"entries": [
+								"The area within 1 mile of the lair is {@variantrule Lightly Obscured|XPHB} by a persistent, creeping fog. The vampire and any creatures of its choice are unaffected by the fog."
+							]
+						}
+					]
+				},
+				"If the vampire dies or moves its lair elsewhere, these effects end immediately."
 			]
 		},
 		{
@@ -6731,14 +7376,14 @@
 							"type": "item",
 							"name": "Orb of the Void",
 							"entries": [
-								"The Void briefly overlaps the dragon's lair in a 20-foot-radius sphere of blackness punctuated by deep blue streaks and pinpoints of light. The sphere is centered on a point the dragon can see within 120 feet of the dragon. The sphere spreads around corners, is heavily obscured, and contains no air (creatures must hold their breath). Each creature in the sphere when it appears must make a {@dc 15} Constitution saving throw, taking 10 ({@dice 3d6}) cold damage on a failed save, or half as much damage on a successful one. Any creature that ends its turn in the sphere takes 10 ({@dice 3d6}) cold damage. The sphere lasts until the dragon uses this lair action again or until the dragon dies."
+								"The Void briefly overlaps the dragon's lair in a 20-foot-radius sphere of blackness punctuated by deep blue streaks and pinpoints of light. The sphere is centered on a point the dragon can see within 120 feet of the dragon. The sphere spreads around corners, is heavily obscured, and contains no air (creatures must hold their breath). Each creature in the sphere when it appears must make a {@dc 15} Constitution saving throw, taking 10 ({@damage 3d6}) cold damage on a failed save, or half as much damage on a successful one. Any creature that ends its turn in the sphere takes 10 ({@damage 3d6}) cold damage. The sphere lasts until the dragon uses this lair action again or until the dragon dies."
 							]
 						},
 						{
 							"type": "item",
 							"name": "Spatial Anomaly",
 							"entries": [
-								"The lair's connection to the Void briefly rips the fabric of space, forcing two creatures the dragon can see within 120 feet of it to suddenly exist at the same point in space and time. The laws of reality repel the creatures back to their original positions as reality resets. The targets aren't actually moved, but reality's reset forces each target to make a {@dc 15} Strength saving throw. On a failure, the creature takes 16 ({@dice 3d10}) force damage and is knocked prone. On a success, the creature takes half the damage and isn't knocked prone."
+								"The lair's connection to the Void briefly rips the fabric of space, forcing two creatures the dragon can see within 120 feet of it to suddenly exist at the same point in space and time. The laws of reality repel the creatures back to their original positions as reality resets. The targets aren't actually moved, but reality's reset forces each target to make a {@dc 15} Strength saving throw. On a failure, the creature takes 16 ({@damage 3d10}) force damage and is knocked prone. On a success, the creature takes half the damage and isn't knocked prone."
 							]
 						},
 						{
@@ -6865,6 +7510,35 @@
 			]
 		},
 		{
+			"name": "White Dragon",
+			"source": "XMM",
+			"page": 330,
+			"regionalEffects": [
+				"The region containing an adult or ancient white dragon's lair is affected by its presence, creating the following effects:",
+				{
+					"type": "list",
+					"style": "list-hang-notitle",
+					"items": [
+						{
+							"type": "item",
+							"name": "Frigid Cold",
+							"entries": [
+								"The area within 1 mile of the lair is an area of {@hazard extreme cold|XDMG}. Any water in that area is {@hazard frigid water|XDMG}. See the {@book Dungeon Master's Guide|DMG} for rules on extreme cold and frigid water."
+							]
+						},
+						{
+							"type": "item",
+							"name": "Glacial Gloom",
+							"entries": [
+								"The area within 1 mile of the lair is {@variantrule Lightly Obscured|XPHB} by chilly fog. Whenever a creature other than the dragon or one of its allies finishes a {@variantrule Long Rest|XPHB} in that area, that creature must succeed on a {@dc 15} Constitution saving throw or have its {@variantrule Speed|XPHB} reduced by 10 feet for 1 hour."
+							]
+						}
+					]
+				},
+				"If the dragon dies or moves its lair elsewhere, these effects end immediately."
+			]
+		},
+		{
 			"name": "Wind Dragon",
 			"source": "ToB1-2023",
 			"lairActions": [
@@ -6890,7 +7564,7 @@
 							"type": "item",
 							"name": "Gale Force Smash",
 							"entries": [
-								"A blast of wind slams into a surface of the lair and sends fragments of ice and stone flying out from a point on the ground, wall, or ceiling the dragon can see within 120 feet of it. Each creature within 15 feet of that point must make a {@dc 15} Dexterity saving throw, taking 18 ({@dice 4d8}) bludgeoning damage on a failed save, or half as much damage on a successful one."
+								"A blast of wind slams into a surface of the lair and sends fragments of ice and stone flying out from a point on the ground, wall, or ceiling the dragon can see within 120 feet of it. Each creature within 15 feet of that point must make a {@dc 15} Dexterity saving throw, taking 18 ({@damage 4d8}) bludgeoning damage on a failed save, or half as much damage on a successful one."
 							]
 						}
 					]
