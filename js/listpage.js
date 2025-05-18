@@ -288,6 +288,7 @@ class SublistManager {
 				? new ContextUtil.Action(
 					"Send to Foundry",
 					() => this._pDoSendSublistToFoundry(),
+					{title: "A Rivet import will be run for each entry."},
 				)
 				: undefined,
 			null,
@@ -1326,8 +1327,11 @@ class ListPage {
 				this.primaryLists.forEach(list => {
 					list.visibleItems.forEach(listItem => {
 						const {btnToggleExpand, dispExpandedOuter, dispExpandedInner} = this._getPreviewEles(listItem);
-						if (isExpand) this._doPreviewExpand({listItem, dispExpandedOuter, btnToggleExpand, dispExpandedInner});
-						else this._doPreviewCollapse({dispExpandedOuter, btnToggleExpand, dispExpandedInner});
+
+						if (!isExpand) return this._doPreviewCollapse({dispExpandedOuter, btnToggleExpand, dispExpandedInner});
+
+						if (btnToggleExpand.innerHTML !== `[+]`) return;
+						this._doPreviewExpand({listItem, dispExpandedOuter, btnToggleExpand, dispExpandedInner});
 					});
 				});
 			});
@@ -1971,6 +1975,14 @@ class ListPage {
 		return this._pHandleUnknownHash_doSourceReload({source});
 	}
 
+	_pHandleUnknownHash_isRequireReload ({source}) {
+		return [
+			PrereleaseUtil,
+			BrewUtil2,
+		]
+			.some(brewUtil => brewUtil.hasSourceJson(source) && brewUtil.isReloadRequired());
+	}
+
 	_pHandleUnknownHash_doSourceReload ({source}) {
 		return [
 			PrereleaseUtil,
@@ -1978,8 +1990,7 @@ class ListPage {
 		]
 			.some(brewUtil => {
 				if (
-					brewUtil.hasSourceJson(source)
-					&& brewUtil.isReloadRequired()
+					this._pHandleUnknownHash_isRequireReload({source})
 				) {
 					brewUtil.doLocationReload();
 					return true;
@@ -2144,7 +2155,9 @@ class ListPage {
 	static _OFFSET_WINDOW_EXPORT_AS_IMAGE = 17;
 
 	_pHandleClick_exportAsImage_mutOptions ({$ele, optsDomToImage}) {
-		// See: https://github.com/1904labs/dom-to-image-more/issues/146
+		// See:
+		//  - https://github.com/1904labs/dom-to-image-more/issues/146
+		//  - https://github.com/1904labs/dom-to-image-more/issues/160
 		if (BrowserUtil.isFirefox()) {
 			const bcr = $ele[0].getBoundingClientRect();
 			optsDomToImage.width = bcr.width;

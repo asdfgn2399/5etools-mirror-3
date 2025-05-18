@@ -71,7 +71,7 @@ export class SpellBuilder extends BuilderBase {
 		delete spell.srd;
 		delete spell.srd52;
 		delete spell.basicRules;
-		delete spell.freeRules2024;
+		delete spell.basicRules2024;
 		delete spell.uniqueId;
 		delete spell.reprintedAs;
 
@@ -220,7 +220,23 @@ export class SpellBuilder extends BuilderBase {
 		this.__$getMetaInput(cb).appendTo(detailsTab.$wrpTab);
 		this.__$getDurationInput(cb).appendTo(detailsTab.$wrpTab);
 		BuilderUi.$getStateIptEntries("Text", cb, this._state, {fnPostProcess: BuilderUi.fnPostProcessDice}, "entries").appendTo(detailsTab.$wrpTab);
-		BuilderUi.$getStateIptEntries("&quot;At Higher Levels&quot; Text", cb, this._state, {nullable: true, withHeader: "At Higher Levels", fnPostProcess: BuilderUi.fnPostProcessDice}, "entriesHigherLevel").appendTo(detailsTab.$wrpTab);
+		const iptEntriesHigherLevelMeta = BuilderUi.$getStateIptEntries(
+			"&quot;Higher-Level Spell Slot&quot; Text",
+			cb,
+			this._state,
+			{
+				nullable: true,
+				fnGetHeader: state => {
+					if (this._meta.styleHint === "classic") return "At Higher Levels";
+					return state.level === 0 ? "Cantrip Upgrade" : "Using a Higher-Level Spell Slot";
+				},
+				fnPostProcess: BuilderUi.fnPostProcessDice,
+				asMeta: true,
+			},
+			"entriesHigherLevel",
+		);
+		this._addHook("state", "level", () => iptEntriesHigherLevelMeta.onChange());
+		iptEntriesHigherLevelMeta.$row.appendTo(detailsTab.$wrpTab);
 
 		// SOURCES
 		const [
@@ -612,7 +628,6 @@ export class SpellBuilder extends BuilderBase {
 
 			doUpdateState();
 		});
-		$$``.appendTo($rowInner);
 
 		$$`<div>
 			<div class="ve-flex-v-center mb-2"><div class="mr-2 mkbru__sub-name--33">Verbal</div>${$cbVerbal}</div>

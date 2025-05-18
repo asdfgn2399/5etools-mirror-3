@@ -2,7 +2,7 @@
 
 // in deployment, `IS_DEPLOYED = "<version number>";` should be set below.
 globalThis.IS_DEPLOYED = undefined;
-globalThis.VERSION_NUMBER = /* 5ETOOLS_VERSION__OPEN */"2.7.1"/* 5ETOOLS_VERSION__CLOSE */;
+globalThis.VERSION_NUMBER = /* 5ETOOLS_VERSION__OPEN */"2.8.6"/* 5ETOOLS_VERSION__CLOSE */;
 globalThis.DEPLOYED_IMG_ROOT = undefined;
 // for the roll20 script to set
 globalThis.IS_VTT = false;
@@ -339,33 +339,53 @@ globalThis.StrUtil = class {
 
 	/* -------------------------------------------- */
 
+	// See e.g.:
+	//  - https://www.dmsguild.com/product/267467/DMs-Guild-Creator-Resource--Style-Guide-Resources
+	//    (House Style Guide; Forgotten Realms Style Guide)
 	static _IRREGULAR_PLURAL_WORDS = {
 		"aarakocra": "aarakocra",
 		"cactus": "cacti",
 		"child": "children",
+		"dao": "dao",
 		"die": "dice",
 		"djinni": "djinn",
+		"drow": "drow",
+		"duergar": "duergar",
 		"dwarf": "dwarves",
 		"efreeti": "efreet",
+		"el'tael": "el'tael",
+		"eladrin": "eladrin",
 		"elf": "elves",
 		"erinyes": "erinyes",
 		"fey": "fey",
 		"foot": "feet",
+		"foulspawn": "foulspawn",
+		"genasi": "genasi",
 		"goose": "geese",
 		"incubus": "incubi",
 		"ki": "ki",
+		"kenku": "kenku",
+		"larva": "larvae",
+		"lizardfolk": "lizardfolk",
 		"man": "men",
+		"merfolk": "merfolk",
+		"merrow": "merrow",
 		"mouse": "mice",
 		"oni": "oni",
 		"ox": "oxen",
 		"person": "people",
+		"sahuagin": "sahuagin",
 		"sheep": "sheep",
 		"slaad": "slaadi",
 		"succubus": "succubi",
+		"svirfneblin": "svirfneblin",
+		"tael": "tael",
+		"thri-kreen": "thri-kreen",
 		"tooth": "teeth",
 		"undead": "undead",
 		"wolf": "wolves",
 		"woman": "women",
+		"xorn": "xorn",
 		"yuan-ti": "yuan-ti",
 	};
 
@@ -889,6 +909,8 @@ class TemplateUtil {
 			eleTmpTemplate.innerHTML = raw.trim();
 			const {content: eleTmp} = eleTmpTemplate;
 
+			if (!eleTmp.children.length) throw new Error(`Failed to create HTML element(s) from "${raw}"!`);
+
 			Array.from(eleTmp.querySelectorAll(`[data-r="true"]`))
 				.forEach((node, i) => node.replaceWith(eles[i]));
 
@@ -1079,6 +1101,7 @@ globalThis.JqueryUtil = {
 						e_({
 							tag: "button",
 							clazz: "ve-btn toast__btn-close",
+							title: "Close (CTRL to Close All)",
 							children: [
 								e_({
 									tag: "span",
@@ -1096,8 +1119,8 @@ globalThis.JqueryUtil = {
 				evt.preventDefault();
 				JqueryUtil._doToastCleanup(toastMeta);
 
-				// Close all on SHIFT-click
-				if (!evt.shiftKey) return;
+				// Close all on CTRL-click
+				if (!EventUtil.isCtrlMetaKey(evt)) return;
 				[...JqueryUtil._ACTIVE_TOAST].forEach(toastMeta => JqueryUtil._doToastCleanup(toastMeta));
 			},
 		});
@@ -1156,6 +1179,9 @@ class ElementUtil {
 	 * @typedef {HTMLElement} HTMLElementExtended
 	 * @extends {HTMLElement}
 	 *
+	 * @property {function(string): ?HTMLElementExtended} find
+	 * @property {function(string): Array<HTMLElementExtended>} findAll
+	 *
 	 * @property {function(HTMLElement|string): HTMLElementExtended} appends
 	 * @property {function(HTMLElement): HTMLElementExtended} appendTo
 	 * @property {function(HTMLElement): HTMLElementExtended} prependTo
@@ -1185,7 +1211,7 @@ class ElementUtil {
 	 *
 	 * @property {function(object): HTMLElementExtended} css
 	 *
-	 * @property {function(string, function): HTMLElementExtended} onn
+	 * @property {function(string, function, object=): HTMLElementExtended} onn
 	 * @property {function(function): HTMLElementExtended} onClick
 	 * @property {function(function): HTMLElementExtended} onContextmenu
 	 * @property {function(function): HTMLElementExtended} onChange
@@ -1201,38 +1227,44 @@ class ElementUtil {
 	 *
 	 * @return {HTMLElementExtended}
 	 */
-	static getOrModify ({
-		tag,
-		clazz,
-		style,
-		click,
-		contextmenu,
-		change,
-		mousedown,
-		mouseup,
-		mousemove,
-		pointerdown,
-		pointerup,
-		keydown,
-		html,
-		text,
-		txt,
-		ele,
-		children,
-		outer,
+	static getOrModify (opts) {
+		if (opts instanceof Element) opts = {ele: opts};
 
-		id,
-		name,
-		title,
-		val,
-		href,
-		type,
-		tabindex,
-		value,
-		placeholder,
-		attrs,
-		data,
-	}) {
+		const {
+			tag,
+			clazz,
+			style,
+			click,
+			contextmenu,
+			change,
+			mousedown,
+			mouseup,
+			mousemove,
+			pointerdown,
+			pointerup,
+			keydown,
+			html,
+			text,
+			txt,
+			children,
+			outer,
+
+			id,
+			name,
+			title,
+			val,
+			href,
+			type,
+			tabindex,
+			value,
+			placeholder,
+			attrs,
+			data,
+		} = opts;
+		let {
+			ele,
+		} = opts;
+
 		const metaEle = ElementUtil._getOrModify_getEle({
 			ele,
 			outer,
@@ -1276,6 +1308,8 @@ class ElementUtil {
 
 		if (children) for (let i = 0, len = children.length; i < len; ++i) if (children[i] != null) ele.append(children[i]);
 
+		ele.find = ele.find || ElementUtil._find.bind(ele);
+		ele.findAll = ele.findAll || ElementUtil._findAll.bind(ele);
 		ele.appends = ele.appends || ElementUtil._appends.bind(ele);
 		ele.appendTo = ele.appendTo || ElementUtil._appendTo.bind(ele);
 		ele.prependTo = ele.prependTo || ElementUtil._prependTo.bind(ele);
@@ -1332,6 +1366,19 @@ class ElementUtil {
 			return {ele: eleId, isSetId: false};
 		}
 		throw new Error(`Could not find or create element!`);
+	}
+
+	/** @this {HTMLElementExtended} */
+	static _find (selector) {
+		const eles = ElementUtil.getBySelectorMulti(selector, this);
+		if (!eles.length) return null;
+		if (eles.length > 1) throw new Error(`Single-select "find" found multiple elements! Consider using "findAll" instead`);
+		return eles[0];
+	}
+
+	/** @this {HTMLElementExtended} */
+	static _findAll (selector) {
+		return ElementUtil.getBySelectorMulti(selector, this);
 	}
 
 	/** @this {HTMLElementExtended} */
@@ -1419,7 +1466,8 @@ class ElementUtil {
 	/** @this {HTMLElementExtended} */
 	static _attr (name, value) {
 		if (value === undefined) return this.getAttribute(name);
-		this.setAttribute(name, value);
+		if (!value && ElementUtil._ATTRS_NO_FALSY.has(name)) this.removeAttribute(name);
+		else this.setAttribute(name, value);
 		return this;
 	}
 
@@ -1466,8 +1514,9 @@ class ElementUtil {
 	}
 
 	/** @this {HTMLElementExtended} */
-	static _onX (evtName, fn) {
-		this.addEventListener(evtName, fn);
+	static _onX (evtName, fn, opts) {
+		if (opts) this.addEventListener(evtName, fn, opts);
+		else this.addEventListener(evtName, fn);
 		return this;
 	}
 
@@ -1485,33 +1534,35 @@ class ElementUtil {
 	}
 
 	/** @this {HTMLElementExtended} */
-	static _val (val, {isSetAttribute = false} = {}) {
-		if (val !== undefined) {
+	static _val (...args) {
+		if (!args.length) {
 			switch (this.tagName) {
-				case "SELECT": {
-					let selectedIndexNxt = -1;
-					for (let i = 0, len = this.options.length; i < len; ++i) {
-						if (this.options[i]?.value === val) {
-							selectedIndexNxt = i;
-							if (isSetAttribute) this.options[i].setAttribute("selected", "selected");
-							break;
-						}
-					}
-					this.selectedIndex = selectedIndexNxt;
-					return this;
-				}
+				case "SELECT": return this.options[this.selectedIndex]?.value;
 
-				default: {
-					this.value = val;
-					return this;
-				}
+				default: return this.value;
 			}
 		}
 
-		switch (this.tagName) {
-			case "SELECT": return this.options[this.selectedIndex]?.value;
+		const [val, {isSetAttribute = false} = {}] = args;
 
-			default: return this.value;
+		switch (this.tagName) {
+			case "SELECT": {
+				let selectedIndexNxt = -1;
+				for (let i = 0, len = this.options.length; i < len; ++i) {
+					if (this.options[i]?.value === val) {
+						selectedIndexNxt = i;
+						if (isSetAttribute) this.options[i].setAttribute("selected", "selected");
+						break;
+					}
+				}
+				this.selectedIndex = selectedIndexNxt;
+				return this;
+			}
+
+			default: {
+				this.value = val;
+				return this;
+			}
 		}
 	}
 
@@ -1602,6 +1653,45 @@ class ElementUtil {
 			if (!parent) return null;
 		}
 		return parent;
+	}
+
+	static _IFRAME_SANDBOX_ATTRIBUTES = [
+		"allow-forms",
+		"allow-modals",
+		"allow-orientation-lock",
+		"allow-pointer-lock",
+		"allow-popups",
+		"allow-popups-to-escape-sandbox",
+		"allow-presentation",
+		"allow-same-origin",
+		"allow-scripts",
+		"allow-top-navigation-by-user-activation",
+
+		// Prevent top-level navigation
+		// "allow-top-navigation",
+	];
+
+	static getIframeSandboxAttribute ({url, isAllowPdf = false} = {}) {
+		if (!url || !isAllowPdf) return this._getIframeSandboxAttribute();
+
+		// Allow "PDFs" (approximately detected by ".pdf" in the filename; this is not intended
+		//   as a security feature) if explicitly requested. Sandbox attributes otherwise block
+		//   these in e.g. Chrome.
+		// See: https://github.com/whatwg/html/issues/3958
+
+		let parsedUrl;
+		try {
+			parsedUrl = new URL(url);
+		} catch (e) {
+			return this._getIframeSandboxAttribute();
+		}
+
+		if (/\.pdf$/i.test(parsedUrl.pathName)) return this._getIframeSandboxAttribute();
+		return "";
+	}
+
+	static _getIframeSandboxAttribute () {
+		return `sandbox="${this._IFRAME_SANDBOX_ATTRIBUTES.join(" ")}"`;
 	}
 	// endregion
 }
@@ -1816,6 +1906,42 @@ globalThis.MiscUtil = class {
 		return obj1;
 	}
 
+	static expand (obj) {
+		if (!obj) return obj;
+		if (Array.isArray(obj)) return obj.map(it => MiscUtil.expand(it));
+		if (typeof obj !== "object") return obj;
+		const out = {};
+		Object.entries(obj)
+			.forEach(([k, v]) => MiscUtil.setComposite(out, k, MiscUtil.expand(v)));
+		return out;
+	}
+
+	static flatten (obj) {
+		if (!obj) return obj;
+		if (Array.isArray(obj)) return obj.map(it => MiscUtil.flatten(it));
+		if (typeof obj !== "object") return obj;
+		if (!Object.keys(obj).length) return obj;
+
+		const out = {};
+		Object.entries(obj)
+			.forEach(([k, v]) => {
+				if (v == null || typeof v !== "object" || !Object.keys(v).length) return out[k] = v;
+				if (Array.isArray(v)) return out[k] = v.map(it => MiscUtil.flatten(it));
+
+				Object.entries(MiscUtil.flatten(v))
+					.forEach(([k2, v2]) => {
+						out[`${k}.${k2}`] = v2;
+					});
+			});
+		return out;
+	}
+
+	static setComposite (obj, path, val) {
+		if (!path) return val;
+		const parts = path.split(".");
+		return MiscUtil.set(obj, ...parts, val);
+	}
+
 	/**
 	 * @deprecated
 	 */
@@ -1864,7 +1990,7 @@ globalThis.MiscUtil = class {
 	/**
 	 * @param hex Original hex color.
 	 * @param [opts] Options object.
-	 * @param [opts.bw] True if the color should be returnes as black/white depending on contrast ratio.
+	 * @param [opts.bw] True if the color should be returned as black/white depending on contrast ratio.
 	 * @param [opts.dark] Color to return if a "dark" color would contrast best.
 	 * @param [opts.light] Color to return if a "light" color would contrast best.
 	 */
@@ -3358,7 +3484,17 @@ globalThis.UrlUtil = {
 		},
 	},
 
-	getStateKeySubclass (sc) { return Parser.stringToSlug(`sub ${sc.shortName || sc.name} ${sc.source}`); },
+	getStateKeySubclass (sc) {
+		return UrlUtil.encodeArrayForHash(["sub", sc.shortName || sc.name, sc.source]);
+	},
+
+	unpackStateKeySubclass (str) {
+		const [, shortName, source] = UrlUtil.decodeHash(str);
+		return {
+			shortName,
+			source,
+		};
+	},
 
 	/**
 	 * @param opts Options object.
@@ -3460,7 +3596,7 @@ UrlUtil.URL_TO_HASH_BUILDER = {};
 UrlUtil.URL_TO_HASH_BUILDER[UrlUtil.PG_BESTIARY] = UrlUtil.URL_TO_HASH_GENERIC;
 UrlUtil.URL_TO_HASH_BUILDER[UrlUtil.PG_SPELLS] = UrlUtil.URL_TO_HASH_GENERIC;
 UrlUtil.URL_TO_HASH_BUILDER[UrlUtil.PG_BACKGROUNDS] = UrlUtil.URL_TO_HASH_GENERIC;
-UrlUtil.URL_TO_HASH_BUILDER[UrlUtil.PG_ITEMS] = UrlUtil.URL_TO_HASH_GENERIC;
+UrlUtil.URL_TO_HASH_BUILDER[UrlUtil.PG_ITEMS] = it => UrlUtil.encodeArrayForHash(it.name, SourceUtil.getEntitySource(it));
 UrlUtil.URL_TO_HASH_BUILDER[UrlUtil.PG_CLASSES] = UrlUtil.URL_TO_HASH_GENERIC;
 UrlUtil.URL_TO_HASH_BUILDER[UrlUtil.PG_CONDITIONS_DISEASES] = UrlUtil.URL_TO_HASH_GENERIC;
 UrlUtil.URL_TO_HASH_BUILDER[UrlUtil.PG_FEATS] = UrlUtil.URL_TO_HASH_GENERIC;
@@ -3503,7 +3639,7 @@ UrlUtil.URL_TO_HASH_BUILDER["background"] = UrlUtil.URL_TO_HASH_BUILDER[UrlUtil.
 UrlUtil.URL_TO_HASH_BUILDER["item"] = UrlUtil.URL_TO_HASH_BUILDER[UrlUtil.PG_ITEMS];
 UrlUtil.URL_TO_HASH_BUILDER["itemGroup"] = UrlUtil.URL_TO_HASH_BUILDER[UrlUtil.PG_ITEMS];
 UrlUtil.URL_TO_HASH_BUILDER["baseitem"] = UrlUtil.URL_TO_HASH_BUILDER[UrlUtil.PG_ITEMS];
-UrlUtil.URL_TO_HASH_BUILDER["magicvariant"] = (it) => UrlUtil.encodeArrayForHash(it.name, SourceUtil.getEntitySource(it));
+UrlUtil.URL_TO_HASH_BUILDER["magicvariant"] = UrlUtil.URL_TO_HASH_BUILDER[UrlUtil.PG_ITEMS];
 UrlUtil.URL_TO_HASH_BUILDER["class"] = UrlUtil.URL_TO_HASH_BUILDER[UrlUtil.PG_CLASSES];
 UrlUtil.URL_TO_HASH_BUILDER["condition"] = UrlUtil.URL_TO_HASH_BUILDER[UrlUtil.PG_CONDITIONS_DISEASES];
 UrlUtil.URL_TO_HASH_BUILDER["disease"] = UrlUtil.URL_TO_HASH_BUILDER[UrlUtil.PG_CONDITIONS_DISEASES];
@@ -3636,7 +3772,7 @@ UrlUtil.CAT_TO_PAGE[Parser.CAT_ID_CONDITION] = UrlUtil.PG_CONDITIONS_DISEASES;
 UrlUtil.CAT_TO_PAGE[Parser.CAT_ID_FEAT] = UrlUtil.PG_FEATS;
 UrlUtil.CAT_TO_PAGE[Parser.CAT_ID_ELDRITCH_INVOCATION] = UrlUtil.PG_OPT_FEATURES;
 UrlUtil.CAT_TO_PAGE[Parser.CAT_ID_METAMAGIC] = UrlUtil.PG_OPT_FEATURES;
-UrlUtil.CAT_TO_PAGE[Parser.CAT_ID_MANEUVER_BATTLEMASTER] = UrlUtil.PG_OPT_FEATURES;
+UrlUtil.CAT_TO_PAGE[Parser.CAT_ID_MANEUVER_BATTLE_MASTER] = UrlUtil.PG_OPT_FEATURES;
 UrlUtil.CAT_TO_PAGE[Parser.CAT_ID_MANEUVER_CAVALIER] = UrlUtil.PG_OPT_FEATURES;
 UrlUtil.CAT_TO_PAGE[Parser.CAT_ID_ARCANE_SHOT] = UrlUtil.PG_OPT_FEATURES;
 UrlUtil.CAT_TO_PAGE[Parser.CAT_ID_OPTIONAL_FEATURE_OTHER] = UrlUtil.PG_OPT_FEATURES;
@@ -3733,13 +3869,26 @@ UrlUtil.PAGE_TO_PROPS = {};
 UrlUtil.PAGE_TO_PROPS[UrlUtil.PG_SPELLS] = ["spell"];
 UrlUtil.PAGE_TO_PROPS[UrlUtil.PG_ITEMS] = ["item", "itemGroup", "itemType", "itemEntry", "itemProperty", "itemTypeAdditionalEntries", "itemMastery", "baseitem", "magicvariant"];
 UrlUtil.PAGE_TO_PROPS[UrlUtil.PG_RACES] = ["race", "subrace"];
+UrlUtil.PAGE_TO_PROPS[UrlUtil.PG_ACTIONS] = ["action"];
+UrlUtil.PAGE_TO_PROPS[UrlUtil.PG_BACKGROUNDS] = ["background"];
+UrlUtil.PAGE_TO_PROPS[UrlUtil.PG_BESTIARY] = ["monster"];
+UrlUtil.PAGE_TO_PROPS[UrlUtil.PG_CLASSES] = ["class", "subclass", "classFeature", "subclassFeature"];
+UrlUtil.PAGE_TO_PROPS[UrlUtil.PG_CONDITIONS_DISEASES] = ["condition", "disease", "status"];
+UrlUtil.PAGE_TO_PROPS[UrlUtil.PG_CULTS_BOONS] = ["cult", "boon"];
+UrlUtil.PAGE_TO_PROPS[UrlUtil.PG_FEATS] = ["feat"];
+UrlUtil.PAGE_TO_PROPS[UrlUtil.PG_LANGUAGES] = ["language"];
+UrlUtil.PAGE_TO_PROPS[UrlUtil.PG_OBJECTS] = ["object"];
+UrlUtil.PAGE_TO_PROPS[UrlUtil.PG_OPT_FEATURES] = ["optionalfeature"];
+UrlUtil.PAGE_TO_PROPS[UrlUtil.PG_REWARDS] = ["reward"];
+UrlUtil.PAGE_TO_PROPS[UrlUtil.PG_TRAPS_HAZARDS] = ["trap", "hazard"];
+UrlUtil.PAGE_TO_PROPS[UrlUtil.PG_VARIANTRULES] = ["variantrule"];
 
 UrlUtil.PROP_TO_PAGE = {};
 UrlUtil.PROP_TO_PAGE["spell"] = UrlUtil.PG_SPELLS;
 UrlUtil.PROP_TO_PAGE["item"] = UrlUtil.PG_ITEMS;
 UrlUtil.PROP_TO_PAGE["baseitem"] = UrlUtil.PG_ITEMS;
 
-if (!IS_DEPLOYED && !IS_VTT && typeof window !== "undefined") {
+if (!IS_DEPLOYED && !globalThis.IS_VTT && typeof window !== "undefined") {
 	// for local testing, hotkey to get a link to the current page on the main site
 	window.addEventListener("keypress", (e) => {
 		if (EventUtil.noModifierKeys(e) && typeof d20 === "undefined") {
@@ -4178,19 +4327,87 @@ class _DataUtilBrewHelper {
 	}
 }
 
-globalThis.DataUtil = {
-	_loading: {},
-	_loaded: {},
-	_merging: {},
-	_merged: {},
+globalThis.DataUtil = class {
+	static _loading = {};
+	static _loaded = {};
+	static _merging = {};
+	static _merged = {};
 
-	async _pLoad ({url, id, isBustCache = false}) {
-		if (DataUtil._loading[id] && !isBustCache) {
-			await DataUtil._loading[id];
-			return DataUtil._loaded[id];
+	static _RequestLimiter = class {
+		constructor ({urlPrefix, timeoutMs}) {
+			this._urlPrefix = urlPrefix;
+			this._timeoutMs = timeoutMs;
+			this._limitedUntil = null;
 		}
 
-		DataUtil._loading[id] = new Promise((resolve, reject) => {
+		isMatch (url) { return url?.startsWith(this._urlPrefix); }
+
+		isLimited (url) {
+			if (this._limitedUntil == null) return false;
+			return this.isMatch(url) && Date.now() <= this._limitedUntil;
+		}
+
+		addFailure () { this._limitedUntil = Date.now() + this._timeoutMs; }
+	};
+
+	static REQUEST_LIMITER_GITHUB_RAW = new this._RequestLimiter({
+		urlPrefix: "https://raw.githubusercontent.com/",
+		timeoutMs: 15 * 60 * 1000, // 15 mins
+	});
+
+	static _REQUEST_LIMITERS = [
+		this.REQUEST_LIMITER_GITHUB_RAW,
+	];
+
+	static _OptionalJsonResponse = class {
+		/**
+		 * @param url
+		 * @param status
+		 * @param {?*} json
+		 * @param {?string} error
+		 */
+		constructor ({url, status, json = null, error = null}) {
+			if (json == null && error == null) throw new Error(`One of "json" or "error" must be specified!`);
+
+			this.url = url;
+			this.status = status;
+			this.json = json;
+			this.error = error;
+		}
+
+		static _RE_JSDELIVR = /https:\/\/raw\.githubusercontent\.com\/(?<user>[a-zA-Z0-9-]+)\/(?<repo>[A-Za-z0-9_.-]+)\/(?<branchAndPath>.*)$/;
+
+		isJsdelivrRetry () { return this.status === 429 && this.constructor._RE_JSDELIVR.test(this.url); }
+
+		isGitHackRetry () { return this.status === 429 && this.url.startsWith("https://raw.githubusercontent.com/"); }
+
+		getJsDelivrUrl () {
+			const m = this.constructor._RE_JSDELIVR.exec(this.url);
+			if (!m) throw new Error(`Failed to convert GitHub URL to jsDelivr URL!`); // Should never occur
+			const {user, repo, branchAndPath} = m.groups;
+			return `https://cdn.jsdelivr.net/gh/${user}/${repo}@${branchAndPath}`;
+		}
+
+		getGithackUrl () {
+			const out = this.url.replace(/^https:\/\/raw\.githubusercontent\.com\//, "https://raw.githack.com/");
+			if (out === this.url) throw new Error(`Failed to convert GitHub URL to GitHack URL!`); // Should never occur
+			return out;
+		}
+	};
+
+	static async _pLoad_pGetJson_pGetOptionalJson ({url}) {
+		for (const limiter of this._REQUEST_LIMITERS) {
+			if (!limiter.isLimited(url)) continue;
+			return new this._OptionalJsonResponse({
+				url,
+				status: 429,
+				error: `Request was limited`,
+			});
+		}
+
+		return new Promise(resolve => {
+			// Testing (as of 2025-05-18) via local checkout of https://github.com/arendjr/fetch-vs-xhr-perf shows
+			//  `XMLHttpRequest` to be faster than `fetch` on both Chrome (136.0.7103.93) and Firefox (138.0.4)
 			const request = new XMLHttpRequest();
 
 			request.open("GET", url, true);
@@ -4204,15 +4421,31 @@ globalThis.DataUtil = {
 			 */
 			request.overrideMimeType("application/json");
 
-			request.onload = function () {
+			request.addEventListener("load", () => {
 				try {
-					DataUtil._loaded[id] = JSON.parse(this.response);
-					resolve();
+					resolve(
+						new this._OptionalJsonResponse({
+							url,
+							status: request.status,
+							json: JSON.parse(request.response),
+						}),
+					);
 				} catch (e) {
-					reject(new Error(`Could not parse JSON from ${url}: ${e.message}`));
+					this._REQUEST_LIMITERS.forEach(limiter => {
+						if (limiter.isMatch(url)) limiter.addFailure();
+					});
+
+					resolve(
+						new this._OptionalJsonResponse({
+							url,
+							status: request.status,
+							error: `Could not parse JSON from ${url}: ${e.message}`,
+						}),
+					);
 				}
-			};
-			request.onerror = (e) => {
+			});
+
+			request.addEventListener("error", () => {
 				const ptDetail = [
 					"status",
 					"statusText",
@@ -4220,19 +4453,75 @@ globalThis.DataUtil = {
 					"response",
 					"responseType",
 				]
-					.map(prop => `${prop}=${JSON.stringify(e.target[prop])}`)
+					.map(prop => `${prop}=${JSON.stringify(request[prop])}`)
 					.join(" ");
-				reject(new Error(`Error during JSON request: ${ptDetail}`));
-			};
+
+				this._REQUEST_LIMITERS.forEach(limiter => {
+					if (limiter.isMatch(url)) limiter.addFailure();
+				});
+
+				resolve(
+					new this._OptionalJsonResponse({
+						url,
+						status: request.status,
+						error: `Error during JSON request: ${ptDetail}`,
+					}),
+				);
+			});
 
 			request.send();
 		});
+	}
+
+	/**
+	 * Handle GitHub rate limiting (`429`) errors; see:
+	 *   - https://github.blog/changelog/2025-05-08-updated-rate-limits-for-unauthenticated-requests/
+	 *   - https://github.com/orgs/community/discussions/159123
+	 *   - https://github.com/orgs/community/discussions/157887
+	 *
+	 * Consider adjusting in future; see "Usage statistics and market shares of JavaScript content delivery networks"
+	 *   (https://w3techs.com/technologies/overview/content_delivery) stats for potential targets.
+	 */
+	static async _pLoad_pGetJson ({url, id}) {
+		const optionalJsonBase = await this._pLoad_pGetJson_pGetOptionalJson({url});
+		if (optionalJsonBase.json) return DataUtil._loaded[id] = optionalJsonBase.json;
+
+		if (optionalJsonBase.isJsdelivrRetry()) {
+			const urlJsDelivr = optionalJsonBase.getJsDelivrUrl();
+
+			// eslint-disable-next-line no-console
+			console.debug(`Using jsDeliver fallback for "${url}" (jsDeliver URL was "${urlJsDelivr}")`);
+
+			const optionalJsonJsDelivr = await this._pLoad_pGetJson_pGetOptionalJson({url: urlJsDelivr});
+			if (optionalJsonJsDelivr.json) return DataUtil._loaded[id] = optionalJsonJsDelivr.json;
+		}
+
+		if (optionalJsonBase.isGitHackRetry()) {
+			const urlGitHack = optionalJsonBase.getGithackUrl();
+
+			// eslint-disable-next-line no-console
+			console.debug(`Using GitHack fallback for "${url}" (GitHack URL was "${urlGitHack}")`);
+
+			const optionalJsonGitHack = await this._pLoad_pGetJson_pGetOptionalJson({url: urlGitHack});
+			if (optionalJsonGitHack.json) return DataUtil._loaded[id] = optionalJsonGitHack.json;
+		}
+
+		throw new Error(optionalJsonBase.error); // Throw the base error
+	}
+
+	static async _pLoad ({url, id, isBustCache = false}) {
+		if (DataUtil._loading[id] && !isBustCache) {
+			await DataUtil._loading[id];
+			return DataUtil._loaded[id];
+		}
+
+		DataUtil._loading[id] = DataUtil._pLoad_pGetJson({url, id});
 
 		await DataUtil._loading[id];
 		return DataUtil._loaded[id];
-	},
+	}
 
-	_mutAddProps (data) {
+	static _mutAddProps (data) {
 		if (!data || typeof data !== "object") return;
 
 		for (const k in data) {
@@ -4243,9 +4532,9 @@ globalThis.DataUtil = {
 				it.__prop = k;
 			}
 		}
-	},
+	}
 
-	_verifyMerged (data) {
+	static _verifyMerged (data) {
 		if (!data || typeof data !== "object") return;
 
 		for (const k in data) {
@@ -4258,17 +4547,17 @@ globalThis.DataUtil = {
 				}
 			}
 		}
-	},
+	}
 
-	async loadJSON (url) {
+	static async loadJSON (url) {
 		return DataUtil._loadJson(url, {isDoDataMerge: true});
-	},
+	}
 
-	async loadRawJSON (url, {isBustCache} = {}) {
+	static async loadRawJSON (url, {isBustCache} = {}) {
 		return DataUtil._loadJson(url, {isBustCache});
-	},
+	}
 
-	async _loadJson (url, {isDoDataMerge = false, isBustCache = false} = {}) {
+	static async _loadJson (url, {isDoDataMerge = false, isBustCache = false} = {}) {
 		const procUrl = UrlUtil.link(url, {isBustCache});
 
 		let data;
@@ -4284,11 +4573,11 @@ globalThis.DataUtil = {
 		if (isDoDataMerge) await DataUtil.pDoMetaMerge(url, data);
 
 		return data;
-	},
+	}
 
 	/* -------------------------------------------- */
 
-	async pDoMetaMerge (ident, data, options) {
+	static async pDoMetaMerge (ident, data, options) {
 		DataUtil._mutAddProps(data);
 
 		const isFresh = !DataUtil._merging[ident];
@@ -4307,17 +4596,17 @@ globalThis.DataUtil = {
 		if (isFresh) DataUtil._verifyMerged(out);
 
 		return out;
-	},
+	}
 
-	_pDoMetaMerge_handleCopyProp (prop, arr, entry, options) {
+	static _pDoMetaMerge_handleCopyProp (prop, arr, entry, options) {
 		if (!entry._copy) return;
 		let fnMergeCopy = DataUtil[prop]?.pMergeCopy;
 		if (!fnMergeCopy) throw new Error(`No dependency _copy merge strategy specified for property "${prop}"`);
 		fnMergeCopy = fnMergeCopy.bind(DataUtil[prop]);
 		return fnMergeCopy(arr, entry, options);
-	},
+	}
 
-	async _pDoMetaMerge (ident, data, options) {
+	static async _pDoMetaMerge (ident, data, options) {
 		if (data._meta) {
 			const loadedSourceIds = new Set();
 
@@ -4390,11 +4679,11 @@ globalThis.DataUtil = {
 		if (data._meta && !Object.keys(data._meta).length) delete data._meta;
 
 		DataUtil._merged[ident] = data;
-	},
+	}
 
 	/* -------------------------------------------- */
 
-	async pDoMetaMergeSingle (prop, meta, ent) {
+	static async pDoMetaMergeSingle (prop, meta, ent) {
 		return (await DataUtil.pDoMetaMerge(
 			CryptUtil.uid(),
 			{
@@ -4405,15 +4694,15 @@ globalThis.DataUtil = {
 				isSkipMetaMergeCache: true,
 			},
 		))[prop][0];
-	},
+	}
 
 	/* -------------------------------------------- */
 
-	getCleanFilename (filename) {
+	static getCleanFilename (filename) {
 		return filename.replace(/[^-_a-zA-Z0-9]/g, "_");
-	},
+	}
 
-	getCsv (headers, rows) {
+	static getCsv (headers, rows) {
 		function escapeCsv (str) {
 			return `"${str.replace(/"/g, `""`).replace(/ +/g, " ").replace(/\n\n+/gi, "\n\n")}"`;
 		}
@@ -4423,7 +4712,7 @@ globalThis.DataUtil = {
 		}
 
 		return `${toCsv(headers)}\n${rows.map(r => toCsv(r)).join("\n")}`;
-	},
+	}
 
 	/**
 	 * @param {string} filename
@@ -4433,7 +4722,7 @@ globalThis.DataUtil = {
 	 * @param {?string} propVersion
 	 * @param {?string} valVersion
 	 */
-	userDownload (
+	static userDownload (
 		filename,
 		data,
 		{
@@ -4449,27 +4738,27 @@ globalThis.DataUtil = {
 		data = {[propVersion]: valVersion, ...data};
 		if (fileType != null) data = {fileType, ...data};
 		return DataUtil._userDownload(filename, JSON.stringify(data, null, "\t"), "text/json");
-	},
+	}
 
-	userDownloadText (filename, string) {
+	static userDownloadText (filename, string) {
 		return DataUtil._userDownload(filename, string, "text/plain");
-	},
+	}
 
-	_userDownload (filename, data, mimeType) {
+	static _userDownload (filename, data, mimeType) {
 		const t = new Blob([data], {type: mimeType});
 		const dataUrl = window.URL.createObjectURL(t);
 		DataUtil.userDownloadDataUrl(filename, dataUrl);
 		setTimeout(() => window.URL.revokeObjectURL(dataUrl), 100);
-	},
+	}
 
-	userDownloadDataUrl (filename, dataUrl) {
+	static userDownloadDataUrl (filename, dataUrl) {
 		const a = document.createElement("a");
 		a.href = dataUrl;
 		a.download = filename;
 		a.dispatchEvent(new MouseEvent("click", {bubbles: true, cancelable: true, view: window}));
-	},
+	}
 
-	doHandleFileLoadErrorsGeneric (errors) {
+	static doHandleFileLoadErrorsGeneric (errors) {
 		if (!errors) return;
 		errors.forEach(err => {
 			JqueryUtil.doToast({
@@ -4477,22 +4766,22 @@ globalThis.DataUtil = {
 				type: "danger",
 			});
 		});
-	},
+	}
 
-	cleanJson (cpy, {isDeleteUniqueId = true} = {}) {
+	static cleanJson (cpy, {isDeleteUniqueId = true} = {}) {
 		if (!cpy) return cpy;
 		cpy.name = cpy._displayName || cpy.name;
 		if (isDeleteUniqueId) delete cpy.uniqueId;
 		DataUtil.__cleanJsonObject(cpy);
 		return cpy;
-	},
+	}
 
-	_CLEAN_JSON_ALLOWED_UNDER_KEYS: [
+	static _CLEAN_JSON_ALLOWED_UNDER_KEYS = [
 		"_copy",
 		"_versions",
 		"_version",
-	],
-	__cleanJsonObject (obj) {
+	];
+	static __cleanJsonObject (obj) {
 		if (obj == null) return obj;
 		if (typeof obj !== "object") return obj;
 
@@ -4506,9 +4795,9 @@ globalThis.DataUtil = {
 			if ((k.startsWith("_") && k !== "_") || k === "customHashId") delete obj[k];
 			else DataUtil.__cleanJsonObject(v);
 		});
-	},
+	}
 
-	_MULTI_SOURCE_PROP_TO_DIR: {
+	static _MULTI_SOURCE_PROP_TO_DIR = {
 		"monster": "bestiary",
 		"monsterFluff": "bestiary",
 		"spell": "spells",
@@ -4519,14 +4808,16 @@ globalThis.DataUtil = {
 		"subclassFluff": "class",
 		"classFeature": "class",
 		"subclassFeature": "class",
-	},
-	_MULTI_SOURCE_PROP_TO_INDEX_NAME: {
+	};
+	static _MULTI_SOURCE_PROP_TO_INDEX_NAME = {
 		"class": "index.json",
 		"subclass": "index.json",
 		"classFeature": "index.json",
 		"subclassFeature": "index.json",
-	},
-	async pLoadByMeta (prop, source) {
+		"classFluff": "fluff-index.json",
+		"subclassFluff": "fluff-index.json",
+	};
+	static async pLoadByMeta (prop, source) {
 		// TODO(future) expand support
 
 		switch (prop) {
@@ -4589,9 +4880,9 @@ globalThis.DataUtil = {
 			}
 			// endregion
 		}
-	},
+	}
 
-	async _pLoadByMeta_pGetPrereleaseBrew (source) {
+	static async _pLoadByMeta_pGetPrereleaseBrew (source) {
 		const fromPrerelease = await DataUtil.pLoadPrereleaseBySource(source);
 		if (fromPrerelease) return fromPrerelease;
 
@@ -4599,11 +4890,11 @@ globalThis.DataUtil = {
 		if (fromBrew) return fromBrew;
 
 		throw new Error(`Could not find prerelease/brew URL for source "${source}"`);
-	},
+	}
 
 	/* -------------------------------------------- */
 
-	_getLoadGroupedSourceIds ({prop, sourceIds}) {
+	static _getLoadGroupedSourceIds ({prop, sourceIds}) {
 		if (DataUtil._MULTI_SOURCE_PROP_TO_DIR[prop]) return sourceIds;
 
 		let siteSourceFirst = null;
@@ -4617,21 +4908,21 @@ globalThis.DataUtil = {
 
 		if (!siteSourceFirst) return sourceIds;
 		return [siteSourceFirst, ...nonSiteSources];
-	},
+	}
 
 	/* -------------------------------------------- */
 
-	async pLoadPrereleaseBySource (source) {
+	static async pLoadPrereleaseBySource (source) {
 		if (typeof PrereleaseUtil === "undefined") return null;
 		return this._pLoadPrereleaseBrewBySource({source, brewUtil: PrereleaseUtil});
-	},
+	}
 
-	async pLoadBrewBySource (source) {
+	static async pLoadBrewBySource (source) {
 		if (typeof BrewUtil2 === "undefined") return null;
 		return this._pLoadPrereleaseBrewBySource({source, brewUtil: BrewUtil2});
-	},
+	}
 
-	async _pLoadPrereleaseBrewBySource ({source, brewUtil}) {
+	static async _pLoadPrereleaseBrewBySource ({source, brewUtil}) {
 		// Load from existing first
 		const fromExisting = await brewUtil.pGetBrewBySource(source);
 		if (fromExisting) return MiscUtil.copyFast(fromExisting.body);
@@ -4641,32 +4932,32 @@ globalThis.DataUtil = {
 		if (!url) return null;
 
 		return DataUtil.loadJSON(url);
-	},
+	}
 
 	/* -------------------------------------------- */
 
 	// region Dbg
-	dbg: {
+	static dbg = {
 		isTrackCopied: false,
-	},
+	};
 	// endregion
 
-	generic: {
-		_MERGE_REQUIRES_PRESERVE_BASE: {
+	static generic = class {
+		static _MERGE_REQUIRES_PRESERVE_BASE = {
 			page: true,
 			otherSources: true,
 			srd: true,
 			srd52: true,
 			basicRules: true,
-			freeRules2024: true,
+			basicRules2024: true,
 			reprintedAs: true,
 			hasFluff: true,
 			hasFluffImages: true,
 			hasToken: true,
 			_versions: true,
-		},
+		};
 
-		_walker_replaceTxt: null,
+		static _walker_replaceTxt = null;
 
 		/**
 		 * @param uid
@@ -4674,7 +4965,7 @@ globalThis.DataUtil = {
 		 * @param [opts]
 		 * @param [opts.isLower] If the returned values should be lowercase.
 		 */
-		unpackUid (uid, tag, opts) {
+		static unpackUid (uid, tag, opts) {
 			opts = opts || {};
 			if (opts.isLower) uid = uid.toLowerCase();
 			let [name, source, displayText, ...others] = uid.split("|").map(Function.prototype.call.bind(String.prototype.trim));
@@ -4692,18 +4983,18 @@ globalThis.DataUtil = {
 				others,
 				isAllowRedirect,
 			};
-		},
+		}
 
-		packUid (ent, tag) {
+		static packUid (ent, tag) {
 			// <name>|<source>
 			const sourceDefault = Parser.getTagSource(tag);
 			return [
 				ent.name,
 				(ent.source || "").toLowerCase() === sourceDefault.toLowerCase() ? "" : ent.source,
 			].join("|").replace(/\|+$/, ""); // Trim trailing pipes
-		},
+		}
 
-		getUid (ent, {isMaintainCase = false, displayName = null} = {}) {
+		static getUid (ent, {isMaintainCase = false, displayName = null} = {}) {
 			const {name} = ent;
 			const source = SourceUtil.getEntitySource(ent);
 			if (!name || !source) throw new Error(`Entity did not have a name and source!`);
@@ -4712,9 +5003,9 @@ globalThis.DataUtil = {
 			const out = pts.join("|");
 			if (isMaintainCase) return out;
 			return out.toLowerCase();
-		},
+		}
 
-		async _pMergeCopy (impl, page, entryList, entry, options) {
+		static async _pMergeCopy (impl, page, entryList, entry, options) {
 			if (!entry._copy) return;
 
 			const hashCurrent = UrlUtil.URL_TO_HASH_BUILDER[page](entry);
@@ -4741,9 +5032,9 @@ globalThis.DataUtil = {
 				? (await DataUtil.loadJSON(`${Renderer.get().baseUrl}data/bestiary/template.json`))
 				: null;
 			return DataUtil.generic.copyApplier.getCopy(impl, MiscUtil.copyFast(entParent), entry, templateData, options);
-		},
+		}
 
-		_pMergeCopy_search (impl, page, entryList, entry, options) {
+		static _pMergeCopy_search (impl, page, entryList, entry, options) {
 			const entryHash = UrlUtil.URL_TO_HASH_BUILDER[page](entry._copy);
 			return entryList.find(ent => {
 				const hash = UrlUtil.URL_TO_HASH_BUILDER[page](ent);
@@ -4751,14 +5042,14 @@ globalThis.DataUtil = {
 				impl._mergeCache[hash] ||= ent;
 				return hash === entryHash;
 			});
-		},
+		}
 
-		COPY_ENTRY_PROPS: [
+		static COPY_ENTRY_PROPS = [
 			"action", "bonus", "reaction", "trait", "legendary", "mythic", "variant", "spellcasting",
 			"actionHeader", "bonusHeader", "reactionHeader", "legendaryHeader", "mythicHeader",
-		],
+		];
 
-		copyApplier: class {
+		static copyApplier = class {
 			static _WALKER = null;
 
 			// convert everything to arrays
@@ -5431,9 +5722,9 @@ globalThis.DataUtil = {
 				// cleanup
 				delete copyTo._copy;
 			}
-		},
+		};
 
-		variableResolver: class {
+		static variableResolver = class {
 			/** @abstract */
 			static _ResolverBase = class {
 				mode;
@@ -5625,9 +5916,9 @@ globalThis.DataUtil = {
 			}
 
 			static getCleanMathExpression (str) { return str.replace(/[^-+/*0-9.,]+/g, ""); }
-		},
+		};
 
-		getVersions (parent, {impl = null, isExternalApplicationIdentityOnly = false} = {}) {
+		static getVersions (parent, {impl = null, isExternalApplicationIdentityOnly = false} = {}) {
 			if (!parent?._versions?.length) return [];
 
 			return parent._versions
@@ -5646,9 +5937,9 @@ globalThis.DataUtil = {
 						{isNoCount: true},
 					);
 				});
-		},
+		}
 
-		_getVersions_template ({ver}) {
+		static _getVersions_template ({ver}) {
 			return ver._implementations
 				.map(impl => {
 					let cpyTemplate = MiscUtil.copyFast(ver._abstract);
@@ -5671,15 +5962,15 @@ globalThis.DataUtil = {
 
 					return cpyTemplate;
 				});
-		},
+		}
 
-		_getVersions_basic ({ver}) {
+		static _getVersions_basic ({ver}) {
 			const cpyVer = MiscUtil.copyFast(ver);
 			DataUtil.generic._getVersions_mutExpandCopy({ent: cpyVer});
 			return cpyVer;
-		},
+		}
 
-		_getVersions_mutExpandCopy ({ent}) {
+		static _getVersions_mutExpandCopy ({ent}) {
 			// Tweak the data structure to match what `_applyCopy` expects
 			ent._copy = {
 				_mod: ent._mod,
@@ -5687,13 +5978,14 @@ globalThis.DataUtil = {
 			};
 			delete ent._mod;
 			delete ent._preserve;
-		},
+		}
 
-		_getVersion ({parentEntity, version, impl = null, isExternalApplicationIdentityOnly}) {
+		static _getVersion ({parentEntity, version, impl = null, isExternalApplicationIdentityOnly}) {
 			const additionalData = {
 				_versionBase_isVersion: true,
 				_versionBase_name: parentEntity.name,
 				_versionBase_source: parentEntity.source,
+				_versionBase_hash: UrlUtil.URL_TO_HASH_BUILDER[parentEntity.__prop](parentEntity),
 				_versionBase_hasToken: parentEntity.hasToken,
 				_versionBase_hasFluff: parentEntity.hasFluff,
 				_versionBase_hasFluffImages: parentEntity.hasFluffImages,
@@ -5721,10 +6013,10 @@ globalThis.DataUtil = {
 			);
 			Object.assign(version, additionalData);
 			return version;
-		},
-	},
+		}
+	};
 
-	proxy: class {
+	static proxy = class {
 		static getVersions (prop, ent, {isExternalApplicationIdentityOnly = false} = {}) {
 			if (DataUtil[prop]?.getVersions) return DataUtil[prop]?.getVersions(ent, {isExternalApplicationIdentityOnly});
 			return DataUtil.generic.getVersions(ent, {isExternalApplicationIdentityOnly});
@@ -5738,7 +6030,7 @@ globalThis.DataUtil = {
 		 * @param [opts.isLower]
 		 */
 		static unpackUid (prop, uid, tag, opts) {
-			if (DataUtil[prop]?.unpackUid) return DataUtil[prop]?.unpackUid(uid, tag, opts);
+			if (DataUtil[prop]?.unpackUid) return DataUtil[prop]?.unpackUid(uid, opts);
 			return DataUtil.generic.unpackUid(uid, tag, opts);
 		}
 
@@ -5758,9 +6050,9 @@ globalThis.DataUtil = {
 			if (DataUtil[prop]?.getUid) return DataUtil[prop].getUid(ent, opts);
 			return DataUtil.generic.getUid(ent, opts);
 		}
-	},
+	};
 
-	monster: class extends _DataUtilPropConfigMultiSource {
+	static monster = class extends _DataUtilPropConfigMultiSource {
 		static _MERGE_REQUIRES_PRESERVE = {
 			legendaryGroup: true,
 			environment: true,
@@ -5860,20 +6152,20 @@ globalThis.DataUtil = {
 				(DataUtil.monster.legendaryGroupLookup[it.source] ||= {})[it.name] = it;
 			});
 		}
-	},
+	};
 
-	monsterFluff: class extends _DataUtilPropConfigMultiSource {
+	static monsterFluff = class extends _DataUtilPropConfigMultiSource {
 		static _PAGE = UrlUtil.PG_BESTIARY;
 		static _DIR = "bestiary";
 		static _PROP = "monsterFluff";
-	},
+	};
 
-	monsterTemplate: class extends _DataUtilPropConfigSingleSource {
+	static monsterTemplate = class extends _DataUtilPropConfigSingleSource {
 		static _PAGE = "monsterTemplate";
 		static _FILENAME = "bestiary/template.json";
-	},
+	};
 
-	spell: class extends _DataUtilPropConfigMultiSource {
+	static spell = class extends _DataUtilPropConfigMultiSource {
 		static _PAGE = UrlUtil.PG_SPELLS;
 		static _DIR = "spells";
 		static _PROP = "spell";
@@ -6069,60 +6361,60 @@ globalThis.DataUtil = {
 						});
 				});
 		}
-	},
+	};
 
-	spellFluff: class extends _DataUtilPropConfigMultiSource {
+	static spellFluff = class extends _DataUtilPropConfigMultiSource {
 		static _PAGE = UrlUtil.PG_SPELLS;
 		static _DIR = "spells";
 		static _PROP = "spellFluff";
-	},
+	};
 
-	background: class extends _DataUtilPropConfigSingleSource {
+	static background = class extends _DataUtilPropConfigSingleSource {
 		static _PAGE = UrlUtil.PG_BACKGROUNDS;
 		static _FILENAME = "backgrounds.json";
-	},
+	};
 
-	backgroundFluff: class extends _DataUtilPropConfigSingleSource {
+	static backgroundFluff = class extends _DataUtilPropConfigSingleSource {
 		static _PAGE = UrlUtil.PG_BACKGROUNDS;
 		static _FILENAME = "fluff-backgrounds.json";
-	},
+	};
 
-	charoption: class extends _DataUtilPropConfigSingleSource {
+	static charoption = class extends _DataUtilPropConfigSingleSource {
 		static _PAGE = UrlUtil.PG_CHAR_CREATION_OPTIONS;
 		static _FILENAME = "charcreationoptions.json";
-	},
+	};
 
-	charoptionFluff: class extends _DataUtilPropConfigSingleSource {
+	static charoptionFluff = class extends _DataUtilPropConfigSingleSource {
 		static _PAGE = UrlUtil.PG_CHAR_CREATION_OPTIONS;
 		static _FILENAME = "fluff-charcreationoptions.json";
-	},
+	};
 
-	condition: class extends _DataUtilPropConfigSingleSource {
+	static condition = class extends _DataUtilPropConfigSingleSource {
 		static _PAGE = UrlUtil.PG_CONDITIONS_DISEASES;
 		static _FILENAME = "conditionsdiseases.json";
-	},
+	};
 
-	conditionFluff: class extends _DataUtilPropConfigSingleSource {
+	static conditionFluff = class extends _DataUtilPropConfigSingleSource {
 		static _PAGE = UrlUtil.PG_CONDITIONS_DISEASES;
 		static _FILENAME = "fluff-conditionsdiseases.json";
-	},
+	};
 
-	disease: class extends _DataUtilPropConfigSingleSource {
+	static disease = class extends _DataUtilPropConfigSingleSource {
 		static _PAGE = UrlUtil.PG_CONDITIONS_DISEASES;
 		static _FILENAME = "conditionsdiseases.json";
-	},
+	};
 
-	feat: class extends _DataUtilPropConfigSingleSource {
+	static feat = class extends _DataUtilPropConfigSingleSource {
 		static _PAGE = UrlUtil.PG_FEATS;
 		static _FILENAME = "feats.json";
-	},
+	};
 
-	featFluff: class extends _DataUtilPropConfigSingleSource {
+	static featFluff = class extends _DataUtilPropConfigSingleSource {
 		static _PAGE = UrlUtil.PG_FEATS;
 		static _FILENAME = "fluff-feats.json";
-	},
+	};
 
-	item: class extends _DataUtilPropConfigCustom {
+	static item = class extends _DataUtilPropConfigCustom {
 		static _MERGE_REQUIRES_PRESERVE = {
 			lootTables: true,
 			tier: true,
@@ -6166,9 +6458,9 @@ globalThis.DataUtil = {
 		static async loadBrew () {
 			return {item: await Renderer.item.pGetItemsFromBrew()};
 		}
-	},
+	};
 
-	itemGroup: class extends _DataUtilPropConfig {
+	static itemGroup = class extends _DataUtilPropConfig {
 		static _MERGE_REQUIRES_PRESERVE = {
 			lootTables: true,
 			tier: true,
@@ -6177,16 +6469,16 @@ globalThis.DataUtil = {
 
 		static async pMergeCopy (...args) { return DataUtil.item.pMergeCopy(...args); }
 		static async loadRawJSON (...args) { return DataUtil.item.loadRawJSON(...args); }
-	},
+	};
 
-	baseitem: class extends _DataUtilPropConfig {
+	static baseitem = class extends _DataUtilPropConfig {
 		static _PAGE = UrlUtil.PG_ITEMS;
 
 		static async pMergeCopy (...args) { return DataUtil.item.pMergeCopy(...args); }
 		static async loadRawJSON (...args) { return DataUtil.item.loadRawJSON(...args); }
-	},
+	};
 
-	magicvariant: class extends _DataUtilPropConfig {
+	static magicvariant = class extends _DataUtilPropConfig {
 		static _MERGE_REQUIRES_PRESERVE = {
 			lootTables: true,
 			tier: true,
@@ -6194,14 +6486,14 @@ globalThis.DataUtil = {
 		static _PAGE = "magicvariant";
 
 		static async loadRawJSON (...args) { return DataUtil.item.loadRawJSON(...args); }
-	},
+	};
 
-	itemFluff: class extends _DataUtilPropConfigSingleSource {
+	static itemFluff = class extends _DataUtilPropConfigSingleSource {
 		static _PAGE = UrlUtil.PG_ITEMS;
 		static _FILENAME = "fluff-items.json";
-	},
+	};
 
-	itemType: class extends _DataUtilPropConfig {
+	static itemType = class extends _DataUtilPropConfig {
 		static _PAGE = "itemType";
 
 		/**
@@ -6231,9 +6523,9 @@ globalThis.DataUtil = {
 			if (isMaintainCase) return out;
 			return out.toLowerCase();
 		}
-	},
+	};
 
-	itemProperty: class extends _DataUtilPropConfig {
+	static itemProperty = class extends _DataUtilPropConfig {
 		static _PAGE = "itemProperty";
 
 		/**
@@ -6263,9 +6555,9 @@ globalThis.DataUtil = {
 			if (isMaintainCase) return out;
 			return out.toLowerCase();
 		}
-	},
+	};
 
-	language: class extends _DataUtilPropConfigSingleSource {
+	static language = class extends _DataUtilPropConfigSingleSource {
 		static _PAGE = UrlUtil.PG_LANGUAGES;
 		static _FILENAME = "languages.json";
 
@@ -6289,24 +6581,24 @@ globalThis.DataUtil = {
 
 			return out;
 		}
-	},
+	};
 
-	languageFluff: class extends _DataUtilPropConfigSingleSource {
+	static languageFluff = class extends _DataUtilPropConfigSingleSource {
 		static _PAGE = UrlUtil.PG_LANGUAGES;
 		static _FILENAME = "fluff-languages.json";
-	},
+	};
 
-	object: class extends _DataUtilPropConfigSingleSource {
+	static object = class extends _DataUtilPropConfigSingleSource {
 		static _PAGE = UrlUtil.PG_OBJECTS;
 		static _FILENAME = "objects.json";
-	},
+	};
 
-	objectFluff: class extends _DataUtilPropConfigSingleSource {
+	static objectFluff = class extends _DataUtilPropConfigSingleSource {
 		static _PAGE = UrlUtil.PG_OBJECTS;
 		static _FILENAME = "fluff-objects.json";
-	},
+	};
 
-	race: class extends _DataUtilPropConfigSingleSource {
+	static race = class extends _DataUtilPropConfigSingleSource {
 		static _PAGE = UrlUtil.PG_RACES;
 		static _FILENAME = "races.json";
 
@@ -6385,16 +6677,17 @@ globalThis.DataUtil = {
 			out.forEach(it => it.__prop = "race");
 			return {race: out};
 		}
-	},
+	};
 
-	subrace: class extends _DataUtilPropConfig {
+	static subrace = class extends _DataUtilPropConfig {
 		static _PAGE = "subrace";
-	},
+	};
 
-	raceFluff: class extends _DataUtilPropConfigSingleSource {
+	static raceFluff = class extends _DataUtilPropConfigSingleSource {
 		static _PAGE = UrlUtil.PG_RACES;
 		static _FILENAME = "fluff-races.json";
 
+		// N.b.: intentionally not applied to homebrew/prerelease content
 		static _getApplyUncommonMonstrous (data) {
 			data = MiscUtil.copyFast(data);
 			data.raceFluff
@@ -6423,13 +6716,13 @@ globalThis.DataUtil = {
 			const data = await super.loadUnmergedJSON();
 			return this._getApplyUncommonMonstrous(data);
 		}
-	},
+	};
 
-	raceFeature: class extends _DataUtilPropConfig {
+	static raceFeature = class extends _DataUtilPropConfig {
 		static _PAGE = "raceFeature";
-	},
+	};
 
-	recipe: class extends _DataUtilPropConfigSingleSource {
+	static recipe = class extends _DataUtilPropConfigSingleSource {
 		static _PAGE = UrlUtil.PG_RECIPES;
 		static _FILENAME = "recipes.json";
 
@@ -6452,34 +6745,34 @@ globalThis.DataUtil = {
 				recipe: await DataLoader.pCacheAndGetAllBrew("recipe"),
 			};
 		}
-	},
+	};
 
-	recipeFluff: class extends _DataUtilPropConfigSingleSource {
+	static recipeFluff = class extends _DataUtilPropConfigSingleSource {
 		static _PAGE = UrlUtil.PG_RECIPES;
 		static _FILENAME = "fluff-recipes.json";
-	},
+	};
 
-	vehicle: class extends _DataUtilPropConfigSingleSource {
+	static vehicle = class extends _DataUtilPropConfigSingleSource {
 		static _PAGE = UrlUtil.PG_VEHICLES;
 		static _FILENAME = "vehicles.json";
-	},
+	};
 
-	vehicleFluff: class extends _DataUtilPropConfigSingleSource {
+	static vehicleFluff = class extends _DataUtilPropConfigSingleSource {
 		static _PAGE = UrlUtil.PG_VEHICLES;
 		static _FILENAME = "fluff-vehicles.json";
-	},
+	};
 
-	optionalfeature: class extends _DataUtilPropConfigSingleSource {
+	static optionalfeature = class extends _DataUtilPropConfigSingleSource {
 		static _PAGE = UrlUtil.PG_OPT_FEATURES;
 		static _FILENAME = "optionalfeatures.json";
-	},
+	};
 
-	optionalfeatureFluff: class extends _DataUtilPropConfigSingleSource {
+	static optionalfeatureFluff = class extends _DataUtilPropConfigSingleSource {
 		static _PAGE = UrlUtil.PG_OPT_FEATURES;
 		static _FILENAME = "fluff-optionalfeatures.json";
-	},
+	};
 
-	class: class clazz extends _DataUtilPropConfigCustom {
+	static class = class clazz extends _DataUtilPropConfigCustom {
 		static _PAGE = UrlUtil.PG_CLASSES;
 
 		static _pLoadJson = null;
@@ -6651,21 +6944,24 @@ globalThis.DataUtil = {
 			return DataUtil.class._CACHE_SUBCLASS_LOOKUP;
 		}
 		// endregion
-	},
+	};
 
-	classFeature: class extends _DataUtilPropConfigMultiSource {
+	static classFeature = class extends _DataUtilPropConfigMultiSource {
 		static _PAGE = "classFeature";
 		static _DIR = "class";
 		static _PROP = "classFeature";
-	},
 
-	classFluff: class extends _DataUtilPropConfigMultiSource {
+		static unpackUid (uid, opts) { return DataUtil.class.unpackUidClassFeature(uid, opts); }
+		static getUid (ent, opts) { return DataUtil.class.packUidClassFeature(ent, opts); }
+	};
+
+	static classFluff = class extends _DataUtilPropConfigMultiSource {
 		static _PAGE = UrlUtil.PG_CLASSES;
 		static _DIR = "class";
 		static _PROP = "classFluff";
-	},
+	};
 
-	subclass: class extends _DataUtilPropConfigCustom {
+	static subclass = class extends _DataUtilPropConfigCustom {
 		static _PAGE = "subclass";
 		static _PROP = "subclassFluff";
 
@@ -6682,21 +6978,24 @@ globalThis.DataUtil = {
 			// <shortName>|<className>|<classSource>|<source>
 			return DataUtil.class.packUidSubclass(ent, {isMaintainCase, displayName});
 		}
-	},
+	};
 
-	subclassFeature: class extends _DataUtilPropConfigMultiSource {
+	static subclassFeature = class extends _DataUtilPropConfigMultiSource {
 		static _PAGE = "subclassFeature";
 		static _DIR = "class";
 		static _PROP = "subclassFeature";
-	},
 
-	subclassFluff: class extends _DataUtilPropConfigMultiSource {
+		static unpackUid (uid, opts) { return DataUtil.class.unpackUidSubclassFeature(uid, opts); }
+		static getUid (ent, opts) { return DataUtil.class.packUidSubclassFeature(ent, opts); }
+	};
+
+	static subclassFluff = class extends _DataUtilPropConfigMultiSource {
 		static _PAGE = "subclassFluff";
 		static _DIR = "class";
 		static _PROP = "subclassFluff";
-	},
+	};
 
-	deity: class extends _DataUtilPropConfigSingleSource {
+	static deity = class extends _DataUtilPropConfigSingleSource {
 		static _PAGE = UrlUtil.PG_DEITIES;
 		static _FILENAME = "deities.json";
 
@@ -6782,9 +7081,9 @@ globalThis.DataUtil = {
 			if (isMaintainCase) return out;
 			return out.toLowerCase();
 		}
-	},
+	};
 
-	table: class extends _DataUtilPropConfigCustom {
+	static table = class extends _DataUtilPropConfigCustom {
 		static async loadJSON () {
 			const datas = await Promise.all([
 				`${Renderer.get().baseUrl}data/generated/gendata-tables.json`,
@@ -6801,18 +7100,18 @@ globalThis.DataUtil = {
 
 			return combined;
 		}
-	},
+	};
 
-	legendaryGroup: class extends _DataUtilPropConfigSingleSource {
+	static legendaryGroup = class extends _DataUtilPropConfigSingleSource {
 		static _PAGE = UrlUtil.PG_BESTIARY;
 		static _FILENAME = "bestiary/legendarygroups.json";
 
 		static async pLoadAll () {
 			return (await this.loadJSON()).legendaryGroup;
 		}
-	},
+	};
 
-	variantrule: class extends _DataUtilPropConfigSingleSource {
+	static variantrule = class extends _DataUtilPropConfigSingleSource {
 		static _PAGE = UrlUtil.PG_VARIANTRULES;
 		static _FILENAME = "variantrules.json";
 
@@ -6822,9 +7121,9 @@ globalThis.DataUtil = {
 
 			return {variantrule: [...rawData.variantrule, ...rawDataGenerated.variantrule]};
 		}
-	},
+	};
 
-	deck: class extends _DataUtilPropConfigCustom {
+	static deck = class extends _DataUtilPropConfigCustom {
 		static _PAGE = UrlUtil.PG_DECKS;
 
 		static _pLoadJson = null;
@@ -6875,54 +7174,54 @@ globalThis.DataUtil = {
 				displayText,
 			};
 		}
-	},
+	};
 
-	reward: class extends _DataUtilPropConfigSingleSource {
+	static reward = class extends _DataUtilPropConfigSingleSource {
 		static _PAGE = UrlUtil.PG_REWARDS;
 		static _FILENAME = "rewards.json";
-	},
+	};
 
-	rewardFluff: class extends _DataUtilPropConfigSingleSource {
+	static rewardFluff = class extends _DataUtilPropConfigSingleSource {
 		static _PAGE = UrlUtil.PG_REWARDS;
 		static _FILENAME = "fluff-rewards.json";
-	},
+	};
 
-	trap: class extends _DataUtilPropConfigSingleSource {
+	static trap = class extends _DataUtilPropConfigSingleSource {
 		static _PAGE = UrlUtil.PG_TRAPS_HAZARDS;
 		static _FILENAME = "trapshazards.json";
-	},
+	};
 
-	trapFluff: class extends _DataUtilPropConfigSingleSource {
+	static trapFluff = class extends _DataUtilPropConfigSingleSource {
 		static _PAGE = UrlUtil.PG_TRAPS_HAZARDS;
 		static _FILENAME = "fluff-trapshazards.json";
-	},
+	};
 
-	hazard: class extends _DataUtilPropConfigSingleSource {
+	static hazard = class extends _DataUtilPropConfigSingleSource {
 		static _PAGE = UrlUtil.PG_TRAPS_HAZARDS;
 		static _FILENAME = "trapshazards.json";
-	},
+	};
 
-	hazardFluff: class extends _DataUtilPropConfigSingleSource {
+	static hazardFluff = class extends _DataUtilPropConfigSingleSource {
 		static _PAGE = UrlUtil.PG_TRAPS_HAZARDS;
 		static _FILENAME = "fluff-trapshazards.json";
-	},
+	};
 
-	action: class extends _DataUtilPropConfigSingleSource {
+	static action = class extends _DataUtilPropConfigSingleSource {
 		static _PAGE = UrlUtil.PG_ACTIONS;
 		static _FILENAME = "actions.json";
-	},
+	};
 
-	facility: class extends _DataUtilPropConfigSingleSource {
+	static facility = class extends _DataUtilPropConfigSingleSource {
 		static _PAGE = UrlUtil.PG_BASTIONS;
 		static _FILENAME = "bastions.json";
-	},
+	};
 
-	facilityFluff: class extends _DataUtilPropConfigSingleSource {
+	static facilityFluff = class extends _DataUtilPropConfigSingleSource {
 		static _PAGE = UrlUtil.PG_BASTIONS;
 		static _FILENAME = "fluff-bastions.json";
-	},
+	};
 
-	quickreference: {
+	static quickreference = {
 		/**
 		 * @param uid
 		 * @param [opts]
@@ -6942,10 +7241,10 @@ globalThis.DataUtil = {
 				displayText,
 			};
 		},
-	},
+	};
 
-	brew: new _DataUtilBrewHelper({defaultUrlRoot: VeCt.URL_ROOT_BREW}),
-	prerelease: new _DataUtilBrewHelper({defaultUrlRoot: VeCt.URL_ROOT_PRERELEASE}),
+	static brew = new _DataUtilBrewHelper({defaultUrlRoot: VeCt.URL_ROOT_BREW});
+	static prerelease = new _DataUtilBrewHelper({defaultUrlRoot: VeCt.URL_ROOT_PRERELEASE});
 };
 
 // ROLLING =============================================================================================================
@@ -6999,7 +7298,7 @@ globalThis.RollerUtil = {
 	 * Result in range: 0 to (max-1); inclusive
 	 * e.g. roll(20) gives results ranging from 0 to 19
 	 * @param max range max (exclusive)
-	 * @param fn funciton to call to generate random numbers
+	 * @param fn function to call to generate random numbers
 	 * @returns {number} rolled
 	 */
 	roll (max, fn = Math.random) {
@@ -8514,7 +8813,7 @@ globalThis.VeLock = function ({name = null, isDbg = false} = {}) {
 		lockMeta.unlock();
 	};
 };
-ExcludeUtil._lock = new VeLock();
+ExcludeUtil._lock = new VeLock({name: "blocklist"});
 
 // DATETIME ============================================================================================================
 globalThis.DatetimeUtil = {
@@ -8621,7 +8920,7 @@ globalThis.BrowserUtil = class {
 };
 
 // MISC WEBPAGE ONLOADS ================================================================================================
-if (!IS_VTT && typeof window !== "undefined") {
+if (!globalThis.IS_VTT && typeof window !== "undefined") {
 	window.addEventListener("load", () => {
 		const docRoot = document.querySelector(":root");
 

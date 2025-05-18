@@ -2,6 +2,8 @@ import {VetoolsConfig} from "./utils-config/utils-config-config.js";
 import {RenderClassesSidebar} from "./render-class.js";
 import {SITE_STYLE__CLASSIC} from "./consts.js";
 
+import {OmnisearchUtilsUi} from "./omnisearch/omnisearch-utils-ui.js";
+
 class UtilClassesPage {
 	static getColorStyleClasses (entry, {isForceStandardSource, prefix, isSubclass} = {}) {
 		if (isSubclass) {
@@ -36,7 +38,7 @@ class UtilClassesPage {
 	/* -------------------------------------------- */
 
 	static setRenderFnGetStyleClasses (cls) {
-		// Add extra classses to our features as we render them
+		// Add extra classes to our features as we render them
 		Renderer.get()
 			.setFnGetStyleClasses(UrlUtil.PG_CLASSES, (entry) => {
 				if (typeof entry === "string") return null;
@@ -327,6 +329,28 @@ class ClassesPage extends MixinComponentGlobalState(MixinBaseComponent(MixinProx
 
 	async pOnLoad () {
 		Hist.setListPage(this);
+		Hist.registerPreLocationReloadSubhashSourceProvider(([hash, ...subs]) => {
+			if (!subs.length) return [];
+
+			return subs
+				.flatMap(sub => {
+					const unpacked = UrlUtil.unpackSubHash(sub);
+					if (!unpacked.state) return null;
+
+					return unpacked.state
+						.map(pt => {
+							let [k] = pt.split("=");
+							k = k.toLowerCase();
+
+							// subclass selection state keys
+							if (!k.startsWith("sub")) return null;
+
+							const unpacked = UrlUtil.unpackStateKeySubclass(k);
+							return unpacked.source;
+						});
+				})
+				.filter(Boolean);
+		});
 
 		this._$pgContent = $(`#pagecontent`);
 
@@ -335,7 +359,7 @@ class ClassesPage extends MixinComponentGlobalState(MixinBaseComponent(MixinProx
 			BrewUtil2.pInit(),
 		]);
 		await ExcludeUtil.pInitialise();
-		Omnisearch.addScrollTopFloat();
+		OmnisearchUtilsUi.addScrollTopFloat();
 		const data = await DataUtil.class.loadJSON();
 
 		const $btnReset = $("#reset");
@@ -379,7 +403,7 @@ class ClassesPage extends MixinComponentGlobalState(MixinBaseComponent(MixinProx
 
 		// Silently prepare our initial state
 		await this._pSetClassFromHash(Hist.initialLoad);
-		this._setStateFromHash(Hist.initialLoad);
+		await this._pSetStateFromHash(Hist.initialLoad);
 
 		await this._pInitAndRunRender();
 
@@ -546,7 +570,7 @@ class ClassesPage extends MixinComponentGlobalState(MixinBaseComponent(MixinProx
 		if (Hist.isHistorySuppressed) return Hist.setSuppressHistory(false);
 
 		await this._pSetClassFromHash();
-		this._setStateFromHash();
+		await this._pSetStateFromHash();
 	}
 
 	async _pSetClassFromHash (isInitialLoad) {
@@ -588,7 +612,7 @@ class ClassesPage extends MixinComponentGlobalState(MixinBaseComponent(MixinProx
 		}
 	}
 
-	_setStateFromHash (isInitialLoad) {
+	async _pSetStateFromHash (isInitialLoad) {
 		let [, ...subs] = Hist.getHashParts();
 		subs = this.filterBox.setFromSubHashes(subs);
 
@@ -604,6 +628,8 @@ class ClassesPage extends MixinComponentGlobalState(MixinBaseComponent(MixinProx
 		const validScLookup = {};
 		cls.subclasses.forEach(sc => validScLookup[UrlUtil.getStateKeySubclass(sc)] = sc);
 
+		const scUnknownHashSources = {};
+
 		// Track any incoming sources we need to filter to enable in order to display the desired subclasses
 		const requiredSources = new Set();
 
@@ -615,21 +641,60 @@ class ClassesPage extends MixinComponentGlobalState(MixinBaseComponent(MixinProx
 				let [k, v] = it.split("=");
 				k = k.toLowerCase();
 				v = UrlUtil.mini.decompress(v);
+
 				if (k.startsWith("sub")) { // subclass selection state keys
 					if (validScLookup[k]) {
 						if (target[k] !== v) target[k] = v;
 						requiredSources.add(validScLookup[k].source);
 						seenKeys.add(k);
+						return;
 					}
-				} else { // known classes page state keys
-					const knownKey = Object.keys(ClassesPage._DEFAULT_STATE).find(it => it.toLowerCase() === k);
-					if (knownKey) {
-						if (target[knownKey] !== v) target[knownKey] = v;
-						seenKeys.add(knownKey);
-					}
-				} // else discard it
+
+					const unpacked = UrlUtil.unpackStateKeySubclass(k);
+					if (!unpacked.shortName || !unpacked.source) return;
+
+					if (Parser.hasSourceJson(unpacked.source)) return;
+
+					(scUnknownHashSources[unpacked.source] ||= {})[unpacked.shortName] = true;
+				}
+
+				// known classes page state keys
+				const knownKey = Object.keys(ClassesPage._DEFAULT_STATE).find(it => it.toLowerCase() === k);
+				if (!knownKey) return;
+
+				if (target[knownKey] !== v) target[knownKey] = v;
+				seenKeys.add(knownKey);
 			});
 		});
+
+		// Batch-load missing subclass sources
+		if (Object.keys(scUnknownHashSources).length) {
+			let isAnyReload = false;
+			let isAnyLoad = false;
+
+			for (const [source, shortNameTo] of Object.entries(scUnknownHashSources)) {
+				if (this._pHandleUnknownHash_isRequireReload({source})) {
+					isAnyReload = true;
+					continue;
+				}
+
+				for (const shortName of Object.keys(shortNameTo)) {
+					const fauxSc = {shortName, source, classSource: cls.source, className: cls.name};
+
+					const loaded = await DataLoader.pCacheAndGet("subclass", source, UrlUtil.URL_TO_HASH_BUILDER["subclass"](fauxSc), {isSilent: true});
+					if (!loaded) {
+						continue;
+					}
+
+					isAnyLoad = true;
+				}
+			}
+
+			if (isAnyReload || isAnyLoad) {
+				if (PrereleaseUtil.isReloadRequired()) PrereleaseUtil.doLocationReload();
+				if (BrewUtil2.isReloadRequired()) BrewUtil2.doLocationReload();
+			}
+		}
 
 		Object.entries(ClassesPage._DEFAULT_STATE).forEach(([k, v]) => {
 			// If we did not have a value for it, and the current state doesn't match the default, reset it
@@ -865,7 +930,7 @@ class ClassesPage extends MixinComponentGlobalState(MixinBaseComponent(MixinProx
 		//   re-render.
 		if (isFilterValueChange) {
 			this._doGenerateFilteredActiveClassData();
-			this._pDoSyncrinizedRender();
+			this._pDoSynchronisedRender();
 			return;
 		}
 
@@ -894,14 +959,14 @@ class ClassesPage extends MixinComponentGlobalState(MixinBaseComponent(MixinProx
 		// Use hookAll to allow us to reset temp hooks on the property itself
 		this._addHookAll("classId", async () => {
 			this._doGenerateFilteredActiveClassData();
-			await this._pDoSyncrinizedRender();
+			await this._pDoSynchronisedRender();
 		});
 
 		this._doGenerateFilteredActiveClassData();
 		await this._pDoRender();
 	}
 
-	async _pDoSyncrinizedRender () {
+	async _pDoSynchronisedRender () {
 		await this._pLock("render");
 		try {
 			await this._pDoRender();
@@ -1781,7 +1846,7 @@ class ClassesPage extends MixinComponentGlobalState(MixinBaseComponent(MixinProx
 					});
 				});
 
-				// If there are out-of-sync subclass features (e.g. Stryxhaven subclasses), add a "fake" feature to compensate
+				// If there are out-of-sync subclass features (e.g. Strixhaven subclasses), add a "fake" feature to compensate
 				if (!ptrHasHandledSubclassFeatures._ && this.constructor._hasSubclassFeaturesAtLevel(this.activeClassRaw, ixLvl + 1)) {
 					this._render_renderOutline_renderFeature({
 						ixLvl,
@@ -2083,7 +2148,7 @@ class ClassesPage extends MixinComponentGlobalState(MixinBaseComponent(MixinProx
 				});
 			});
 
-			// If there are out-of-sync subclass features (e.g. Stryxhaven subclasses), add a "fake" feature to compensate
+			// If there are out-of-sync subclass features (e.g. Strixhaven subclasses), add a "fake" feature to compensate
 			if (!ptrHasHandledSubclassFeatures._ && this.constructor._hasSubclassFeaturesAtLevel(cls, ixLvl + 1)) {
 				this.constructor._hasSubclassFeaturesAtLevel(cls, ixLvl + 1);
 				await this._render_renderClassContent_pRenderFeature({

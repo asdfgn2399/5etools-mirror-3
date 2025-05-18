@@ -37,6 +37,8 @@ import {
 	PanelContentManagerFactory,
 } from "./dmscreen/dmscreen-panels.js";
 
+import {OmnisearchBacking} from "./omnisearch/omnisearch-backing.js";
+
 const UP = "UP";
 const RIGHT = "RIGHT";
 const LEFT = "LEFT";
@@ -1621,7 +1623,7 @@ class Panel {
 		this.set$ContentTab(
 			PANEL_TYP_TUBE,
 			meta,
-			$(`<div class="panel-content-wrapper-inner"><iframe src="${url}?autoplay=1&enablejsapi=1&modestbranding=1&iv_load_policy=3" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen/></div>`),
+			$(`<div class="panel-content-wrapper-inner"><iframe src="${url}?autoplay=1&enablejsapi=1&modestbranding=1&iv_load_policy=3" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen ${ElementUtil.getIframeSandboxAttribute()}></iframe></div>`),
 			title,
 			true,
 		);
@@ -1632,7 +1634,7 @@ class Panel {
 		this.set$ContentTab(
 			PANEL_TYP_TWITCH,
 			meta,
-			$(`<div class="panel-content-wrapper-inner"><iframe src="${url}" frameborder="0"  scrolling="no" allowfullscreen/></div>`),
+			$(`<div class="panel-content-wrapper-inner"><iframe src="${url}&parent=${location.hostname}" frameborder="0" allowfullscreen scrolling="no" ${ElementUtil.getIframeSandboxAttribute()}></iframe></div>`),
 			title,
 			true,
 		);
@@ -1644,7 +1646,7 @@ class Panel {
 		this.set$ContentTab(
 			PANEL_TYP_TWITCH_CHAT,
 			meta,
-			$(`<div class="panel-content-wrapper-inner"><iframe src="${url}?parent=${location.hostname}" frameborder="0" scrolling="no" id="${channelId}"></iframe></div>`),
+			$(`<div class="panel-content-wrapper-inner"><iframe src="${url}?parent=${location.hostname}" frameborder="0" scrolling="no" id="${channelId}" ${ElementUtil.getIframeSandboxAttribute()}></iframe></div>`),
 			title,
 			true,
 		);
@@ -1655,7 +1657,7 @@ class Panel {
 		this.set$ContentTab(
 			PANEL_TYP_GENERIC_EMBED,
 			meta,
-			$(`<div class="panel-content-wrapper-inner"><iframe src="${url}"></iframe></div>`),
+			$(`<div class="panel-content-wrapper-inner"><iframe src="${url}" ${ElementUtil.getIframeSandboxAttribute({url, isAllowPdf: true})}></iframe></div>`),
 			title,
 			true,
 		);
@@ -3551,7 +3553,7 @@ class AddMenuSearchTab extends AddMenuTab {
 			let results = index.search(srch, searchOptions);
 
 			if (this.subType === "content") {
-				results = await Omnisearch.pGetFilteredResults(results);
+				results = await OmnisearchBacking.pGetFilteredResults(results);
 			}
 
 			const resultCount = results.length ? results.length : index.documentStore.length;

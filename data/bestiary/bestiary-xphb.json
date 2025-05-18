@@ -39,6 +39,9 @@
 				"darkvision 60 ft."
 			],
 			"passive": 10,
+			"immune": [
+				"psychic"
+			],
 			"languages": [
 				"Deep Speech",
 				"understands the languages you know"
@@ -103,6 +106,9 @@
 			"miscTags": [
 				"MA",
 				"RA"
+			],
+			"savingThrowForced": [
+				"wisdom"
 			],
 			"hasToken": true,
 			"hasFluffImages": true,
@@ -289,7 +295,7 @@
 				{
 					"name": "Slam",
 					"entries": [
-						"{@atkr m} {@hitYourSpellAttack Bonus equals your spell attack modifier}, reach 5 ft. {@h}Force damage equal to {@damage 1d4 + 3} + your spellcasting ability modifier (Medium or smaller), {@damage 2d6 + 3} + your spellcasting ability modifier (Large), or {@damage 2d12 + 3} + your spellcasting ability modifier (Huge)."
+						"{@atkr m} {@hitYourSpellAttack Bonus equals your spell attack modifier}, reach 5 ft. {@h}Force damage equal to {@damage (summonSpellLevel - 4)d4 + 3|1d4 + 3}, {@damage (summonSpellLevel - 3)d6 + 3|2d6 + 3} + your spellcasting ability modifier (Large), or {@damage (summonSpellLevel - 3)d12 + 3|2d12 + 3} + your spellcasting ability modifier (Huge)."
 					]
 				}
 			],
@@ -312,7 +318,7 @@
 						{
 							"name": "Slam",
 							"entries": [
-								"{@atkr m} {@hitYourSpellAttack Bonus equals your spell attack modifier}, reach 5 ft. {@h}Force damage equal to {@damage 2d12 + 3} + your spellcasting ability modifier."
+								"{@atkr m} {@hitYourSpellAttack Bonus equals your spell attack modifier}, reach 5 ft. {@h}Force damage equal to {@damage (summonSpellLevel - 3)d12 + 3|2d12 + 3} + your spellcasting ability modifier."
 							]
 						}
 					]
@@ -327,7 +333,7 @@
 						{
 							"name": "Slam",
 							"entries": [
-								"{@atkr m} {@hitYourSpellAttack Bonus equals your spell attack modifier}, reach 5 ft. {@h}Force damage equal to {@damage 2d6 + 3} + your spellcasting ability modifier."
+								"{@atkr m} {@hitYourSpellAttack Bonus equals your spell attack modifier}, reach 5 ft. {@h}Force damage equal to {@damage (summonSpellLevel - 3)d6 + 3|2d6 + 3} + your spellcasting ability modifier."
 							]
 						}
 					]
@@ -342,7 +348,7 @@
 						{
 							"name": "Slam",
 							"entries": [
-								"{@atkr m} {@hitYourSpellAttack Bonus equals your spell attack modifier}, reach 5 ft. {@h}Force damage equal to {@damage 1d4 + 3} + your spellcasting ability modifier."
+								"{@atkr m} {@hitYourSpellAttack Bonus equals your spell attack modifier}, reach 5 ft. {@h}Force damage equal to {@damage (summonSpellLevel - 4)d4 + 3|1d4 + 3} + your spellcasting ability modifier."
 							]
 						}
 					]
@@ -991,6 +997,9 @@
 			"miscTags": [
 				"MA"
 			],
+			"savingThrowForced": [
+				"wisdom"
+			],
 			"hasToken": true,
 			"hasFluffImages": true,
 			"_versions": [
@@ -1149,6 +1158,9 @@
 			],
 			"miscTags": [
 				"MA"
+			],
+			"savingThrowForced": [
+				"dexterity"
 			],
 			"hasToken": true,
 			"hasFluffImages": true
@@ -1539,6 +1551,9 @@
 			"conditionInflict": [
 				"charmed"
 			],
+			"savingThrowForced": [
+				"wisdom"
+			],
 			"hasToken": true,
 			"hasFluffImages": true,
 			"_versions": [
@@ -1653,7 +1668,7 @@
 				{
 					"name": "Magic Resistance",
 					"entries": [
-						"The spirit has Advantage on saving throws against spells and other magical eff ects."
+						"The spirit has Advantage on saving throws against spells and other magical effects."
 					]
 				}
 			],
@@ -1699,6 +1714,9 @@
 			"miscTags": [
 				"MA",
 				"RA"
+			],
+			"savingThrowForced": [
+				"dexterity"
 			],
 			"hasToken": true,
 			"hasFluffImages": true,
@@ -1850,6 +1868,7 @@
 			"name": "Giant Insect",
 			"source": "XPHB",
 			"page": 279,
+			"srd52": true,
 			"summonedBySpell": "Giant Insect|XPHB",
 			"summonedBySpellLevel": 4,
 			"size": [
@@ -1942,6 +1961,9 @@
 			],
 			"conditionInflict": [
 				"poisoned"
+			],
+			"savingThrowForced": [
+				"constitution"
 			],
 			"hasToken": true,
 			"hasFluffImages": true,
@@ -2098,8 +2120,119 @@
 			"conditionInflict": [
 				"frightened"
 			],
+			"savingThrowForced": [
+				"wisdom"
+			],
 			"hasToken": true,
-			"hasFluffImages": true
+			"hasFluffImages": true,
+			"_versions": [
+				{
+					"name": "Otherworldly Steed (Celestial)",
+					"source": "XPHB",
+					"_mod": {
+						"bonus": [
+							{
+								"mode": "removeArr",
+								"names": [
+									"Fell Glare (Fiend Only; Recharges after a Long Rest)",
+									"Fey Step (Fey Only; Recharges after a Long Rest)"
+								]
+							},
+							{
+								"mode": "renameArr",
+								"renames": {
+									"rename": "Healing Touch (Celestial Only; Recharges after a Long Rest)",
+									"with": "Healing Touch (Recharges after a Long Rest)"
+								}
+							}
+						]
+					},
+					"type": "celestial",
+					"action": [
+						{
+							"name": "Otherworldly Slam",
+							"entries": [
+								"{@atkr m} {@hitYourSpellAttack Bonus equals your spell attack modifier}, reach 5 ft. {@h}{@damage 1d8 + summonSpellLevel} Radiant damage."
+							]
+						}
+					],
+					"damageTags": [
+						"R"
+					],
+					"conditionInflict": null,
+					"savingThrowForced": null
+				},
+				{
+					"name": "Otherworldly Steed (Fey)",
+					"source": "XPHB",
+					"_mod": {
+						"bonus": [
+							{
+								"mode": "removeArr",
+								"names": [
+									"Fell Glare (Fiend Only; Recharges after a Long Rest)",
+									"Healing Touch (Celestial Only; Recharges after a Long Rest)"
+								]
+							},
+							{
+								"mode": "renameArr",
+								"renames": {
+									"rename": "Fey Step (Fey Only; Recharges after a Long Rest)",
+									"with": "Fey Step (Recharges after a Long Rest)"
+								}
+							}
+						]
+					},
+					"type": "fey",
+					"action": [
+						{
+							"name": "Otherworldly Slam",
+							"entries": [
+								"{@atkr m} {@hitYourSpellAttack Bonus equals your spell attack modifier}, reach 5 ft. {@h}{@damage 1d8 + summonSpellLevel} Psychic damage."
+							]
+						}
+					],
+					"damageTags": [
+						"Y"
+					],
+					"conditionInflict": null,
+					"savingThrowForced": null
+				},
+				{
+					"name": "Otherworldly Steed (Fiend)",
+					"source": "XPHB",
+					"_mod": {
+						"bonus": [
+							{
+								"mode": "removeArr",
+								"names": [
+									"Fey Step (Fey Only; Recharges after a Long Rest)",
+									"Healing Touch (Celestial Only; Recharges after a Long Rest)"
+								]
+							},
+							{
+								"mode": "renameArr",
+								"renames": {
+									"rename": "Fell Glare (Fiend Only; Recharges after a Long Rest)",
+									"with": "Fell Glare (Recharges after a Long Rest)"
+								}
+							}
+						]
+					},
+					"type": "fiend",
+					"action": [
+						{
+							"name": "Otherworldly Slam",
+							"entries": [
+								"{@atkr m} {@hitYourSpellAttack Bonus equals your spell attack modifier}, reach 5 ft. {@h}{@damage 1d8 + summonSpellLevel} Necrotic damage."
+							]
+						}
+					],
+					"damageTags": [
+						"N"
+					]
+				}
+			]
 		},
 		{
 			"name": "Undead Spirit",
@@ -2216,6 +2349,9 @@
 				"frightened",
 				"paralyzed",
 				"poisoned"
+			],
+			"savingThrowForced": [
+				"constitution"
 			],
 			"hasToken": true,
 			"hasFluffImages": true,
