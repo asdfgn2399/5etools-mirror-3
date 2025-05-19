@@ -1193,7 +1193,7 @@ NavBar.InteractionManager = class {
 			// let printWindow = window.open();
 			// printWindow.document.write('<html><meta charset="utf-8"/><title>Test</title><div>' + JSON.stringify(jsons) + '</div>');
 		} else {
-			var {jsons, errors} = await DataUtil.pUserUpload({expectedFileTypes: ["5etools"]});
+			var {jsons, errors} = await InputUiUtil.pGetUserUploadJson({expectedFileTypes: ["5etools"]});
 			DataUtil.doHandleFileLoadErrorsGeneric(errors);
 		}
 
