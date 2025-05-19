@@ -167,6 +167,8 @@ class NavBar {
 		this._addElement_li(NavBar._CAT_PLAYER, "optionalfeatures.html", "Other Options & Features");
 		this._addElement_divider(NavBar._CAT_PLAYER);
 		this._addElement_li(NavBar._CAT_PLAYER, "statgen.html", "Stat Generator");
+		this._addElement_li(NavBar._CAT_PLAYER, "characterbuilder.html", "Character Builder");
+		this._addElement_li(NavBar._CAT_PLAYER, "characterviewer.html", "Character Viewer");
 		this._addElement_divider(NavBar._CAT_PLAYER);
 		this._addElement_li(NavBar._CAT_PLAYER, "lifegen.html", "This Is Your Life");
 		this._addElement_li(NavBar._CAT_PLAYER, "names.html", "Names");

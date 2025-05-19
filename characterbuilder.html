@@ -16,6 +16,7 @@
 	<link rel="stylesheet" href="css/bootstrap.css">
 	<link rel="stylesheet" href="css/fontawesome.css">
 	<link rel="stylesheet" href="css/main.css">
+	<link rel="stylesheet" href="css/characterbuilder.css">
 
 	<!-- Favicons -->
 	<link rel="icon" type="image/svg+xml" href="favicon.svg">
@@ -85,7 +86,7 @@
       <h1>Character Builder</h1>
       <p>Coming soon!</p>
 
-      <h2>Character Prefrenences</h2>
+      <h2>Character Preferences</h2>
       <p>TBD</p>
 
       <h2>Choose a Class</h2>
@@ -102,19 +103,102 @@
       </div>
 
       <h2>Choose Origin: Background</h2>
-      <p>TBD</p>
+      <select id="backgroundDropdown">
+        <option value="">Select a Background</option>
+      </select><br>
+			<br>
+			<p>Choose an alignment</p>
+			<select id="alignmentDropdown">
+				<option value="">Select an alignment</option>
+				<option value="CE">Chaotic Evil</option>
+				<option value="CG">Chaotic Good</option>
+				<option value="CN">Chaotic Neutral</option>
+				<option value="LE">Lawful Evil</option>
+				<option value="LG">Lawful Good</option>
+				<option value="LN">Lawful Neutral</option>
+				<option value="N">Neutral</option>
+				<option value="NE">Neutral Evil</option>
+				<option value="NG">Neutral Good</option>
+			</select>
 
       <h2>Choose Origin: Species</h2>
-      <p>TBD</p>
+      <select id="speciesDropdown">
+        <option value="">Select a Species</option>
+      </select>
+
+			<div id="speciesDetails"></div>
+
+			<h2>Choose Origin: Languages</h2>
+      <select id="languagesDropdown0">
+        <option value="">Select a Language</option>
+      </select><br>
+			<br>
+			<select id="languagesDropdown1">
+        <option value="">Select a Language</option>
+      </select>
 
       <h2>Ability Scores</h2>
-      <p>TBD</p>
+      <div>
+        <label for="abilityScoreMethod">Choose Ability Score Generation Method:</label>
+        <select id="abilityScoreMethod">
+          <option value="pointBuy">Point Buy</option>
+          <option value="standardArray">Standard Array</option>
+          <option value="rolledArray">Rolled Array</option>
+          <option value="custom">Custom</option>
+        </select>
+      </div>
+      <div id="pointBuySection" class="hidden">
+        <p>Points Remaining: <span id="pointsRemaining">27</span></p>
+      </div>
+      <div id="abilityScoresContainer" class="ability-scores">
+        <div class="ability-score">
+          <label for="strength">Strength</label>
+          <input type="number" id="chosen-strength" class="stat-input chosen-input" name="chosen-strength" min="1" max="20" value="10">
+          <span id="chosen-strength-modifier" class="modifier">+0</span>
+          <input type="number" id="base-strength" class="stat-input locked-input" name="strength" min="1" max="20" value="10" disabled>
+          <span id="base-strength-modifier" class="modifier">+0</span>
+        </div>
+        <div class="ability-score">
+          <label for="dexterity">Dexterity</label>
+          <input type="number" id="chosen-dexterity" class="stat-input chosen-input" name="chosen-dexterity" min="1" max="20" value="10">
+          <span id="chosen-dexterity-modifier" class="modifier">+0</span>
+          <input type="number" id="base-dexterity" class="stat-input locked-input" name="dexterity" min="1" max="20" value="10" disabled>
+          <span id="base-dexterity-modifier" class="modifier">+0</span>
+        </div>
+        <div class="ability-score">
+          <label for="constitution">Constitution</label>
+          <input type="number" id="chosen-constitution" class="stat-input chosen-input" name="chosen-constitution" min="1" max="20" value="10">
+          <span id="chosen-constitution-modifier" class="modifier">+0</span>
+          <input type="number" id="base-constitution" class="stat-input locked-input" name="constitution" min="1" max="20" value="10" disabled>
+          <span id="base-constitution-modifier" class="modifier">+0</span>
+        </div>
+        <div class="ability-score">
+          <label for="intelligence">Intelligence</label>
+          <input type="number" id="chosen-intelligence" class="stat-input chosen-input" name="chosen-intelligence" min="1" max="20" value="10">
+          <span id="chosen-intelligence-modifier" class="modifier">+0</span>
+          <input type="number" id="base-intelligence" class="stat-input locked-input" name="intelligence" min="1" max="20" value="10" disabled>
+          <span id="base-intelligence-modifier" class="modifier">+0</span>
+        </div>
+        <div class="ability-score">
+          <label for="wisdom">Wisdom</label>
+          <input type="number" id="chosen-wisdom" class="stat-input chosen-input" name="chosen-wisdom" min="1" max="20" value="10">
+          <span id="chosen-wisdom-modifier" class="modifier">+0</span>
+          <input type="number" id="base-wisdom" class="stat-input locked-input" name="wisdom" min="1" max="20" value="10" disabled>
+          <span id="base-wisdom-modifier" class="modifier">+0</span>
+        </div>
+        <div class="ability-score">
+          <label for="charisma">Charisma</label>
+          <input type="number" id="chosen-charisma" class="stat-input chosen-input" name="chosen-charisma" min="1" max="20" value="10">
+          <span id="chosen-charisma-modifier" class="modifier">+0</span>
+          <input type="number" id="base-charisma" class="stat-input locked-input" name="charisma" min="1" max="20" value="10" disabled>
+          <span id="base-charisma-modifier" class="modifier">+0</span>
+        </div>
+      </div>
 
       <h2>Choose Equipment</h2>
-      <p>TBD</p>
+      <p>TBA</p>
 
-      <h2>View Character Sheet</h2>
-      <p>TBD</p>
+      <button id="viewCharacterSheetButton" class="fancy-button">View Character Sheet</button>
   </div>
 </main>
 
@@ -139,3 +223,4 @@
 
 </body>
 </html>
+``` 

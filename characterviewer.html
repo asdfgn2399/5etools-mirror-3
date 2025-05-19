@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<!--5ETOOLS_CMP-->
+	<!--5ETOOLS_ANALYTICS-->
+	<!--5ETOOLS_ADCODE-->
+	<meta charset="utf-8">
+	<meta name="description" content="A suite of tools for 5th Edition Dungeons &amp; Dragons players and Dungeon Masters.">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+	<meta name="mobile-web-app-capable" content="yes">
+
+	<title>5etools</title>
+
+	<link rel="stylesheet" href="css/bootstrap.css">
+	<link rel="stylesheet" href="css/fontawesome.css">
+	<link rel="stylesheet" href="css/main.css">
+	<link rel="stylesheet" href="css/characterviewer.css">
+
+	<!-- Favicons -->
+	<link rel="icon" type="image/svg+xml" href="favicon.svg">
+	<link rel="icon" type="image/png" sizes="256x256" href="favicon-256x256.png">
+	<link rel="icon" type="image/png" sizes="144x144" href="favicon-144x144.png">
+	<link rel="icon" type="image/png" sizes="128x128" href="favicon-128x128.png">
+	<link rel="icon" type="image/png" sizes="64x64" href="favicon-64x64.png">
+	<link rel="icon" type="image/png" sizes="48x48" href="favicon-48x48.png">
+	<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+	<link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+
+	<!-- Chrome Web App Icons -->
+	<link rel="manifest" href="manifest.webmanifest">
+	<meta name="application-name" content="5etools">
+	<meta name="theme-color" content="#006bc4">
+
+	<!-- Windows Start Menu tiles -->
+	<meta name="msapplication-config" content="browserconfig.xml"/>
+	<meta name="msapplication-TileColor" content="#006bc4">
+
+	<!-- Apple Touch Icons -->
+	<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon-180x180.png">
+	<link rel="apple-touch-icon" sizes="360x360" href="apple-touch-icon-360x360.png">
+	<link rel="apple-touch-icon" sizes="167x167" href="apple-touch-icon-167x167.png">
+	<link rel="apple-touch-icon" sizes="152x152" href="apple-touch-icon-152x152.png">
+	<link rel="apple-touch-icon" sizes="120x120" href="apple-touch-icon-120x120.png">
+	<meta name="apple-mobile-web-app-title" content="5etools">
+
+	<!-- macOS Safari Pinned Tab and Touch Bar -->
+	<link rel="mask-icon" href="safari-pinned-tab.svg" color="#006bc4">
+
+	<!-- OpenSearch -->
+	<link rel="search" href="open-search.xml" title="Search 5etools" type="application/opensearchdescription+xml">
+
+	<script type="text/javascript" src="sw-injector.js"></script>
+
+	<script type="text/javascript" src="js/styleswitch.js"></script>
+	<script type="text/javascript" src="js/navigation.js"></script>
+	<script type="text/javascript" src="js/browsercheck.js"></script>
+</head>
+
+<body>
+
+<div class="overlay-noise no-print"></div>
+
+<header class="hidden-xs hidden-sm page__header">
+	<div class="container ve-flex-v-baseline">
+		<h1 class="page__title no-wrap my-0 page__title--home" id="page__title">5e<span>tools</span></h1>
+		<p class="page__subtitle no-wrap my-0" id="page__subtitle">A suite of tools for 5th Edition Dungeons &amp; Dragons players and Dungeon Masters.</p>
+	</div>
+</header>
+
+<nav class="container page__nav" id="navigation">
+	<ul class="nav nav-pills page__nav-inner" id="navbar"></ul>
+</nav>
+
+<main class="container page__content" id="maincontent">
+  <div class="row">
+    <div class="col-xs-12">
+      <div class="alert alert-warning">
+        <strong>Warning!</strong> This page is a work in progress! The content is incomplete and likely to contain errors.
+      </div>
+    </div>
+  </div>
+
+  <!--
+    Copyright (c) 2025 by Brandon Fulljames (https://codepen.io/evertras/pen/YVVeMd)
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy of this software
+    and associated documentation files (the "Software"), to deal in the Software without restriction,
+    including without limitation the rights to use, copy, modify, merge, publish, distribute,
+    sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is 
+    furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in all copies or
+    substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT 
+    NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+    NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+    DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+  -->
+
+  <form class="charsheet">
+    <header>
+      <section class="charname">
+        <label for="charname">Character Name</label><input name="charname" placeholder="Thoradin Fireforge" />
+      </section>
+      <section class="misc">
+        <ul>
+          <li>
+            <label for="classlevel">Class & Level</label><input name="classlevel" placeholder="Paladin 2" />
+          </li>
+          <li>
+            <label for="subclass">Subclass</label><input name="subclass" placeholder="Oath of Devotion" />
+          </li>
+          <li>
+            <label for="background">Background</label><input name="background" placeholder="Acolyte" />
+          </li>
+          <li>
+            <label for="race">Race</label><input name="race" placeholder="Half-elf" />
+          </li>
+          <li>
+            <label for="alignment">Alignment</label><input name="alignment" placeholder="Lawful Good" />
+          </li>
+          <li>
+            <label for="experiencepoints">Experience Points</label><input name="experiencepoints" placeholder="3240" />
+          </li>
+        </ul>
+      </section>
+    </header>
+    <main>
+      <section>
+        <section class="attributes">
+          <div class="scores">
+            <ul>
+              <li>
+                <div class="score">
+                  <label for="strengthscore">Strength</label><input name="strengthscore" placeholder="10" />
+                </div>
+                <div class="modifier">
+                  <input name="strengthmod" placeholder="+0" />
+                </div>
+              </li>
+              <li>
+                <div class="score">
+                  <label for="dexterityscore">Dexterity</label><input name="dexterityscore" placeholder="10" />
+                </div>
+                <div class="modifier">
+                  <input name="dexteritymod" placeholder="+0" />
+                </div>
+              </li>
+              <li>
+                <div class="score">
+                  <label for="constitutionscore">Constitution</label><input name="constitutionscore" placeholder="10" />
+                </div>
+                <div class="modifier">
+                  <input name="constitutionmod" placeholder="+0" />
+                </div>
+              </li>
+              <li>
+                <div class="score">
+                  <label for="wisdomscore">Wisdom</label><input name="wisdomscore" placeholder="10" />
+                </div>
+                <div class="modifier">
+                  <input name="wisdommod" placeholder="+0" />
+                </div>
+              </li>
+              <li>
+                <div class="score">
+                  <label for="intelligencescore">Intelligence</label><input name="intelligencescore" placeholder="10" />
+                </div>
+                <div class="modifier">
+                  <input name="intelligencemod" placeholder="+0" />
+                </div>
+              </li>
+              <li>
+                <div class="score">
+                  <label for="charismascore">Charisma</label><input name="charismascore" placeholder="10" />
+                </div>
+                <div class="modifier">
+                  <input name="charismamod" placeholder="+0" />
+                </div>
+              </li>
+            </ul>
+          </div>
+          <div class="attr-applications">
+            <div class="inspiration box">
+              <div class="label-container">
+                <label for="inspiration">Inspiration</label>
+              </div>
+              <input name="inspiration" type="checkbox" data-readonly="false"/> <!-- TODO: FIX -->
+            </div>
+            <div class="proficiencybonus box">
+              <div class="label-container">
+                <label for="proficiencybonus">Proficiency Bonus</label>
+              </div>
+              <input name="proficiencybonus" placeholder="+2" />
+            </div>
+            <div class="saves list-section box">
+              <ul>
+                <li>
+                  <label for="Strength-save">Strength</label><input name="Strength-save" placeholder="+0" type="text" /><input name="Strength-save-prof" type="checkbox" />
+                </li>
+                <li>
+                  <label for="Dexterity-save">Dexterity</label><input name="Dexterity-save" placeholder="+0" type="text" /><input name="Dexterity-save-prof" type="checkbox" />
+                </li>
+                <li>
+                  <label for="Constitution-save">Constitution</label><input name="Constitution-save" placeholder="+0" type="text" /><input name="Constitution-save-prof" type="checkbox" />
+                </li>
+                <li>
+                  <label for="Wisdom-save">Wisdom</label><input name="Wisdom-save" placeholder="+0" type="text" /><input name="Wisdom-save-prof" type="checkbox" />
+                </li>
+                <li>
+                  <label for="Intelligence-save">Intelligence</label><input name="Intelligence-save" placeholder="+0" type="text" /><input name="Intelligence-save-prof" type="checkbox" />
+                </li>
+                <li>
+                  <label for="Charisma-save">Charisma</label><input name="Charisma-save" placeholder="+0" type="text" /><input name="Charisma-save-prof" type="checkbox" />
+                </li>
+              </ul>
+              <div class="label">
+                Saving Throws
+              </div>
+            </div>
+            <div class="skills list-section box">
+              <ul>
+                <li>
+                  <label for="Acrobatics">Acrobatics <span class="skill">(Dex)</span></label><input name="Acrobatics" placeholder="+0" type="text" /><input name="Acrobatics-prof" type="checkbox" />
+                </li>
+                <li>
+                  <label for="Animal Handling">Animal Handling <span class="skill">(Wis)</span></label><input name="Animal Handling" placeholder="+0" type="text" /><input name="Animal Handling-prof" type="checkbox" />
+                </li>
+                <li>
+                  <label for="Arcana">Arcana <span class="skill">(Int)</span></label><input name="Arcana" placeholder="+0" type="text" /><input name="Arcana-prof" type="checkbox" />
+                </li>
+                <li>
+                  <label for="Athletics">Athletics <span class="skill">(Str)</span></label><input name="Athletics" placeholder="+0" type="text" /><input name="Athletics-prof" type="checkbox" />
+                </li>
+                <li>
+                  <label for="Deception">Deception <span class="skill">(Cha)</span></label><input name="Deception" placeholder="+0" type="text" /><input name="Deception-prof" type="checkbox" />
+                </li>
+                <li>
+                  <label for="History">History <span class="skill">(Int)</span></label><input name="History" placeholder="+0" type="text" /><input name="History-prof" type="checkbox" />
+                </li>
+                <li>
+                  <label for="Insight">Insight <span class="skill">(Wis)</span></label><input name="Insight" placeholder="+0" type="text" /><input name="Insight-prof" type="checkbox" />
+                </li>
+                <li>
+                  <label for="Intimidation">Intimidation <span class="skill">(Cha)</span></label><input name="Intimidation" placeholder="+0" type="text" /><input name="Intimidation-prof" type="checkbox" />
+                </li>
+                <li>
+                  <label for="Investigation">Investigation <span class="skill">(Int)</span></label><input name="Investigation" placeholder="+0" type="text" /><input name="Investigation-prof" type="checkbox" />
+                </li>
+                <li>
+                  <label for="Medicine">Medicine <span class="skill">(Wis)</span></label><input name="Medicine" placeholder="+0" type="text" /><input name="Medicine-prof" type="checkbox" />
+                </li>
+                <li>
+                  <label for="Nature">Nature <span class="skill">(Int)</span></label><input name="Nature" placeholder="+0" type="text" /><input name="Nature-prof" type="checkbox" />
+                </li>
+                <li>
+                  <label for="Perception">Perception <span class="skill">(Wis)</span></label><input name="Perception" placeholder="+0" type="text" /><input name="Perception-prof" type="checkbox" />
+                </li>
+                <li>
+                  <label for="Performance">Performance <span class="skill">(Cha)</span></label><input name="Performance" placeholder="+0" type="text" /><input name="Performance-prof" type="checkbox" />
+                </li>
+                <li>
+                  <label for="Persuasion">Persuasion <span class="skill">(Cha)</span></label><input name="Persuasion" placeholder="+0" type="text" /><input name="Persuasion-prof" type="checkbox" />
+                </li>
+                <li>
+                  <label for="Religion">Religion <span class="skill">(Int)</span></label><input name="Religion" placeholder="+0" type="text" /><input name="Religion-prof" type="checkbox" />
+                </li>
+                <li>
+                  <label for="Sleight of Hand">Sleight of Hand <span class="skill">(Dex)</span></label><input name="Sleight of Hand" placeholder="+0" type="text" /><input name="Sleight of Hand-prof" type="checkbox" />
+                </li>
+                <li>
+                  <label for="Stealth">Stealth <span class="skill">(Dex)</span></label><input name="Stealth" placeholder="+0" type="text" /><input name="Stealth-prof" type="checkbox" />
+                </li>
+                <li>
+                  <label for="Survival">Survival <span class="skill">(Wis)</span></label><input name="Survival" placeholder="+0" type="text" /><input name="Survival-prof" type="checkbox" />
+                </li>
+              </ul>
+              <div class="label">
+                Skills
+              </div>
+            </div>
+          </div>
+        </section>
+        <div class="passive-perception box">
+          <div class="label-container">
+            <label for="passiveperception">Passive Wisdom (Perception)</label>
+          </div>
+          <input name="passiveperception" placeholder="10" />
+        </div>
+        <div class="otherprofs box textblock">
+          <label for="otherprofs">Other Proficiencies and Languages</label><textarea name="otherprofs"></textarea>
+        </div>
+      </section>
+      <section>
+        <section class="combat">
+          <div class="armorclass">
+            <div>
+              <label for="ac">Armor Class</label><input name="ac" placeholder="10" type="text" />
+            </div>
+          </div>
+          <div class="initiative">
+            <div>
+              <label for="initiative">Initiative</label><input name="initiative" placeholder="+0" type="text" />
+            </div>
+          </div>
+          <div class="speed">
+            <div>
+              <label for="speed">Speed</label><input name="speed" placeholder="30" type="text" />
+            </div>
+          </div>
+          <div class="hp">
+            <div class="regular">
+              <div class="max">
+                <label for="maxhp">Hit Point Maximum</label><input name="maxhp" placeholder="10" type="text" />
+              </div>
+              <div class="current">
+                <label for="currenthp">Current Hit Points</label><input name="currenthp" type="number" min="0" step="1" data-readonly="false" /> <!-- Set max based on HP max-->
+              </div>
+            </div>
+            <div class="temporary">
+              <label for="temphp">Temporary Hit Points</label><input name="temphp" type="number" min="0" step="1" data-readonly="false"/>
+            </div>
+          </div>
+          <div class="hitdice">
+            <div>
+              <div class="total">
+                <label for="totalhd">Total</label><input name="totalhd" placeholder="2d10" type="text" />
+              </div>
+              <div class="remaining">
+                <label for="remaininghd">Hit Dice</label><input name="remaininghd" type="text" />
+              </div>
+            </div>
+          </div>
+          <div class="deathsaves">
+            <div>
+              <div class="label">
+                <label>Death Saves</label>
+              </div>
+              <div class="marks">
+                <div class="deathsuccesses">
+                  <label>Successes</label>
+                  <div class="bubbles">
+                    <input name="deathsuccess1" type="checkbox" />
+                    <input name="deathsuccess2" type="checkbox" />
+                    <input name="deathsuccess3" type="checkbox" />
+                  </div>
+                </div>
+                <div class="deathfails">
+                  <label>Failures</label>
+                  <div class="bubbles">
+                    <input name="deathfail1" type="checkbox" />
+                    <input name="deathfail2" type="checkbox" />
+                    <input name="deathfail3" type="checkbox" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+        <section class="attacksandspellcasting">
+          <div>
+            <label>Attacks & Spellcasting</label>
+            <table>
+              <thead>
+                <tr>
+                  <th>
+                    Name
+                  </th>
+                  <th>
+                    Atk Bonus
+                  </th>
+                  <th>
+                    Damage/Type
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>
+                    <input name="atkname1" type="text" />
+                  </td>
+                  <td>
+                    <input name="atkbonus1" type="text" />
+                  </td>
+                  <td>
+                    <input name="atkdamage1" type="text" />
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <input name="atkname2" type="text" />
+                  </td>
+                  <td>
+                    <input name="atkbonus2" type="text" />
+                  </td>
+                  <td>
+                    <input name="atkdamage2" type="text" />
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <input name="atkname3" type="text" />
+                  </td>
+                  <td>
+                    <input name="atkbonus3" type="text" />
+                  </td>
+                  <td>
+                    <input name="atkdamage3" type="text" />
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <textarea></textarea>
+          </div>
+        </section>
+        <section class="equipment">
+          <div>
+            <label>Equipment</label>
+            <div class="money">
+              <ul>
+                <li>
+                  <label for="cp">cp</label><input name="cp" />
+                </li>
+                <li>
+                  <label for="sp">sp</label><input name="sp" />
+                </li>
+                <li>
+                  <label for="ep">ep</label><input name="ep" />
+                </li>
+                <li>
+                  <label for="gp">gp</label><input name="gp" />
+                </li>
+                <li>
+                  <label for="pp">pp</label><input name="pp" />
+                </li>
+              </ul>
+            </div>
+            <textarea placeholder="Equipment list here"></textarea>
+          </div>
+        </section>
+      </section>
+      <section>
+        <section class="flavor">
+          <div class="personality">
+            <label for="personality">Personality</label><textarea name="personality"></textarea>
+          </div>
+          <div class="ideals">
+            <label for="ideals">Ideals</label><textarea name="ideals"></textarea>
+          </div>
+          <div class="bonds">
+            <label for="bonds">Bonds</label><textarea name="bonds"></textarea>
+          </div>
+          <div class="flaws">
+            <label for="flaws">Flaws</label><textarea name="flaws"></textarea>
+          </div>
+        </section>
+        <section class="features">
+          <div>
+            <label for="features">Features & Traits</label><textarea name="features"></textarea>
+          </div>
+        </section>
+      </section>
+    </main>
+  </form>
+
+  <!-- End Region / Copyright (c) 2025 by Brandon Fulljames (https://codepen.io/evertras/pen/YVVeMd) -->
+</main>
+
+<script type="text/javascript" defer src="lib/jquery.js"></script>
+<script type="text/javascript" defer src="js/parser.js"></script>
+<script type="text/javascript" defer src="js/utils.js"></script>
+<script type="text/javascript" defer src="js/utils-ui.js"></script>
+<script type="text/javascript" defer src="lib/localforage.js"></script>
+<script type="module" defer src="js/omnidexer.js"></script>
+<script type="module" src="js/omnisearch.js"></script>
+<script type="module" src="js/filter.js"></script>
+<script type="text/javascript" defer src="js/utils-dataloader.js"></script>
+<script type="module" src="js/utils-brew.js"></script>
+<script type="module" src="js/utils-config.js"></script>
+<script type="text/javascript" defer src="js/render.js"></script>
+<script type="text/javascript" defer src="js/render-dice.js"></script>
+<script type="module" src="js/shim-esmodules.js"></script>
+<script type="text/javascript" defer src="js/hist.js"></script>
+<script type="module" src="js/characterviewer.js"></script>
+<script type="text/javascript" defer src="js/list2.js"></script>
+<script type="text/javascript" defer src="lib/elasticlunr.js"></script>
+
+</body>
+</html>
