@@ -162,8 +162,8 @@ class SublistManager {
 			isUseJquery: true,
 		});
 
-		const $wrpBtnsSortSublist = $("#sublistsort");
-		if ($wrpBtnsSortSublist.length) SortUtil.initBtnSortHandlers($wrpBtnsSortSublist, this._listSub);
+		const wrpBtnsSortSublist = es("#sublistsort");
+		if (wrpBtnsSortSublist) SortUtil.initBtnSortHandlers(wrpBtnsSortSublist, this._listSub);
 
 		if (this._$wrpContainer.hasClass(`sublist--resizable`)) this._pBindSublistResizeHandlers();
 
@@ -195,7 +195,7 @@ class SublistManager {
 	async _pBindSublistResizeHandlers () {
 		const STORAGE_KEY = "SUBLIST_RESIZE";
 
-		const $handle = $(`<div class="sublist__ele-resize mobile__hidden">...</div>`).appendTo(this._$wrpContainer);
+		const eleHandle = ee`<div class="sublist__ele-resize mobile__hidden">...</div>`.appendTo(this._$wrpContainer[0]);
 
 		let mousePos;
 		const resize = (evt) => {
@@ -206,9 +206,9 @@ class SublistManager {
 			this._$wrpContainer.css("height", parseInt(this._$wrpContainer.css("height")) + dx);
 		};
 
-		$handle
-			.on("mousedown", (evt) => {
-				if (evt.which !== 1) return;
+		eleHandle
+			.onn("mousedown", (evt) => {
+				if (evt.button !== 0) return;
 
 				evt.preventDefault();
 				mousePos = evt.clientY;
@@ -217,7 +217,7 @@ class SublistManager {
 			});
 
 		document.addEventListener("mouseup", evt => {
-			if (evt.which !== 1) return;
+			if (evt.button !== 0) return;
 
 			document.removeEventListener("mousemove", resize);
 			StorageUtil.pSetForPage(STORAGE_KEY, this._$wrpContainer.css("height"));
@@ -1181,9 +1181,9 @@ class ListPage {
 			isBindFindHotkey: true,
 			optsList: this._listOptions,
 		});
-		const $wrpBtnsSort = $("#filtertools");
-		SortUtil.initBtnSortHandlers($wrpBtnsSort, this._list);
-		if (this._isPreviewable) this._doBindPreviewAllButton($wrpBtnsSort.find(`[name="list-toggle-all-previews"]`));
+		const wrpBtnsSort = es("#filtertools");
+		SortUtil.initBtnSortHandlers(wrpBtnsSort, this._list);
+		if (this._isPreviewable) this._doBindPreviewAllButton($(wrpBtnsSort).find(`[name="list-toggle-all-previews"]`));
 
 		this._filterBox = await this._pageFilter.pInitFilterBox({
 			$iptSearch,
@@ -1241,11 +1241,13 @@ class ListPage {
 		});
 	}
 
+	async _pGetTableViewAdditionalData () { return null; }
+
 	_pOnLoad_tableView () {
 		if (!this._tableViewOptions) return;
 
-		$(`#btn-show-table`)
-			.click(() => {
+		es(`#btn-show-table`)
+			.onn("click", async () => {
 				const sublisted = this._sublistManager.getSublistedEntities();
 				UtilsTableview.show({
 					entities: sublisted.length
@@ -1254,6 +1256,7 @@ class ListPage {
 							.map(list => list.visibleItems.map(({ix}) => this._dataList[ix]))
 							.flat(),
 					sorter: (a, b) => SortUtil.ascSort(a.name, b.name) || SortUtil.ascSort(a.source, b.source),
+					additionalData: await this._pGetTableViewAdditionalData(),
 					...this._tableViewOptions,
 				});
 			});
@@ -1306,7 +1309,7 @@ class ListPage {
 	get _bindOtherButtonsOptions () { return null; }
 
 	_bindOtherButtonsOptions_openAsSinglePage ({slugPage, fnGetHash}) {
-		if (!IS_DEPLOYED) return null;
+		// We expect these pages when `Boolean(IS_DEPLOYED)`, but, enable for local testing
 		return {
 			name: "Open Page",
 			type: "link",
@@ -2165,6 +2168,8 @@ class ListPage {
 		}
 	}
 
+	// FIXME(Future)
+	//  - `table > caption` causes issues: https://github.com/1904labs/dom-to-image-more/issues/209
 	async _pHandleClick_exportAsImage ({evt, isFast, $eleCopyEffect}) {
 		if (typeof domtoimage === "undefined") await import("../lib/dom-to-image-more.min.js");
 

@@ -1128,28 +1128,29 @@ globalThis.Renderer = function () {
 	};
 
 	this._renderList = function (entry, textStack, meta, options) {
-		if (entry.items) {
-			const tag = entry.start != null ? "ol" : "ul";
-			const cssClasses = this._renderList_getListCssClasses(entry, textStack, meta, options);
-			textStack[0] += `<${tag} ${cssClasses ? `class="${cssClasses}"` : ""} ${entry.start != null ? `start="${entry.start}"` : ""}>`;
-			if (entry.name) textStack[0] += `<li class="rd__list-name">${this.render({type: "inline", entries: [entry.name]})}</li>`;
-			const isListHang = entry.style && entry.style.split(" ").includes("list-hang");
-			const len = entry.items.length;
-			for (let i = 0; i < len; ++i) {
-				const item = entry.items[i];
-				// Special case for child lists -- avoid wrapping in LI tags to avoid double-bullet
-				if (item.type !== "list") {
-					const className = `${this._getStyleClass(entry.type, item)}${item.type === "itemSpell" ? " rd__li-spell" : ""}`;
-					textStack[0] += `<li class="rd__li ${className}">`;
-				}
-				// If it's a raw string in a hanging list, wrap it in a div to allow for the correct styling
-				if (isListHang && typeof item === "string") textStack[0] += "<div>";
-				this._recursiveRender(item, textStack, meta);
-				if (isListHang && typeof item === "string") textStack[0] += "</div>";
-				if (item.type !== "list") textStack[0] += "</li>";
+		if (!entry.items) return;
+
+		const start = (entry.start ?? 1) + (entry.name ? -1 : 0);
+		const tag = start !== 1 ? "ol" : "ul";
+		const cssClasses = this._renderList_getListCssClasses(entry, textStack, meta, options);
+		textStack[0] += `<${tag} ${cssClasses ? `class="${cssClasses}"` : ""} ${start !== 1 ? `start="${start}"` : ""}>`;
+		if (entry.name) textStack[0] += `<li class="rd__list-name">${this.render({type: "inline", entries: [entry.name]})}</li>`;
+		const isListHang = entry.style && entry.style.split(" ").includes("list-hang");
+		const len = entry.items.length;
+		for (let i = 0; i < len; ++i) {
+			const item = entry.items[i];
+			// Special case for child lists -- avoid wrapping in LI tags to avoid double-bullet
+			if (item.type !== "list") {
+				const className = `${this._getStyleClass(entry.type, item)}${item.type === "itemSpell" ? " rd__li-spell" : ""}`;
+				textStack[0] += `<li class="rd__li ${className}">`;
 			}
-			textStack[0] += `</${tag}>`;
+			// If it's a raw string in a hanging list, wrap it in a div to allow for the correct styling
+			if (isListHang && typeof item === "string") textStack[0] += "<div>";
+			this._recursiveRender(item, textStack, meta);
+			if (isListHang && typeof item === "string") textStack[0] += "</div>";
+			if (item.type !== "list") textStack[0] += "</li>";
 		}
+		textStack[0] += `</${tag}>`;
 	};
 
 	this._getPtExpandCollapse = function () {
@@ -1614,11 +1615,11 @@ globalThis.Renderer = function () {
 		this._renderSuffix(entry, textStack, meta, options);
 	};
 
-	this._renderItem = function (entry, textStack, meta, options) {
+	this._renderItemSubtypes = function (entry, textStack, meta, options) {
 		this._renderPrefix(entry, textStack, meta, options);
 		textStack[0] += `<p class="rd__p-list-item" ${entry.name ? `data-roll-name-ancestor="${Renderer.stripTags(entry.name).qq()}"` : ""}>`;
 		if (entry.name) {
-			textStack[0] += `<span class="${this._getMutatedStyleString(entry.style) || "bold"} rd__list-item-name">${this.render(entry.name)}${this._renderItem_isAddPeriod(entry) ? "." : ""}</span> `;
+			textStack[0] += `<span class="${this._getMutatedStyleString(entry.style) || entry.type === "itemSub" ? "italic" : "bold"} rd__list-item-name">${this.render(entry.name)}${this._renderItemSubtypes_isAddPeriod(entry) ? "." : ""}</span> `;
 		}
 		if (entry.entry) this._recursiveRender(entry.entry, textStack, meta);
 		else if (entry.entries) {
@@ -1629,15 +1630,16 @@ globalThis.Renderer = function () {
 		this._renderSuffix(entry, textStack, meta, options);
 	};
 
-	this._renderItem_isAddPeriod = function (entry) {
+	this._renderItemSubtypes_isAddPeriod = function (entry) {
 		return entry.name && entry.nameDot !== false && !Renderer._INLINE_HEADER_TERMINATORS.has(entry.name[entry.name.length - 1]);
 	};
 
+	this._renderItem = function (entry, textStack, meta, options) {
+		this._renderItemSubtypes(entry, textStack, meta, options);
+	};
+
 	this._renderItemSub = function (entry, textStack, meta, options) {
-		this._renderPrefix(entry, textStack, meta, options);
-		const isAddPeriod = entry.name && entry.nameDot !== false && !Renderer._INLINE_HEADER_TERMINATORS.has(entry.name[entry.name.length - 1]);
-		this._recursiveRender(entry.entry, textStack, meta, {prefix: `<p class="rd__p-list-item" ${entry.name ? `data-roll-name-ancestor="${Renderer.stripTags(entry.name).qq()}"` : ""}>${entry.name ? `<span class="italic rd__list-item-name">${this.render(entry.name)}${isAddPeriod ? "." : ""}</span> ` : ""}`, suffix: "</p>"});
-		this._renderSuffix(entry, textStack, meta, options);
+		this._renderItemSubtypes(entry, textStack, meta, options);
 	};
 
 	this._renderItemSpell = function (entry, textStack, meta, options) {
@@ -2019,8 +2021,10 @@ globalThis.Renderer = function () {
 				break;
 			}
 			case "@font": {
-				const [displayText, fontFamily] = Renderer.splitTagByPipe(text);
-				textStack[0] += `<span style="font-family: '${fontFamily}'">`;
+				const [displayText, fontDecl] = Renderer.splitTagByPipe(text);
+				const fontInfo = Renderer.tag.TagFont.getFontInfo(fontDecl);
+				if (fontInfo.fontUrl) FontManager.pAddFont({fontId: fontInfo.fontId, fontUrl: fontInfo.fontUrl}).then(null);
+				textStack[0] += `<span style="font-family: '${fontInfo.fontId}'">`;
 				this._recursiveRender(displayText, textStack, meta);
 				textStack[0] += `</span>`;
 				break;
@@ -3220,9 +3224,11 @@ Renderer.utils = class {
 						${!globalThis.IS_VTT && ExtensionUtil.ACTIVE && opts.page ? Renderer.utils.getBtnSendToFoundryHtml() : ""}
 					</div>
 					<div class="stats__wrp-h-source ${opts.isInlinedToken ? `stats__wrp-h-source--token` : ""} ve-flex-v-baseline">
-						${tagPartSourceStart} class="help-subtle stats__h-source-abbreviation ${ent.source ? `${Parser.sourceJsonToSourceClassname(ent.source)}" title="${Parser.sourceJsonToFull(ent.source)}${Renderer.utils.getSourceSubText(ent)}` : ""}" ${Parser.sourceJsonToStyle(ent.source)}>${ent.source ? Parser.sourceJsonToAbv(ent.source) : ""}${tagPartSourceEnd}
+						${tagPartSourceStart} class="help-subtle stats__h-source-abbreviation ${ent.source ? `${Parser.sourceJsonToSourceClassname(ent.source)}" title="${Parser.sourceJsonToFull(ent.source)}${Renderer.utils.getSourceSubText(ent)}` : ""}">${ent.source ? Parser.sourceJsonToAbv(ent.source) : ""}${tagPartSourceEnd}
 
-						${Renderer.utils.isDisplayPage(ent.page) ? ` ${tagPartSourceStart} class="rd__stats-name-page ml-1" title="Page ${ent.page}">p${ent.page}${tagPartSourceEnd}` : ""}
+						${ent.source ? Parser.sourceJsonToMarkerHtml(ent.source, {isStatsName: true}) : ""}
+
+						${Renderer.utils.isDisplayPage(ent.page) ? ` ${tagPartSourceStart} class="rd__stats-name-page ml-1 lst-is-exporting-image__no-wrap" title="Page ${ent.page}">p${ent.page}${tagPartSourceEnd}` : ""}
 
 						${ptBrewSourceLink}
 					</div>
@@ -3241,7 +3247,7 @@ Renderer.utils = class {
 	}
 
 	static getBtnSendToFoundryHtml ({isMb = true} = {}) {
-		return `<button title="Send to Foundry (SHIFT for Temporary Import)" class="ve-btn ve-btn-xs ve-btn-default stats__btn-stats-name mx-2 ${isMb ? "mb-2" : ""} ve-self-flex-end lst-is-exporting-image__hidden" onclick="ExtensionUtil.pDoSendStats(event, this)" draggable="true" ondragstart="ExtensionUtil.doDragStart(event, this)"><span class="glyphicon glyphicon-send"></span></button>`;
+		return `<button title="Send to Foundry (SHIFT for Temporary Import)" class="no-print ve-btn ve-btn-xs ve-btn-default stats__btn-stats-name mx-2 ${isMb ? "mb-2" : ""} ve-self-flex-end lst-is-exporting-image__hidden" onclick="ExtensionUtil.pDoSendStats(event, this)" draggable="true" ondragstart="ExtensionUtil.doDragStart(event, this)"><span class="glyphicon glyphicon-send"></span></button>`;
 	}
 
 	static isDisplayPage (page) { return page != null && ((!isNaN(page) && page > 0) || isNaN(page)); }
@@ -3741,7 +3747,8 @@ Renderer.utils = class {
 		/**
 		 * @param prerequisites
 		 * @param isListMode
-		 * @param blocklistKeys
+		 * @param {?Set} blocklistKeys
+		 * @param {?object} keyOptions
 		 * @param isTextOnly
 		 * @param isSkipPrefix
 		 * @param {"classic" | null} styleHint
@@ -3751,7 +3758,8 @@ Renderer.utils = class {
 			prerequisites,
 			{
 				isListMode = false,
-				blocklistKeys = new Set(),
+				blocklistKeys = null,
+				keyOptions = null,
 				isTextOnly = false,
 				isSkipPrefix = false,
 				styleHint = null,
@@ -3789,38 +3797,38 @@ Renderer.utils = class {
 						.filter(([k]) => !prereqsShared[k])
 						.sort(([kA], [kB]) => this._WEIGHTS[kA] - this._WEIGHTS[kB])
 						.map(([k, v]) => {
-							if (k === "note" || blocklistKeys.has(k)) return false;
+							if (k === "note" || blocklistKeys?.has(k)) return false;
 
 							cntPrerequisites += 1;
 
 							switch (k) {
-								case "level": return this._getHtml_level({v, isListMode, isTextOnly, styleHint});
-								case "pact": return this._getHtml_pact({v, isListMode, isTextOnly, styleHint});
-								case "patron": return this._getHtml_patron({v, isListMode, isTextOnly, styleHint});
-								case "spell": return this._getHtml_spell({v, isListMode, isTextOnly, styleHint});
-								case "feat": return this._getHtml_feat({v, isListMode, isTextOnly, styleHint});
-								case "optionalfeature": return this._getHtml_optionalfeature({v, isListMode, isTextOnly, styleHint});
-								case "feature": return this._getHtml_feature({v, isListMode, isTextOnly, styleHint});
-								case "item": return this._getHtml_item({v, isListMode, isTextOnly, styleHint});
-								case "itemType": return this._getHtml_itemType({v, isListMode, isTextOnly, styleHint});
-								case "itemProperty": return this._getHtml_itemProperty({v, isListMode, isTextOnly, styleHint});
-								case "otherSummary": return this._getHtml_otherSummary({v, isListMode, isTextOnly, styleHint});
-								case "other": return this._getHtml_other({v, isListMode, isTextOnly, styleHint});
-								case "race": return this._getHtml_race({v, isListMode, isTextOnly, styleHint});
-								case "background": return this._getHtml_background({v, isListMode, isTextOnly, styleHint});
-								case "ability": return this._getHtml_ability({v, isListMode, isTextOnly, styleHint});
-								case "proficiency": return this._getHtml_proficiency({v, isListMode, isTextOnly, styleHint});
-								case "expertise": return this._getHtml_expertise({v, isListMode, isTextOnly, styleHint});
-								case "spellcasting": return this._getHtml_spellcasting({v, isListMode, isTextOnly, styleHint});
-								case "spellcasting2020": return this._getHtml_spellcasting2020({v, isListMode, isTextOnly, styleHint});
-								case "spellcastingFeature": return this._getHtml_spellcastingFeature({v, isListMode, isTextOnly, styleHint});
-								case "spellcastingPrepared": return this._getHtml_spellcastingPrepared({v, isListMode, isTextOnly, styleHint});
-								case "spellcastingFocus": return this._getHtml_spellcastingFocus({v, isListMode, isTextOnly, styleHint});
-								case "psionics": return this._getHtml_psionics({v, isListMode, isTextOnly, styleHint});
-								case "alignment": return this._getHtml_alignment({v, isListMode, isTextOnly, styleHint});
-								case "campaign": return this._getHtml_campaign({v, isListMode, isTextOnly, styleHint});
-								case "culture": return this._getHtml_culture({v, isListMode, isTextOnly, styleHint});
-								case "group": return this._getHtml_group({v, isListMode, isTextOnly, styleHint});
+								case "level": return this._getHtml_level({v, isListMode, keyOptions, isTextOnly, styleHint});
+								case "pact": return this._getHtml_pact({v, isListMode, keyOptions, isTextOnly, styleHint});
+								case "patron": return this._getHtml_patron({v, isListMode, keyOptions, isTextOnly, styleHint});
+								case "spell": return this._getHtml_spell({v, isListMode, keyOptions, isTextOnly, styleHint});
+								case "feat": return this._getHtml_feat({v, isListMode, keyOptions, isTextOnly, styleHint});
+								case "optionalfeature": return this._getHtml_optionalfeature({v, isListMode, keyOptions, isTextOnly, styleHint});
+								case "feature": return this._getHtml_feature({v, isListMode, keyOptions, isTextOnly, styleHint});
+								case "item": return this._getHtml_item({v, isListMode, keyOptions, isTextOnly, styleHint});
+								case "itemType": return this._getHtml_itemType({v, isListMode, keyOptions, isTextOnly, styleHint});
+								case "itemProperty": return this._getHtml_itemProperty({v, isListMode, keyOptions, isTextOnly, styleHint});
+								case "otherSummary": return this._getHtml_otherSummary({v, isListMode, keyOptions, isTextOnly, styleHint});
+								case "other": return this._getHtml_other({v, isListMode, keyOptions, isTextOnly, styleHint});
+								case "race": return this._getHtml_race({v, isListMode, keyOptions, isTextOnly, styleHint});
+								case "background": return this._getHtml_background({v, isListMode, keyOptions, isTextOnly, styleHint});
+								case "ability": return this._getHtml_ability({v, isListMode, keyOptions, isTextOnly, styleHint});
+								case "proficiency": return this._getHtml_proficiency({v, isListMode, keyOptions, isTextOnly, styleHint});
+								case "expertise": return this._getHtml_expertise({v, isListMode, keyOptions, isTextOnly, styleHint});
+								case "spellcasting": return this._getHtml_spellcasting({v, isListMode, keyOptions, isTextOnly, styleHint});
+								case "spellcasting2020": return this._getHtml_spellcasting2020({v, isListMode, keyOptions, isTextOnly, styleHint});
+								case "spellcastingFeature": return this._getHtml_spellcastingFeature({v, isListMode, keyOptions, isTextOnly, styleHint});
+								case "spellcastingPrepared": return this._getHtml_spellcastingPrepared({v, isListMode, keyOptions, isTextOnly, styleHint});
+								case "spellcastingFocus": return this._getHtml_spellcastingFocus({v, isListMode, keyOptions, isTextOnly, styleHint});
+								case "psionics": return this._getHtml_psionics({v, isListMode, keyOptions, isTextOnly, styleHint});
+								case "alignment": return this._getHtml_alignment({v, isListMode, keyOptions, isTextOnly, styleHint});
+								case "campaign": return this._getHtml_campaign({v, isListMode, keyOptions, isTextOnly, styleHint});
+								case "culture": return this._getHtml_culture({v, isListMode, keyOptions, isTextOnly, styleHint});
+								case "group": return this._getHtml_group({v, isListMode, keyOptions, isTextOnly, styleHint});
 								default: throw new Error(`Unhandled key: ${k}`);
 							}
 						})
@@ -3859,9 +3867,11 @@ Renderer.utils = class {
 			return `${ptPrefix}${[shared, joinedChoices].filter(Boolean).join(ptsSharedOtherJoiner)}`;
 		}
 
-		static _getHtml_level ({v, isListMode, styleHint}) {
+		static _getHtml_level ({v, isListMode, keyOptions, isTextOnly, styleHint}) {
 			// a generic level requirement
 			if (typeof v === "number") {
+				if (keyOptions?.level?.isNameOnly) return "";
+
 				if (isListMode) return `Lvl ${v}`;
 
 				if (styleHint === "classic") return `${Parser.getOrdinalForm(v)} level`;
@@ -3869,14 +3879,17 @@ Renderer.utils = class {
 			}
 
 			if (!v.class && !v.subclass) {
+				if (keyOptions?.level?.isNameOnly) return "";
+
 				if (isListMode) return `Lvl ${v.level}`;
 
 				if (styleHint === "classic") return `${Parser.getOrdinalForm(v.level)} level`;
 				return `Level ${v.level}+`;
 			}
 
-			const isLevelVisible = v.level !== 1; // Hide the "implicit" 1st level.
-			const isSubclassVisible = v.subclass && v.subclass.visible;
+			const isLevelVisible = v.level !== 1 // Hide the "implicit" 1st level.
+				&& !keyOptions?.level?.isNameOnly;
+			const isSubclassVisible = v.subclass?.visible;
 			const isClassVisible = v.class && (v.class.visible || isSubclassVisible); // force the class name to be displayed if there's a subclass being displayed
 			if (isListMode) {
 				const shortNameRaw = isClassVisible ? this._getShortClassName(v.class.name) : null;
@@ -3905,7 +3918,7 @@ Renderer.utils = class {
 			return isListMode ? `${Parser.prereqPatronToShort(v)} patron` : `${v} patron`;
 		}
 
-		static _getHtml_spell ({v, isListMode, isTextOnly}) {
+		static _getHtml_spell ({v, isListMode, keyOptions, isTextOnly}) {
 			return isListMode
 				? v.map(sp => {
 					if (typeof sp === "string") return sp.split("#")[0].split("|")[0].toTitleCase();
@@ -3919,15 +3932,15 @@ Renderer.utils = class {
 					.joinConjunct(", ", " or ");
 		}
 
-		static _getHtml_feat ({v, isListMode, isTextOnly, styleHint}) {
-			return this._getHtml_uidTag({v, isListMode, isTextOnly, styleHint, tag: "feat"});
+		static _getHtml_feat ({v, isListMode, keyOptions, isTextOnly, styleHint}) {
+			return this._getHtml_uidTag({v, isListMode, keyOptions, isTextOnly, styleHint, tag: "feat"});
 		}
 
-		static _getHtml_optionalfeature ({v, isListMode, isTextOnly, styleHint}) {
-			return this._getHtml_uidTag({v, isListMode, isTextOnly, styleHint, tag: "optfeature"});
+		static _getHtml_optionalfeature ({v, isListMode, keyOptions, isTextOnly, styleHint}) {
+			return this._getHtml_uidTag({v, isListMode, keyOptions, isTextOnly, styleHint, tag: "optfeature"});
 		}
 
-		static _getHtml_uidTag ({v, isListMode, isTextOnly, styleHint, tag}) {
+		static _getHtml_uidTag ({v, isListMode, keyOptions, isTextOnly, styleHint, tag}) {
 			if (isListMode) return v.map(x => x.split("|")[0].toTitleCase()).join("/");
 
 			return v
@@ -3939,7 +3952,7 @@ Renderer.utils = class {
 				.joinConjunct(", ", " or ");
 		}
 
-		static _getHtml_feature ({v, isListMode, isTextOnly, styleHint}) {
+		static _getHtml_feature ({v, isListMode, keyOptions, isTextOnly, styleHint}) {
 			if (isListMode) return v.map(x => Renderer.stripTags(x).toTitleCase()).join("/");
 
 			const ptNames = v.map(it => isTextOnly ? Renderer.stripTags(it) : Renderer.get().render(it)).joinConjunct(", ", " or ");
@@ -3985,17 +3998,17 @@ Renderer.utils = class {
 				);
 		}
 
-		static _getHtml_otherSummary ({v, isListMode, isTextOnly}) {
+		static _getHtml_otherSummary ({v, isListMode, keyOptions, isTextOnly}) {
 			return isListMode
 				? (v.entrySummary || Renderer.stripTags(v.entry))
 				: (isTextOnly ? Renderer.stripTags(v.entry) : Renderer.get().render(v.entry));
 		}
 
-		static _getHtml_other ({v, isListMode, isTextOnly}) {
+		static _getHtml_other ({v, isListMode, keyOptions, isTextOnly}) {
 			return isListMode ? "Special" : (isTextOnly ? Renderer.stripTags(v) : Renderer.get().render(v));
 		}
 
-		static _getHtml_race ({v, isListMode, isTextOnly, styleHint}) {
+		static _getHtml_race ({v, isListMode, keyOptions, isTextOnly, styleHint}) {
 			const parts = v.map((it, i) => {
 				if (isListMode) {
 					return `${it.name.toTitleCase()}${it.subrace != null ? ` (${it.subrace})` : ""}`;
@@ -4007,7 +4020,7 @@ Renderer.utils = class {
 			return isListMode ? parts.join("/") : parts.joinConjunct(", ", " or ");
 		}
 
-		static _getHtml_background ({v, isListMode, isTextOnly}) {
+		static _getHtml_background ({v, isListMode, keyOptions, isTextOnly}) {
 			const parts = v.map((it, i) => {
 				if (isListMode) {
 					return `${it.name.toTitleCase()}`;
@@ -4018,7 +4031,7 @@ Renderer.utils = class {
 			return isListMode ? parts.join("/") : parts.joinConjunct(", ", " or ");
 		}
 
-		static _getHtml_ability ({v, isListMode, isTextOnly, styleHint}) {
+		static _getHtml_ability ({v, isListMode, keyOptions, isTextOnly, styleHint}) {
 			// `v` is an array or objects with str/dex/... properties; array is "OR"'d together, object is "AND"'d together
 
 			let hadMultipleInner = false;
@@ -4084,7 +4097,7 @@ Renderer.utils = class {
 			return `${joined}${allValuesEqual != null ? ` ${allValuesEqual}${ptHigher}` : ""}`;
 		}
 
-		static _getHtml_proficiency ({v, isListMode, styleHint}) {
+		static _getHtml_proficiency ({v, isListMode, keyOptions, isTextOnly, styleHint}) {
 			const parts = v.map(obj => {
 				return Object.entries(obj).map(([profType, prof]) => {
 					switch (profType) {
@@ -4110,7 +4123,7 @@ Renderer.utils = class {
 			return isListMode ? parts.join("/") : parts.joinConjunct(", ", " or ");
 		}
 
-		static _getHtml_expertise ({v, isListMode, styleHint}) {
+		static _getHtml_expertise ({v, isListMode, keyOptions, isTextOnly, styleHint}) {
 			const parts = v.map(obj => {
 				return Object.entries(obj).map(([profType, prof]) => {
 					switch (profType) {
@@ -4130,7 +4143,7 @@ Renderer.utils = class {
 			return isListMode ? "Spellcasting" : "The ability to cast at least one spell";
 		}
 
-		static _getHtml_spellcasting2020 ({v, isListMode, styleHint}) {
+		static _getHtml_spellcasting2020 ({v, isListMode, keyOptions, isTextOnly, styleHint}) {
 			if (isListMode) return "Spellcasting";
 			return styleHint === "classic" ? "Spellcasting or Pact Magic feature" : "Spellcasting or Pact Magic Feature";
 		}
@@ -4148,7 +4161,7 @@ Renderer.utils = class {
 			"druid": "Druidic Focus",
 			"holy": "Holy Symbol",
 		};
-		static _getHtml_spellcastingFocus ({v, isListMode, isTextOnly, styleHint}) {
+		static _getHtml_spellcastingFocus ({v, isListMode, keyOptions, isTextOnly, styleHint}) {
 			if (isListMode) {
 				if (v === true) return `Spellcasting Focus`;
 				return v.map(n => this._SCF_TYPE_TO_NAME[n] || `Spellcasting ${n.toTitleCase()}`).join("/");
@@ -4178,7 +4191,7 @@ Renderer.utils = class {
 			return (isTextOnly ? Renderer.stripTags : Renderer.get().render.bind(Renderer.get()))(ent);
 		}
 
-		static _getHtml_psionics ({v, isListMode, isTextOnly}) {
+		static _getHtml_psionics ({v, isListMode, keyOptions, isTextOnly}) {
 			return isListMode
 				? "Psionics"
 				: (isTextOnly ? Renderer.stripTags : Renderer.get().render.bind(Renderer.get()))("Psionic Talent feature or Wild Talent feat");
@@ -5135,6 +5148,36 @@ Renderer.tag = class {
 
 	static TagFont = class extends this._TagTextStyle {
 		tagName = "font";
+
+		static getFontInfo (fontDecl) {
+			if (!fontDecl) {
+				return {
+					fontId: null,
+					fontUrl: null,
+				};
+			}
+
+			const spl = fontDecl.split("/");
+
+			if (spl.length === 1) {
+				return {
+					fontId: spl[0],
+					fontUrl: null,
+				};
+			}
+
+			const ptName = spl.at(-1);
+			const fontIdFaux = ptName.split(".")[0];
+
+			const fontUrl = /^https?:\/\//.test(fontDecl)
+				? fontDecl
+				: Renderer.get().getMediaUrl("fonts", fontDecl);
+
+			return {
+				fontId: fontIdFaux,
+				fontUrl,
+			};
+		}
 	};
 
 	static TagComic = class extends this._TagTextStyle {
@@ -7235,7 +7278,7 @@ class _RenderCompactSpellsImplBase extends _RenderCompactImplBase {
 	}
 
 	_getHtmlParts_range ({ent}) {
-		return Renderer.spell.getHtmlPtRange(ent, {styleHint: this._style});
+		return Renderer.spell.getHtmlPtRange(ent, {styleHint: this._style, isDisplaySelfArea: SourceUtil.isClassicSource(ent.source)});
 	}
 
 	_getHtmlParts_components ({ent}) {
@@ -7306,7 +7349,7 @@ Renderer.spell = class {
 		return `<b>Casting Time:</b> ${Parser.spTimeListToFull(spell.time, spell.meta, {styleHint})}`;
 	}
 
-	static getHtmlPtRange (spell, {styleHint = null} = {}) { return `<b>Range:</b> ${Parser.spRangeToFull(spell.range, {styleHint})}`; }
+	static getHtmlPtRange (spell, {styleHint = null, isDisplaySelfArea = false} = {}) { return `<b>Range:</b> ${Parser.spRangeToFull(spell.range, {styleHint, isDisplaySelfArea})}`; }
 	static getHtmlPtComponents (spell) { return `<b>Components:</b> ${Parser.spComponentsToFull(spell.components, spell.level)}`; }
 	static getHtmlPtDuration (spell, {styleHint = null} = {}) { return `<b>Duration:</b> ${Parser.spDurationToFull(spell.duration, {styleHint})}`; }
 
@@ -9053,7 +9096,7 @@ Renderer.traphazard = class {
 
 Renderer.cultboon = class {
 	static getCultRenderableEntriesMeta (ent) {
-		if (!ent.goal && !ent.cultists && !ent.signaturespells) return null;
+		if (!ent.goal && !ent.cultists && !ent.signatureSpells) return null;
 
 		const fauxList = {
 			type: "list",
@@ -9076,11 +9119,11 @@ Renderer.cultboon = class {
 				entry: ent.cultists.entry,
 			});
 		}
-		if (ent.signaturespells) {
+		if (ent.signatureSpells) {
 			fauxList.items.push({
 				type: "item",
 				name: "Signature Spells:",
-				entry: ent.signaturespells.entry,
+				entry: ent.signatureSpells.entry,
 			});
 		}
 
@@ -9096,7 +9139,7 @@ Renderer.cultboon = class {
 	/* -------------------------------------------- */
 
 	static getBoonRenderableEntriesMeta (ent) {
-		if (!ent.ability && !ent.signaturespells) return null;
+		if (!ent.ability && !ent.signatureSpells) return null;
 
 		const benefits = {type: "list", style: "list-hang-notitle", items: []};
 
@@ -9108,11 +9151,11 @@ Renderer.cultboon = class {
 			});
 		}
 
-		if (ent.signaturespells) {
+		if (ent.signatureSpells) {
 			benefits.items.push({
 				type: "item",
 				name: "Signature Spells:",
-				entry: ent.signaturespells ? ent.signaturespells.entry : "None",
+				entry: ent.signatureSpells ? ent.signatureSpells.entry : "None",
 			});
 		}
 
@@ -10341,7 +10384,7 @@ Renderer.monster = class {
 	static getTypeAlignmentPart (mon) {
 		const typeObj = Parser.monTypeToFullObj(mon.type);
 
-		return `${mon.level ? `${Parser.getOrdinalForm(mon.level)}-level ` : ""}${typeObj.asTextSidekick ? `${typeObj.asTextSidekick}; ` : ""}${Renderer.utils.getRenderedSize(mon.size)}${mon.sizeNote ? ` ${mon.sizeNote}` : ""} ${typeObj.asText}${mon.alignment ? `, ${mon.alignmentPrefix ? Renderer.get().render(mon.alignmentPrefix) : ""}${Parser.alignmentListToFull(mon.alignment).toTitleCase()}` : ""}`;
+		return `${mon.level != null ? `${Parser.getOrdinalForm(mon.level)}-level ` : ""}${typeObj.asTextSidekick ? `${typeObj.asTextSidekick}; ` : ""}${Renderer.utils.getRenderedSize(mon.size)}${mon.sizeNote ? ` ${mon.sizeNote}` : ""} ${typeObj.asText}${mon.alignment ? `, ${mon.alignmentPrefix ? Renderer.get().render(mon.alignmentPrefix) : ""}${Parser.alignmentListToFull(mon.alignment).toTitleCase()}` : ""}`;
 	}
 
 	static _getInitiativePart_passive ({mon, initPassive}) {
@@ -10704,7 +10747,7 @@ Renderer.monster = class {
 				const colClass = i % 5 === 0
 					? "stats-tbl-ability-scores__lbl-abv"
 					: i % 5 === 4 ? "stats-tbl-ability-scores__lbl-spacer" : "stats-tbl-ability-scores__lbl-score";
-				return `<td class="${colClass}"><div class="ve-muted ve-text-center small-caps">${i % 5 === 2 ? "mod" : i % 5 === 3 ? "save" : ""}</div></td>`;
+				return `<td class="${colClass}"><div class="ve-muted ve-text-center small-caps no-wrap">${i % 5 === 2 ? "mod" : i % 5 === 3 ? "save" : ""}</div></td>`;
 			},
 		)
 			.join("");
@@ -10825,10 +10868,22 @@ Renderer.monster = class {
 		// Insert our spellcasting section into the "Other actions" part, in an alphabetically-appropriate place.
 
 		const ixLastAttack = actions.findLastIndex(it => it.entries && it.entries.length && typeof it.entries[0] === "string" && /\{@atkr? /.test(it.entries[0]));
-		const ixNext = actions.findIndex((act, ix) => ix > ixLastAttack && act.name && SortUtil.ascSortLower(act.name, "Spellcasting") >= 0);
-		if (~ixNext) actions.splice(ixNext, 0, ...spellActions);
-		else actions.push(...spellActions);
-		return actions;
+
+		const actionsAttack = ~ixLastAttack ? actions.slice(0, ixLastAttack) : [];
+		const actionsOther = ~ixLastAttack ? actions.slice(ixLastAttack) : actions;
+
+		// Weave spellcasting actions into the "other" actions block.
+		// This attempts to minimize re-ordering, which would otherwise occur if we were to use e.g. `sort`.
+		spellActions
+			.forEach(ent => {
+				if (!ent.name) return actionsOther.push(ent);
+
+				const ixInsert = actionsOther.findIndex((entAction, ix) => entAction.name && SortUtil.ascSortLower(entAction.name, ent.name) >= 0);
+				if (~ixInsert) actionsOther.splice(ixInsert, 0, ent);
+				else actionsOther.push(ent);
+			});
+
+		return [...actionsAttack, ...actionsOther];
 	}
 
 	static getSkillsString (renderer, mon) {
@@ -12070,13 +12125,22 @@ Renderer.item = class {
 		delete specificVariant.basicRules;
 		delete specificVariant.basicRules2024;
 		delete specificVariant.page;
+		delete specificVariant.reprintedAs;
 
 		// Remove fluff specifiers
 		delete specificVariant.hasFluff;
 		delete specificVariant.hasFluffImages;
 
 		specificVariant._category = "Specific Variant";
+		specificVariant.baseItem = DataUtil.proxy.getUid("item", baseItem);
 		Object.entries(inherits)
+			// Always apply "remove"s first
+			// This allows for e.g.
+			//   - base item: "Very Rare Reagent"
+			//   - variant: "Poisonous Reagent"
+			//     `{"nameRemove": "Reagent", "nameSuffix": "Poisonous Reagent"}`
+			//   -> `"Very Rare Poisonous Reagent"`
+			.sort(([kA], [kB]) => kB.includes("Remove") - kA.includes("Remove"))
 			.forEach(([inheritedProperty, val]) => {
 				switch (inheritedProperty) {
 					case "namePrefix": specificVariant.name = `${val}${specificVariant.name}`; break;
@@ -14185,6 +14249,36 @@ Renderer.deck = class {
 };
 
 Renderer.facility = class {
+	static _getFacilityRenderableEntriesMeta_space ({ent}) {
+		if (!ent.space) return null;
+		return ent.space.map(spc => Renderer.facility._getSpaceEntry(spc, {isIncludeCostTime: ent.facilityType === "basic"})).joinConjunct(", ", " or ");
+	}
+
+	static _getFacilityRenderableEntriesMeta_hirelings ({ent}) {
+		if (!ent.hirelings) return null;
+
+		const out = ent.hirelings
+			.map(hire => {
+				const ptSpace = hire.space ? ` {@style (${hire.space.toTitleCase()})|muted}` : "";
+
+				if (hire.exact != null) return `${hire.exact}${ptSpace}`;
+				if (hire.min != null && hire.max != null) return `${hire.min}\u2013${hire.max}${ptSpace}`;
+				if (hire.min != null) return `${hire.min}+ (see below${ptSpace ? ";" : ""}${ptSpace})`;
+
+				return null;
+			})
+			.filter(Boolean)
+			.joinConjunct(", ", " or ");
+
+		if (out) return out;
+		return null;
+	}
+
+	static _getFacilityRenderableEntriesMeta_orders ({ent}) {
+		if (!ent.orders) return null;
+		return ent.orders.map(it => it.toTitleCase()).joinConjunct(", ", " or ");
+	}
+
 	static getFacilityRenderableEntriesMeta (ent) {
 		const entsList = [];
 
@@ -14199,26 +14293,14 @@ Renderer.facility = class {
 			entsList.push({type: "item", name: `Prerequisite:`, entry: "None"});
 		}
 
-		if (ent.space) entsList.push({type: "item", name: `Space:`, entry: ent.space.map(spc => Renderer.facility._getSpaceEntry(spc, {isIncludeCostTime: ent.facilityType === "basic"})).joinConjunct(", ", " or ")});
+		const entrySpace = this._getFacilityRenderableEntriesMeta_space({ent});
+		if (entrySpace) entsList.push({type: "item", name: `Space:`, entry: entrySpace});
 
-		if (ent.hirelings) {
-			const ptHirelings = ent.hirelings
-				.map(hire => {
-					const ptSpace = hire.space ? ` {@style (${hire.space.toTitleCase()})|muted}` : "";
+		const entryHirelings = this._getFacilityRenderableEntriesMeta_hirelings({ent});
+		if (entryHirelings) entsList.push({type: "item", name: `Hirelings:`, entry: entryHirelings});
 
-					if (hire.exact != null) return `${hire.exact}${ptSpace}`;
-					if (hire.min != null && hire.max != null) return `${hire.min}\u2013${hire.max}${ptSpace}`;
-					if (hire.min != null) return `${hire.min}+ (see below${ptSpace ? ";" : ""}${ptSpace})`;
-
-					return null;
-				})
-				.filter(Boolean)
-				.joinConjunct(", ", " or ");
-
-			if (ptHirelings) entsList.push({type: "item", name: `Hirelings:`, entry: ptHirelings});
-		}
-
-		if (ent.orders) entsList.push({type: "item", name: `Order${ent.orders.length !== 1 ? "s" : ""}:`, entry: ent.orders.map(it => it.toTitleCase()).joinConjunct(", ", " or ")});
+		const entryOrders = this._getFacilityRenderableEntriesMeta_orders({ent});
+		if (entryOrders) entsList.push({type: "item", name: `Order${ent.orders.length !== 1 ? "s" : ""}:`, entry: entryOrders});
 
 		return {
 			entriesDescription: [
@@ -14232,6 +14314,9 @@ Renderer.facility = class {
 				...(ent.entries || []),
 			]
 				.filter(Boolean),
+			entrySpace,
+			entryHirelings,
+			entryOrders,
 		};
 	}
 
@@ -14448,6 +14533,7 @@ Renderer.generic = class {
 	static FEATURE__TOOLS_GAMING_SETS = [
 		"dragonchess set",
 		"dice set",
+		"playing card set",
 		"three-dragon ante set",
 	];
 	static _FEATURE__TOOL_GROUPS = new Set([
@@ -14960,6 +15046,7 @@ Renderer.hover = class {
 			`onmouseleave="Renderer.hover.handleLinkMouseLeave(event, this)"`,
 			`onmousemove="Renderer.hover.handleLinkMouseMove(event, this)"`,
 			`onclick="Renderer.hover.handleLinkClick(event, this)"`,
+			`onwheel="Renderer.hover.handleLinkWheel(event, this)"`,
 			`ondragstart="Renderer.hover.handleLinkDragStart(event, this)"`,
 			`data-vet-page="${page.qq()}"`,
 			`data-vet-source="${source.qq()}"`,
@@ -15244,6 +15331,22 @@ Renderer.hover = class {
 		Renderer.hover.handleLinkMouseLeave(evt, ele);
 	}
 
+	static handleLinkWheel (evt, ele) {
+		if (!evt.altKey) return;
+
+		const meta = Renderer.hover._eleCache.get(ele);
+		if (!meta || meta.isPermanent) return;
+
+		if (!meta.windowMeta) return;
+
+		evt.stopPropagation();
+		evt.preventDefault();
+
+		const {deltaPixelsX, deltaPixelsY} = EventUtil.getDeltaPixels(evt);
+
+		meta.windowMeta.mutScroll({deltaPixelsX, deltaPixelsY});
+	}
+
 	// (Baked into render strings)
 	static handleLinkDragStart (evt, ele) {
 		// Close the window
@@ -15399,7 +15502,7 @@ Renderer.hover = class {
 				<html lang="en" class="ve-popwindow ${typeof styleSwitcher !== "undefined" ? styleSwitcher.getDayNightClassNames() : ""}"><head>
 					<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 					<title>${opts.title}</title>
-					${$(`link[rel="stylesheet"][href]`).map((i, e) => e.outerHTML).get().join("\n")}
+					${[...document.querySelectorAll(`link[rel="stylesheet"][href]`)].map(ele => ele.outerHTML).join("\n")}
 					<!-- Favicons -->
 					<link rel="icon" type="image/svg+xml" href="favicon.svg">
 					<link rel="icon" type="image/png" sizes="256x256" href="favicon-256x256.png">
@@ -15429,6 +15532,9 @@ Renderer.hover = class {
 
 					<!-- macOS Safari Pinned Tab and Touch Bar -->
 					<link rel="mask-icon" href="safari-pinned-tab.svg" color="#006bc4">
+
+					${PrereleaseUtil.getPopoutStyleElementHtml()}
+					${BrewUtil2.getPopoutStyleElementHtml()}
 
 					<style>
 						html, body { width: 100%; height: 100%; }
@@ -15503,7 +15609,7 @@ Renderer.hover = class {
 			});
 		const $wrpContent = $(`<div class="hwin__wrp-table"></div>`);
 		if (opts.height != null) $wrpContent.css("height", opts.height);
-		const $hovTitle = $(`<span class="window-title min-w-0 ve-overflow-ellipsis" title="${`${opts.title || ""}`.qq()}">${opts.title || ""}</span>`);
+		const hovTitle = ee`<span class="window-title min-w-0 ve-overflow-ellipsis" title="${`${opts.title || ""}`.qq()}">${opts.title || ""}</span>`;
 
 		const hoverWindow = {};
 		const hoverId = Renderer.hover._getNextId();
@@ -15513,42 +15619,51 @@ Renderer.hover = class {
 		const resizeId = `resize.${hoverId}`;
 		const drag = {};
 
-		const $brdrTopRightResize = $(`<div class="hoverborder__resize-ne"></div>`)
-			.on("mousedown touchstart", (evt) => Renderer.hover._getShowWindow_handleDragMousedown({hoverWindow, hoverId, $hov, drag, $wrpContent}, {evt, type: 1, isResizeOnlyWidth}));
-		if (isResizeOnlyWidth) $brdrTopRightResize.hideVe();
+		const brdrTopRightResize = ee`<div class="hoverborder__resize-ne"></div>`
+			.onn("mousedown", (evt) => Renderer.hover._getShowWindow_handleDragMousedown({hoverWindow, hoverId, $hov, drag, $wrpContent}, {evt, type: 1, isResizeOnlyWidth}))
+			.onn("touchstart", (evt) => Renderer.hover._getShowWindow_handleDragMousedown({hoverWindow, hoverId, $hov, drag, $wrpContent}, {evt, type: 1, isResizeOnlyWidth}));
+		if (isResizeOnlyWidth) brdrTopRightResize.hideVe();
 
-		const $brdrRightResize = $(`<div class="hoverborder__resize-e"></div>`)
-			.on("mousedown touchstart", (evt) => Renderer.hover._getShowWindow_handleDragMousedown({hoverWindow, hoverId, $hov, drag, $wrpContent}, {evt, type: 2, isResizeOnlyWidth}));
+		const brdrRightResize = ee`<div class="hoverborder__resize-e"></div>`
+			.onn("mousedown", (evt) => Renderer.hover._getShowWindow_handleDragMousedown({hoverWindow, hoverId, $hov, drag, $wrpContent}, {evt, type: 2, isResizeOnlyWidth}))
+			.onn("touchstart", (evt) => Renderer.hover._getShowWindow_handleDragMousedown({hoverWindow, hoverId, $hov, drag, $wrpContent}, {evt, type: 2, isResizeOnlyWidth}));
 
-		const $brdrBottomRightResize = $(`<div class="hoverborder__resize-se"></div>`)
-			.on("mousedown touchstart", (evt) => Renderer.hover._getShowWindow_handleDragMousedown({hoverWindow, hoverId, $hov, drag, $wrpContent}, {evt, type: 3, isResizeOnlyWidth}));
-		if (isResizeOnlyWidth) $brdrBottomRightResize.hideVe();
+		const brdrBottomRightResize = ee`<div class="hoverborder__resize-se"></div>`
+			.onn("mousedown", (evt) => Renderer.hover._getShowWindow_handleDragMousedown({hoverWindow, hoverId, $hov, drag, $wrpContent}, {evt, type: 3, isResizeOnlyWidth}))
+			.onn("touchstart", (evt) => Renderer.hover._getShowWindow_handleDragMousedown({hoverWindow, hoverId, $hov, drag, $wrpContent}, {evt, type: 3, isResizeOnlyWidth}));
+		if (isResizeOnlyWidth) brdrBottomRightResize.hideVe();
 
-		const $brdrBtm = $(`<div class="hoverborder hoverborder--btm ${opts.isBookContent ? "hoverborder-book" : ""}"></div>`);
-		const $brdrBtmResize = $(`<div class="hoverborder__resize-s"></div>`)
-			.on("mousedown touchstart", (evt) => Renderer.hover._getShowWindow_handleDragMousedown({hoverWindow, hoverId, $hov, drag, $wrpContent}, {evt, type: 4, isResizeOnlyWidth}))
-			.appendTo($brdrBtm);
-		if (isResizeOnlyWidth) $brdrBtmResize.hideVe();
-		if (isHideBottomBorder) $brdrBtm.hideVe();
+		const brdrBtmResize = ee`<div class="hoverborder__resize-s"></div>`
+			.onn("mousedown", (evt) => Renderer.hover._getShowWindow_handleDragMousedown({hoverWindow, hoverId, $hov, drag, $wrpContent}, {evt, type: 4, isResizeOnlyWidth}))
+			.onn("touchstart", (evt) => Renderer.hover._getShowWindow_handleDragMousedown({hoverWindow, hoverId, $hov, drag, $wrpContent}, {evt, type: 4, isResizeOnlyWidth}));
+		if (isResizeOnlyWidth) brdrBtmResize.hideVe();
 
-		const $brdrBtmLeftResize = $(`<div class="hoverborder__resize-sw"></div>`)
-			.on("mousedown touchstart", (evt) => Renderer.hover._getShowWindow_handleDragMousedown({hoverWindow, hoverId, $hov, drag, $wrpContent}, {evt, type: 5, isResizeOnlyWidth}));
-		if (isResizeOnlyWidth) $brdrBtmLeftResize.hideVe();
+		const brdrBtm = ee`<div class="hoverborder hoverborder--btm ${opts.isBookContent ? "hoverborder-book" : ""}">${brdrBtmResize}</div>`;
+		if (isHideBottomBorder) brdrBtm.hideVe();
 
-		const $brdrLeftResize = $(`<div class="hoverborder__resize-w"></div>`)
-			.on("mousedown touchstart", (evt) => Renderer.hover._getShowWindow_handleDragMousedown({hoverWindow, hoverId, $hov, drag, $wrpContent}, {evt, type: 6, isResizeOnlyWidth}));
+		const brdrBtmLeftResize = ee`<div class="hoverborder__resize-sw"></div>`
+			.onn("mousedown", (evt) => Renderer.hover._getShowWindow_handleDragMousedown({hoverWindow, hoverId, $hov, drag, $wrpContent}, {evt, type: 5, isResizeOnlyWidth}))
+			.onn("touchstart", (evt) => Renderer.hover._getShowWindow_handleDragMousedown({hoverWindow, hoverId, $hov, drag, $wrpContent}, {evt, type: 5, isResizeOnlyWidth}));
+		if (isResizeOnlyWidth) brdrBtmLeftResize.hideVe();
 
-		const $brdrTopLeftResize = $(`<div class="hoverborder__resize-nw"></div>`)
-			.on("mousedown touchstart", (evt) => Renderer.hover._getShowWindow_handleDragMousedown({hoverWindow, hoverId, $hov, drag, $wrpContent}, {evt, type: 7, isResizeOnlyWidth}));
-		if (isResizeOnlyWidth) $brdrTopLeftResize.hideVe();
+		const brdrLeftResize = ee`<div class="hoverborder__resize-w"></div>`
+			.onn("mousedown", (evt) => Renderer.hover._getShowWindow_handleDragMousedown({hoverWindow, hoverId, $hov, drag, $wrpContent}, {evt, type: 6, isResizeOnlyWidth}))
+			.onn("touchstart", (evt) => Renderer.hover._getShowWindow_handleDragMousedown({hoverWindow, hoverId, $hov, drag, $wrpContent}, {evt, type: 6, isResizeOnlyWidth}));
 
-		const $brdrTopResize = $(`<div class="hoverborder__resize-n"></div>`)
-			.on("mousedown touchstart", (evt) => Renderer.hover._getShowWindow_handleDragMousedown({hoverWindow, hoverId, $hov, drag, $wrpContent}, {evt, type: 8, isResizeOnlyWidth}));
-		if (isResizeOnlyWidth) $brdrTopResize.hideVe();
+		const brdrTopLeftResize = ee`<div class="hoverborder__resize-nw"></div>`
+			.onn("mousedown", (evt) => Renderer.hover._getShowWindow_handleDragMousedown({hoverWindow, hoverId, $hov, drag, $wrpContent}, {evt, type: 7, isResizeOnlyWidth}))
+			.onn("touchstart", (evt) => Renderer.hover._getShowWindow_handleDragMousedown({hoverWindow, hoverId, $hov, drag, $wrpContent}, {evt, type: 7, isResizeOnlyWidth}));
+		if (isResizeOnlyWidth) brdrTopLeftResize.hideVe();
 
-		const $brdrTop = $(`<div class="hoverborder hoverborder--top ${opts.isBookContent ? "hoverborder-book" : ""}" ${opts.isPermanent ? `data-perm="true"` : ""}></div>`)
-			.on("mousedown touchstart", (evt) => Renderer.hover._getShowWindow_handleDragMousedown({hoverWindow, hoverId, $hov, drag, $wrpContent}, {evt, type: 9, isResizeOnlyWidth}))
-			.on("contextmenu", (evt) => {
+		const brdrTopResize = ee`<div class="hoverborder__resize-n"></div>`
+			.onn("mousedown", (evt) => Renderer.hover._getShowWindow_handleDragMousedown({hoverWindow, hoverId, $hov, drag, $wrpContent}, {evt, type: 8, isResizeOnlyWidth}))
+			.onn("touchstart", (evt) => Renderer.hover._getShowWindow_handleDragMousedown({hoverWindow, hoverId, $hov, drag, $wrpContent}, {evt, type: 8, isResizeOnlyWidth}));
+		if (isResizeOnlyWidth) brdrTopResize.hideVe();
+
+		const brdrTop = ee`<div class="hoverborder hoverborder--top ${opts.isBookContent ? "hoverborder-book" : ""}" ${opts.isPermanent ? `data-perm="true"` : ""}></div>`
+			.onn("mousedown", (evt) => Renderer.hover._getShowWindow_handleDragMousedown({hoverWindow, hoverId, $hov, drag, $wrpContent}, {evt, type: 9, isResizeOnlyWidth}))
+			.onn("touchstart", (evt) => Renderer.hover._getShowWindow_handleDragMousedown({hoverWindow, hoverId, $hov, drag, $wrpContent}, {evt, type: 9, isResizeOnlyWidth}))
+			.onn("contextmenu", (evt) => {
 				Renderer.hover._contextMenuLastClicked = {
 					hoverId,
 				};
@@ -15627,10 +15742,10 @@ Renderer.hover = class {
 			});
 		$(position.window).on(resizeId, () => Renderer.hover._getShowWindow_adjustPosition({$hov, $wrpContent, position}));
 
-		$brdrTop.attr("data-display-title", false);
-		$brdrTop.on("dblclick", () => Renderer.hover._getShowWindow_doToggleMinimizedMaximized({$brdrTop, $hov}));
-		$brdrTop.append($hovTitle);
-		const $brdTopRhs = $(`<div class="ve-flex ml-auto no-shrink"></div>`).appendTo($brdrTop);
+		brdrTop.attr("data-display-title", false);
+		brdrTop.onn("dblclick", () => Renderer.hover._getShowWindow_doToggleMinimizedMaximized({$brdrTop: brdrTop, $hov}));
+		brdrTop.appends(hovTitle);
+		const $brdTopRhs = $(`<div class="ve-flex ml-auto no-shrink"></div>`).appendTo(brdrTop);
 
 		if (opts.pageUrl && !position.window._IS_POPOUT && !Renderer.get().isInternalLinksDisabled()) {
 			const $btnGotoPage = $(`<a class="hwin__top-border-icon glyphicon glyphicon-modal-window" title="Go to Page" href="${opts.pageUrl}"></a>`)
@@ -15685,25 +15800,25 @@ Renderer.hover = class {
 
 		$wrpContent.append($content);
 
-		$hov.append($brdrTopResize).append($brdrTopRightResize).append($brdrRightResize).append($brdrBottomRightResize)
-			.append($brdrBtmLeftResize).append($brdrLeftResize).append($brdrTopLeftResize)
+		$hov.append(brdrTopResize).append(brdrTopRightResize).append(brdrRightResize).append(brdrBottomRightResize)
+			.append(brdrBtmLeftResize).append(brdrLeftResize).append(brdrTopLeftResize)
 
-			.append($brdrTop)
+			.append(brdrTop)
 			.append($wrpContent)
-			.append($brdrBtm);
+			.append(brdrBtm);
 
 		$body.append($hov);
 
 		Renderer.hover._getShowWindow_setPosition({$hov, $wrpContent, position}, position);
 
-		hoverWindow.$windowTitle = $hovTitle;
 		hoverWindow.zIndex = initialZIndex;
 		hoverWindow.setZIndex = Renderer.hover._getNextZIndex.bind(this, {$hov, hoverWindow});
 
 		hoverWindow.setPosition = Renderer.hover._getShowWindow_setPosition.bind(this, {$hov, $wrpContent, position});
-		hoverWindow.setIsPermanent = Renderer.hover._getShowWindow_setIsPermanent.bind(this, {opts, $brdrTop});
+		hoverWindow.mutScroll = Renderer.hover._getShowWindow_mutScroll.bind(this, {$hov, $wrpContent, position});
+		hoverWindow.setIsPermanent = Renderer.hover._getShowWindow_setIsPermanent.bind(this, {opts, $brdrTop: brdrTop});
 		hoverWindow.doClose = Renderer.hover._getShowWindow_doClose.bind(this, {$hov, position, mouseUpId, mouseMoveId, resizeId, hoverId, opts, hoverWindow});
-		hoverWindow.doMaximize = Renderer.hover._getShowWindow_doMaximize.bind(this, {$brdrTop, $hov});
+		hoverWindow.doMaximize = Renderer.hover._getShowWindow_doMaximize.bind(this, {$brdrTop: brdrTop, $hov});
 		hoverWindow.doZIndexToFront = Renderer.hover._getShowWindow_doZIndexToFront.bind(this, {$hov, hoverWindow, hoverId});
 
 		hoverWindow.getPosition = Renderer.hover._getShowWindow_getPosition.bind(this, {$hov, $wrpContent, position});
@@ -15727,7 +15842,8 @@ Renderer.hover = class {
 	}
 
 	static _getShowWindow_handleDragMousedown ({hoverWindow, hoverId, $hov, drag, $wrpContent}, {evt, type, isResizeOnlyWidth}) {
-		if (evt.which === 0 || evt.which === 1) evt.preventDefault();
+		if (evt.button === 0) evt.preventDefault();
+
 		hoverWindow.zIndex = Renderer.hover._getNextZIndex(hoverId);
 		$hov.css({
 			"z-index": hoverWindow.zIndex,
@@ -15860,6 +15976,11 @@ Renderer.hover = class {
 		}
 
 		Renderer.hover._getShowWindow_adjustPosition({$hov, $wrpContent, position});
+	}
+
+	static _getShowWindow_mutScroll ({$hov, $wrpContent, position}, {deltaPixelsX, deltaPixelsY}) {
+		if (!deltaPixelsX && !deltaPixelsY) return;
+		$wrpContent[0].scrollBy(deltaPixelsX, deltaPixelsY);
 	}
 
 	static _getShowWindow_adjustPosition ({$hov, $wrpContent, position}) {
@@ -16190,12 +16311,12 @@ Renderer.hover = class {
 	 * @param [opts.isBookContent]
 	 * @param [renderFnOpts]
 	 */
-	static $getHoverContent_fluff (page, toRender, opts, renderFnOpts) {
+	static getHoverContent_fluff (page, toRender, opts, renderFnOpts) {
 		opts = opts || {};
 		if (page === UrlUtil.PG_RECIPES) opts = {...MiscUtil.copyFast(opts), isBookContent: true};
 
 		if (!toRender) {
-			return $$`<table class="w-100 stats ${opts.isBookContent ? `stats--book` : ""}"><tr><td colspan="6" class="p-2 ve-text-center">${Renderer.utils.HTML_NO_INFO}</td></tr></table>`;
+			return ee`<table class="w-100 stats ${opts.isBookContent ? `stats--book` : ""}"><tr><td colspan="6" class="p-2 ve-text-center">${Renderer.utils.HTML_NO_INFO}</td></tr></table>`;
 		}
 
 		toRender = MiscUtil.copyFast(toRender);
@@ -16220,7 +16341,18 @@ Renderer.hover = class {
 		}
 
 		const name = toRender._displayName || toRender.name;
-		return $$`<table class="w-100 stats ${opts.isBookContent ? `stats--book` : ""}" ${name ? `data-roll-name-ancestor-roller="${Renderer.stripTags(name).qq()}"` : ""}>${Renderer.generic.getCompactRenderedString(toRender, renderFnOpts)}</table>`;
+		return ee`<table class="w-100 stats ${opts.isBookContent ? `stats--book` : ""}" ${name ? `data-roll-name-ancestor-roller="${Renderer.stripTags(name).qq()}"` : ""}>${Renderer.generic.getCompactRenderedString(toRender, renderFnOpts)}</table>`;
+	}
+
+	/**
+	 * @param page
+	 * @param toRender
+	 * @param [opts]
+	 * @param [opts.isBookContent]
+	 * @param [renderFnOpts]
+	 */
+	static $getHoverContent_fluff (page, toRender, opts, renderFnOpts) {
+		return $(this.getHoverContent_fluff(page, toRender, opts, renderFnOpts));
 	}
 
 	static $getHoverContent_statsCode (toRender, {isSkipClean = false, title = null} = {}) {

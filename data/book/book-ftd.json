@@ -303,7 +303,7 @@
 										"type": "internal",
 										"path": "book/FTD/drakewarden ranger.webp"
 									},
-									"title": "A dragonborn drakewarden shares affection with her drake companion",
+									"title": "A dragonborn Drakewarden shares affection with her drake companion",
 									"width": 850,
 									"height": 1015,
 									"credit": "Kai Carpenter"
@@ -10139,7 +10139,7 @@
 									"rows": [
 										[
 											"1",
-											"Some people say I have a short attention span, and that I'm easily distractable, but they don't... oh wow, is that a lute?"
+											"Some people say I have a short attention span, and that I'm easily distractible, but they don't... oh wow, is that a lute?"
 										],
 										[
 											"2",
@@ -16151,6 +16151,13 @@
 							"height": 780
 						}
 					]
+				},
+				{
+					"type": "entries",
+					"entries": [
+						"{@note Disclaimer: No guarantee is made that this book was or was not removed from the hoard of a dragon. Be aware that items taken from a dragon's hoard might carry traces of the dragon's inherent magic even long after they are removed from said hoard. Exposure to another dragon's hoard can reawaken that magic, with unpredictable results.}"
+					],
+					"id": "027"
 				}
 			],
 			"id": "023"
