@@ -1,8 +1,10 @@
 "use strict";
 
+// Firebase does not allow arrays as values, nor object keys with certain characters.
+// These functions convert between arrays and objects, and escape/unescape illegal characters in keys.
+// - asdfgn2399
 function FIREBASEarraysToObjects(obj, undo) {
-	if (obj !== null && obj !== undefined) var keys = Object.keys(obj)
-	else return obj
+	if (obj == null || obj == undefined) return obj
 	var keys = Object.keys(obj)
 	keys.forEach(key => {
 		var val = obj[key]
@@ -70,6 +72,7 @@ function arrayToObject(array) {
 	return newObj
 }
 
+// Bonus quick function to add an element to the body with given parameters - asdfgn2399
 function addElement(type, params) {
 	var newElement = document.createElement(type)
 	var keys = Object.keys(params)
@@ -88,7 +91,7 @@ class NavBar {
 	}
 
 	static _onDomContentLoaded () {
-		if (Date.now() > Number(localStorage.UIDtimestamp) + 3600000) localStorage.userUID = 'loggedOut';
+		if (Date.now() > Number(localStorage.UIDtimestamp) + 86400000) localStorage.userUID = 'loggedOut'; // log out after 24 hours - aasdfgn2399
 		addElement('script', {
 			src: "https://www.gstatic.com/firebasejs/8.2.4/firebase.js"
 		}).onload = function() {
