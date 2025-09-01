@@ -268,7 +268,7 @@ class NavBar {
 		);
 		this._addElement_divider(NavBar._CAT_SETTINGS);
 		this._addElement_dropdown(NavBar._CAT_SETTINGS, NavBar._CAT_ACCOUNT, {isSide: true});
-		this._addElement_label(NavBar._CAT_ACCOUNT, `<p>WARNING: Account System is under development. Expect bugs. <b>Keep a backup of your saved state.</b></p><p>Contact asdfgn2399 on discord for support.</p>`);
+		this._addElement_label(NavBar._CAT_ACCOUNT, `<p>WARNING: Account System is under development. Expect bugs. <b>Keep a backup of your saved state.</b></p><p>Contact DigitalNinja aka asdfgn2399 on discord for support.</p>`);
 		this._addElement_button(
 			NavBar._CAT_ACCOUNT,
 			{
@@ -340,10 +340,13 @@ class NavBar {
 				title: "Save any locally-stored data (loaded homebrew, active blocklists, DM Screen configuration,...) to your account",
 			},
 		);
+		// TODO: Populate with buttons to save to different locations
+
+		this._addElement_divider(NavBar._CAT_ACCOUNT);
 		this._addElement_button(
 			NavBar._CAT_ACCOUNT,
 			{
-				html: "Load Saved State from Account",
+				html: "Load State from Account",
 				click: async (evt) => {
 					if (localStorage.userUID !== 'loggedOut') {
 						NavBar.InteractionManager._pOnClick_button_loadStateFile(evt, true)
@@ -357,6 +360,8 @@ class NavBar {
 				title: "Load previously-saved data (loaded homebrew, active blocklists, DM Screen configuration,...) from your account",
 			},
 		);
+		// TODO: Populate with buttons to load to different locations
+
 		this._addElement_divider(NavBar._CAT_SETTINGS);
 		this._addElement_button(
 			NavBar._CAT_SETTINGS,
