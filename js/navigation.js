@@ -291,10 +291,10 @@ class NavBar {
 		);
 		this._addElement_divider({keyPath: [NavBar._CAT_SETTINGS]});
 		this._addElement_dropdown({keyPath: [NavBar._CAT_SETTINGS], category: NavBar._CAT_ACCOUNT, isSide: true});
-		this._addElement_label({keyPath: [NavBar._CAT_ACCOUNT], html: `<p>WARNING: Account System is under development. Expect bugs. <b>Keep a backup of your saved state.</b></p><p>Contact DigitalNinja aka asdfgn2399 on discord for support.</p>`});
+		this._addElement_label({keyPath: [NavBar._CAT_SETTINGS, NavBar._CAT_ACCOUNT], html: `<p>WARNING: Account System is under development. Expect bugs. <b>Keep a backup of your saved state.</b></p><p>Contact DigitalNinja aka asdfgn2399 on discord for support.</p>`});
 		this._addElement_button(
 			{
-				keyPath: [NavBar._CAT_ACCOUNT],
+				keyPath: [NavBar._CAT_SETTINGS, NavBar._CAT_ACCOUNT],
 				html: localStorage.userUID !== 'loggedOut' ? 'Log Out' : 'Sign In',
 				id: "signInButton",
 				click: async () => {
@@ -335,7 +335,7 @@ class NavBar {
 		);
 		this._addElement_button(
 			{
-				keyPath: [NavBar._CAT_ACCOUNT],
+				keyPath: [NavBar._CAT_SETTINGS, NavBar._CAT_ACCOUNT],
 				html: "Create Account",
 				click: async () => {
 					document.getElementById('navPopup').innerHTML = NavBar.initPopup('create');
@@ -345,10 +345,10 @@ class NavBar {
 				title: "Create an account",
 			}
 		);
-		this._addElement_divider({keyPath: [NavBar._CAT_ACCOUNT]});
+		this._addElement_divider({keyPath: [NavBar._CAT_SETTINGS, NavBar._CAT_ACCOUNT]});
 		this._addElement_button(
 			{
-				keyPath: [NavBar._CAT_ACCOUNT],
+				keyPath: [NavBar._CAT_SETTINGS, NavBar._CAT_ACCOUNT],
 				html: "Save State to Account",
 				click: async (evt) => {
 					if (localStorage.userUID !== 'loggedOut') {
@@ -365,104 +365,9 @@ class NavBar {
 		);
 		// TODO: Populate with buttons to save to different locations
 
-		this._addElement_divider({keyPath: [NavBar._CAT_ACCOUNT]});
 		this._addElement_button(
 			{
-				keyPath: [NavBar._CAT_ACCOUNT],
-				html: "Load State from Account",
-				click: async (evt) => {
-					if (localStorage.userUID !== 'loggedOut') {
-						NavBar.InteractionManager._pOnClick_button_loadStateFile(evt, true)
-					} else {
-						JqueryUtil.doToast({
-							content: `You are not signed in! Please sign in and try again`,
-							type: "warning",
-						})
-					}
-				},
-				title: "Load previously-saved data (loaded homebrew, active blocklists, DM Screen configuration,...) from your account",
-			},
-		);
-		// TODO: Populate with buttons to load to different locations
-
-		this._addElement_divider({keyPath: [NavBar._CAT_SETTINGS]});
-		this._addElement_button(
-			{
-				keyPath: [NavBar._CAT_ACCOUNT],
-				html: localStorage.userUID !== 'loggedOut' ? 'Log Out' : 'Sign In',
-				id: "signInButton",
-				click: async () => {
-					if (localStorage.userUID == 'loggedOut') {
-						document.getElementById('navPopup').innerHTML = NavBar.initPopup('signIn');
-						document.getElementById('navPopup').style.top = '175%'
-						document.getElementById('navPopup').click();
-					} else {
-						if (localStorage.userUID) {
-							var data = ""
-							NavBar.usersRef.child(localStorage.userUID).once('value', (snap) => {
-								data = snap.val()
-							});
-						};
-						firebase.auth().signOut().then(() => {
-							document.getElementById("signInButton").innerHTML = 'Sign In';
-							document.getElementById("signInButton").title = 'Sign in to your account';
-							localStorage.userUID = 'loggedOut';
-							NavBar._closeAllDropdowns();
-							if (data != "") {
-								JqueryUtil.doToast({
-									content: `Successfully signed out '${data.email}'`,
-									type: 'success'
-								})
-							}
-						}).catch((error) => {
-							console.error(error)
-							JqueryUtil.doToast({
-								content: `An error has occured! Check the console (Ctrl + Shift + J) for more information`,
-								type: "danger",
-								autoHideTime: 5_000 /* 5 seconds */,
-							})
-						})
-					}
-				},
-				title: localStorage.userUID !== 'loggedOut' ? "Log out of your account" : "Sign in to your account",
-			}
-		);
-		this._addElement_button(
-			{
-				keyPath: [NavBar._CAT_ACCOUNT],
-				html: "Create Account",
-				click: async () => {
-					document.getElementById('navPopup').innerHTML = NavBar.initPopup('create');
-					document.getElementById('navPopup').style.top = '175%'
-					document.getElementById('navPopup').click();
-				},
-				title: "Create an account",
-			}
-		);
-		this._addElement_divider({keyPath: [NavBar._CAT_ACCOUNT]});
-		this._addElement_button(
-			{
-				keyPath: [NavBar._CAT_ACCOUNT],
-				html: "Save State to Account",
-				click: async (evt) => {
-					if (localStorage.userUID !== 'loggedOut') {
-						NavBar.InteractionManager._pOnClick_button_saveStateFile(evt, true)
-					} else {
-						JqueryUtil.doToast({
-							content: `You are not signed in! Please sign in and try again`,
-							type: "warning",
-						})
-					}
-				},
-				title: "Save any locally-stored data (loaded homebrew, active blocklists, DM Screen configuration,...) to your account",
-			},
-		);
-		// TODO: Populate with buttons to save to different locations
-
-		this._addElement_divider({keyPath: [NavBar._CAT_ACCOUNT]});
-		this._addElement_button(
-			{
-				keyPath: [NavBar._CAT_ACCOUNT],
+				keyPath: [NavBar._CAT_SETTINGS, NavBar._CAT_ACCOUNT],
 				html: "Load State from Account",
 				click: async (evt) => {
 					if (localStorage.userUID !== 'loggedOut') {
