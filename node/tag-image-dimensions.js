@@ -5,7 +5,7 @@ import probe from "probe-image-size";
 import {ObjectWalker} from "5etools-utils";
 import {Command} from "commander";
 import {readJsonSync} from "5etools-utils/lib/UtilFs.js";
-import {getAllJson} from "./util-json-files.js";
+import {getCliFiles} from "./util-commander.js";
 
 function getFileProbeTarget (path) {
 	const target = fs.createReadStream(path);
@@ -82,7 +82,42 @@ async function main (
 ) {
 	const tStart = Date.now();
 
-	const allFiles = getAllJson({dirs, files});
+	const allFiles = getCliFiles(
+		{
+			dirs,
+			files,
+			fnMutDefaultSelection: ({files, dirs}) => {
+				const addAllFilesFluffDir = (dir) => {
+					return Object.values(readJsonSync(`./data/${dir}/fluff-index.json`))
+						.forEach((fname) => files.push(`./data/${dir}/${fname}`));
+				};
+
+				dirs.push("./data/adventure");
+				dirs.push("./data/book");
+
+				files.push("./data/decks.json");
+
+				files.push("./data/fluff-backgrounds.json");
+				files.push("./data/fluff-bastions.json");
+				files.push("./data/fluff-charcreationoptions.json");
+				files.push("./data/fluff-conditionsdiseases.json");
+				files.push("./data/fluff-feats.json");
+				files.push("./data/fluff-items.json");
+				files.push("./data/fluff-languages.json");
+				files.push("./data/fluff-objects.json");
+				files.push("./data/fluff-optionalfeatures.json");
+				files.push("./data/fluff-races.json");
+				files.push("./data/fluff-recipes.json");
+				files.push("./data/fluff-rewards.json");
+				files.push("./data/fluff-trapshazards.json");
+				files.push("./data/fluff-vehicles.json");
+
+				addAllFilesFluffDir("class");
+				addAllFilesFluffDir("bestiary");
+				addAllFilesFluffDir("spells");
+			},
+		},
+	);
 	console.log(`Running on ${allFiles.length} JSON file${allFiles.length === 1 ? "" : "s"}...`);
 
 	const imageEntries = [];
@@ -123,26 +158,9 @@ const program = new Command()
 program.parse(process.argv);
 const params = program.opts();
 
-const dirs = [...(params.dir || [])];
-const files = [...(params.file || [])];
-
-// If no options specified, use default selection
-if (!dirs.length && !files.length) {
-	dirs.push("./data/adventure");
-	dirs.push("./data/book");
-
-	files.push("./data/decks.json");
-	files.push("./data/fluff-recipes.json");
-	files.push("./data/fluff-backgrounds.json");
-	files.push("./data/fluff-races.json");
-
-	Object.values(readJsonSync("./data/class/fluff-index.json"))
-		.forEach((fname) => files.push(`./data/class/${fname}`));
-}
-
 main({
-	dirs,
-	files,
+	dirs: params.dir,
+	files: params.file,
 	localBrewDir: params.localBrewDir,
 	localBrewDirImg: params.localBrewDirImg,
 	isAllowExternal: params.allowExternal,

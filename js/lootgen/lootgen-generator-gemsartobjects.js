@@ -1,6 +1,7 @@
 import {LootGenGeneratorBase} from "./lootgen-generator-base.js";
 import {LootGenOutputGemsArtObjects} from "./lootgen-output.js";
 import {LootGenUtils} from "./lootgen-utils.js";
+import {LootGenRender} from "./lootgen-render.js";
 
 export class LootGenGeneratorGemsArtObjects extends LootGenGeneratorBase {
 	identifier = "gemsArtObjects";
@@ -47,7 +48,7 @@ export class LootGenGeneratorGemsArtObjects extends LootGenGeneratorBase {
 
 			<hr class="hr-3">
 
-			<div class="ve-small italic">${Renderer.get().setFirstSection(true).render(`This custom generator randomly selects gems/art objects up to the target gold amount.`)}</div>
+			<div class="ve-small italic">${LootGenRender.er(`This custom generator randomly selects gems/art objects up to the target gold amount.`)}</div>
 		</div>`.appendTo(tabMeta.wrpTab);
 	}
 
@@ -107,7 +108,7 @@ export class LootGenGeneratorGemsArtObjects extends LootGenGeneratorBase {
 
 		const lootOutput = new this._ClsLootGenOutput({
 			type: `Gems/Art Objects`,
-			name: `Gems/Art Objects: Roughly ${this._state.gao_targetGoldAmount.toLocaleString()} ${LootGenUtils.getCoinageLabel("gp")}`,
+			name: `Gems/Art Objects: Roughly ${this._state.gao_targetGoldAmount.toLocaleStringVe()} ${LootGenUtils.getCoinageLabel("gp")}`,
 			gems,
 			artObjects,
 		});

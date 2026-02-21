@@ -531,10 +531,8 @@
 			"name": "Animated Tree",
 			"source": "EGW",
 			"page": 130,
-			"otherSources": [
-				{
-					"source": "MOT"
-				}
+			"referenceSources": [
+				"MOT"
 			],
 			"_copy": {
 				"name": "Treant",
@@ -807,7 +805,7 @@
 				{
 					"name": "Nimble Escape",
 					"entries": [
-						"Bol'bara can take the Disengage or Hide action as a bonus action on each of her turns."
+						"Bol'bara can take the {@action Disengage} or {@action Hide} action as a bonus action on each of her turns."
 					]
 				}
 			],
@@ -846,6 +844,7 @@
 					]
 				}
 			],
+			"tokenCustom": true,
 			"attachedItems": [
 				"dagger|phb"
 			],
@@ -1773,6 +1772,7 @@
 				"P"
 			],
 			"miscTags": [
+				"AOE",
 				"MW",
 				"RCH"
 			],
@@ -2149,6 +2149,7 @@
 					]
 				}
 			],
+			"tokenCustom": true,
 			"traitTags": [
 				"Keen Senses",
 				"Pack Tactics"
@@ -2319,6 +2320,7 @@
 			"speed": {
 				"walk": 15
 			},
+			"tokenCustom": true,
 			"hasToken": true
 		},
 		{
@@ -2465,6 +2467,7 @@
 				"formula": "3d8"
 			},
 			"cr": "1/2",
+			"tokenCustom": true,
 			"hasToken": true,
 			"hasFluff": true
 		},
@@ -2484,6 +2487,7 @@
 					}
 				]
 			},
+			"tokenCustom": true,
 			"traitTags": [
 				"Legendary Resistances",
 				"Sunlight Sensitivity"
@@ -2593,6 +2597,7 @@
 				"P"
 			],
 			"miscTags": [
+				"AOE",
 				"MLW",
 				"MW",
 				"RNG",
@@ -2961,7 +2966,7 @@
 				{
 					"name": "Shadow Stealth",
 					"entries": [
-						"While in dim light or darkness, the nergaliid can take the Hide action as a bonus action."
+						"While in dim light or darkness, the nergaliid can take the {@action Hide} action as a bonus action."
 					]
 				},
 				{
@@ -3041,6 +3046,7 @@
 				"E"
 			],
 			"int": 10,
+			"tokenCustom": true,
 			"hasToken": true,
 			"hasFluff": true
 		},
@@ -3095,6 +3101,7 @@
 				"C",
 				"E"
 			],
+			"tokenCustom": true,
 			"traitTags": [
 				"Legendary Resistances",
 				"Magic Resistance"
@@ -3161,6 +3168,7 @@
 					"ability": "wis"
 				}
 			],
+			"tokenCustom": true,
 			"damageTagsSpell": [
 				"O",
 				"R"
@@ -3196,6 +3204,7 @@
 					}
 				}
 			},
+			"tokenCustom": true,
 			"traitTags": [
 				"Fey Ancestry"
 			],
@@ -3683,7 +3692,7 @@
 				{
 					"name": "Shadow Stealth",
 					"entries": [
-						"While in dim light or darkness, the shadowghast can take the Hide action as a bonus action."
+						"While in dim light or darkness, the shadowghast can take the {@action Hide} action as a bonus action."
 					]
 				}
 			],
@@ -4080,6 +4089,7 @@
 				"N",
 				"E"
 			],
+			"tokenCustom": true,
 			"hasToken": true,
 			"hasFluff": true
 		},
@@ -4295,6 +4305,7 @@
 					]
 				}
 			],
+			"tokenCustom": true,
 			"traitTags": [
 				"Spider Climb"
 			],
@@ -4392,6 +4403,7 @@
 					]
 				}
 			],
+			"tokenCustom": true,
 			"attachedItems": [
 				"longbow|phb",
 				"shortsword|phb"

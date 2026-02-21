@@ -64,6 +64,7 @@
 				"petrified",
 				"poisoned"
 			],
+			"tokenCustom": true,
 			"traitTags": [
 				"Rejuvenation"
 			],
@@ -220,6 +221,7 @@
 					"ability": "int"
 				}
 			],
+			"tokenCustom": true,
 			"savingThrowForcedSpell": [
 				"constitution",
 				"dexterity",
@@ -547,7 +549,7 @@
 							{
 								"name": "Draconic Majesty",
 								"entries": [
-									"While wearing no armor and wearing the Blue Dragon Mask, Galvan adds his Charisma bonus to her AC (included)."
+									"While wearing no armor and wearing the Blue Dragon Mask, Galvan adds his Charisma bonus to his AC (included)."
 								]
 							},
 							{
@@ -600,12 +602,12 @@
 			"page": 55,
 			"otherSources": [
 				{
-					"source": "DC"
-				},
-				{
 					"source": "ToD",
 					"page": 141
 				}
+			],
+			"referenceSources": [
+				"DC"
 			],
 			"_copy": {
 				"name": "Gladiator",
@@ -624,6 +626,7 @@
 					}
 				}
 			},
+			"tokenCustom": true,
 			"senseTags": [
 				"B",
 				"D"
@@ -678,6 +681,7 @@
 					}
 				}
 			},
+			"tokenCustom": true,
 			"senseTags": [
 				"B",
 				"D"
@@ -954,8 +958,7 @@
 				"X"
 			],
 			"spellcastingTags": [
-				"CW",
-				"I"
+				"CW"
 			],
 			"hasToken": true
 		},
@@ -976,6 +979,7 @@
 				"source": "RoT"
 			},
 			"int": 13,
+			"tokenCustom": true,
 			"hasToken": true
 		},
 		{
@@ -1000,6 +1004,7 @@
 					"human"
 				]
 			},
+			"tokenCustom": true,
 			"hasToken": true
 		},
 		{
@@ -1512,6 +1517,9 @@
 			"damageTags": [
 				"F"
 			],
+			"miscTags": [
+				"AOE"
+			],
 			"conditionInflict": [
 				"restrained"
 			],
@@ -1577,6 +1585,7 @@
 				}
 			},
 			"tokenCredit": "FromSoftware",
+			"tokenCustom": true,
 			"damageTags": [
 				"I",
 				"S"
@@ -1591,12 +1600,12 @@
 			"page": 92,
 			"otherSources": [
 				{
-					"source": "BGDIA"
-				},
-				{
 					"source": "ToD",
 					"page": 190
 				}
+			],
+			"referenceSources": [
+				"BGDIA"
 			],
 			"size": [
 				"G"

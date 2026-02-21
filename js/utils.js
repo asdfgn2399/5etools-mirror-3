@@ -2,7 +2,7 @@
 
 // in deployment, `IS_DEPLOYED = "<version number>";` should be set below.
 globalThis.IS_DEPLOYED = undefined;
-globalThis.VERSION_NUMBER = /* 5ETOOLS_VERSION__OPEN */"2.11.1"/* 5ETOOLS_VERSION__CLOSE */;
+globalThis.VERSION_NUMBER = /* 5ETOOLS_VERSION__OPEN */"2.24.3"/* 5ETOOLS_VERSION__CLOSE */;
 globalThis.DEPLOYED_IMG_ROOT = undefined;
 // for the roll20 script to set
 globalThis.IS_VTT = false;
@@ -269,13 +269,12 @@ globalThis.StrUtil = class {
 	// Certain minor words should be left lowercase unless they are the first or last words in the string
 	static TITLE_LOWER_WORDS = ["a", "an", "the", "and", "but", "or", "for", "nor", "as", "at", "by", "for", "from", "in", "into", "near", "of", "on", "onto", "to", "with", "over", "von", "between", "per", "beyond", "among"];
 	// Certain words such as initialisms or acronyms should be left uppercase
-	static TITLE_UPPER_WORDS = ["Id", "Tv", "Dm", "Ok", "Npc", "Pc", "Tpk", "Wip", "Dc", "D&d"];
+	static TITLE_UPPER_WORDS = ["Id", "Tv", "Dm", "Ok", "Npc", "Pc", "Tpk", "Wip", "Dc", "D&d", "Ac", "Hp"];
 	static TITLE_UPPER_WORDS_PLURAL = ["Ids", "Tvs", "Dms", "Oks", "Npcs", "Pcs", "Tpks", "Wips", "Dcs"]; // (Manually pluralize, to avoid infinite loop)
 
-	static _TITLE_RE_INITIAL = /(\w+[^-\u2014\s/]*) */g;
-	static _TITLE_RE_SPLIT_PUNCT = /([;:?!.])/g;
+	static _TITLE_RE_INITIAL = /(?<!{[@=])(\b\w+[^-\u2014\s/|]*) */g;
 	static _TITLE_RE_COMPOUND_LOWER = /([a-z]-(?:Like|Kreen|Toa))/g;
-	static _TITLE_RE_POST_PUNCT = /^(\s*)(\S)/;
+	static _TITLE_RE_POST_PUNCT = /([;:?!.])(\s*)(\S)/g;
 
 	static _TITLE_LOWER_WORDS_RE = null;
 	static _TITLE_UPPER_WORDS_RE = null;
@@ -293,13 +292,11 @@ globalThis.StrUtil = class {
 
 		return str
 			.replace(this._TITLE_RE_INITIAL, m0 => m0.charAt(0).toUpperCase() + m0.substring(1).toLowerCase())
-			.replace(this._TITLE_LOWER_WORDS_RE, (...m) => m[0].toLowerCase())
-			.replace(this._TITLE_UPPER_WORDS_RE, (...m) => m[0].toUpperCase())
-			.replace(this._TITLE_UPPER_WORDS_PLURAL_RE, (...m) => `${m[0].slice(0, -1).toUpperCase()}${m[0].slice(-1).toLowerCase()}`)
-			.replace(this._TITLE_RE_COMPOUND_LOWER, (...m) => m[0].toLowerCase())
-			.split(this._TITLE_RE_SPLIT_PUNCT)
-			.map(pt => pt.replace(this._TITLE_RE_POST_PUNCT, (...m) => `${m[1]}${m[2].toUpperCase()}`))
-			.join("");
+			.replace(this._TITLE_LOWER_WORDS_RE, m0 => m0.toLowerCase())
+			.replace(this._TITLE_UPPER_WORDS_RE, m0 => m0.toUpperCase())
+			.replace(this._TITLE_UPPER_WORDS_PLURAL_RE, m0 => `${m0.slice(0, -1).toUpperCase()}${m0.slice(-1).toLowerCase()}`)
+			.replace(this._TITLE_RE_COMPOUND_LOWER, m0 => m0.toLowerCase())
+			.replace(this._TITLE_RE_POST_PUNCT, (_, m1, m2, m3) => `${m1}${m2}${m3.toUpperCase()}`);
 	}
 
 	/* -------------------------------------------- */
@@ -428,7 +425,13 @@ globalThis.StrUtil = class {
 	}
 };
 
+Number.prototype.toLocaleStringVe = Number.prototype.toLocaleStringVe || function () {
+	return NumberUtil._NUMBER_FORMATTER.format(this);
+};
+
 globalThis.NumberUtil = class {
+	static _NUMBER_FORMATTER = new Intl.NumberFormat(undefined, {maximumFractionDigits: 5});
+
 	static toFixedNumber (num, toFixed) {
 		if (num == null || isNaN(num)) return num;
 
@@ -489,6 +492,7 @@ CleanUtil.SHARED_REPLACEMENTS = {
 	"’": "'",
 	"‘": "'",
 	"": "'",
+	"\u02BC": "'",
 	"…": "...",
 	"\u200B": "", // zero-width space
 	"\u2002": " ", // em space
@@ -611,6 +615,9 @@ globalThis.SourceUtil = class {
 	static _CLASSIC_THRESHOLD_TIMESTAMP = null;
 
 	static isClassicSource (source) {
+		if (typeof PrereleaseUtil !== "undefined" && PrereleaseUtil.hasSourceJson(source)) return PrereleaseUtil.isClassicSource(source);
+		if (typeof BrewUtil2 !== "undefined" && BrewUtil2.hasSourceJson(source)) return BrewUtil2.isClassicSource(source);
+
 		this._CLASSIC_THRESHOLD_TIMESTAMP ||= new Date(Parser.sourceJsonToDate(Parser.SRC_XPHB));
 		return new Date(Parser.sourceJsonToDate(source)) < this._CLASSIC_THRESHOLD_TIMESTAMP;
 	}
@@ -834,6 +841,7 @@ Math.seed = Math.seed || function (s) {
 
 class TemplateUtil {
 	static initJquery () {
+		/* eslint-disable vet-jquery/jquery */
 		/**
 		 * Template strings which can contain jQuery objects.
 		 * Usage: $$`<div>Press this button: ${$btn}</div>`
@@ -866,6 +874,7 @@ class TemplateUtil {
 			if (ele?.nodeType === Node.DOCUMENT_FRAGMENT_NODE) return $([...ele.children]);
 			return $(ele);
 		};
+		/* eslint-enable vet-jquery/jquery */
 	}
 
 	/* -------------------------------------------- */
@@ -920,7 +929,7 @@ class TemplateUtil {
 
 			if (!eleTmp.children.length) throw new Error(`Failed to create HTML element(s) from "${raw}"!`);
 
-			Array.from(eleTmp.querySelectorAll(`[data-r="true"]`))
+			Array.from(eleTmp.querySelectorAll(".ve-ee-r"))
 				.forEach((node, i) => node.replaceWith(eles[i]));
 
 			const childNodes = Array.from(eleTmp.childNodes);
@@ -940,7 +949,8 @@ class TemplateUtil {
 	static _ee_handleArg (eles, arg) {
 		if (arg instanceof Node) {
 			eles.push(arg);
-			return `<${arg.tagName} data-r="true"></${arg.tagName}>`;
+			// Use a class for performance
+			return `<${arg.tagName} class="ve-ee-r"></${arg.tagName}>`;
 		}
 
 		return arg;
@@ -949,17 +959,16 @@ class TemplateUtil {
 
 globalThis.TemplateUtil = TemplateUtil;
 
-globalThis.JqueryUtil = {
-	_isEnhancementsInit: false,
-	initEnhancements () {
+globalThis.JqueryUtil = class {
+	static _isEnhancementsInit = false;
+	static initEnhancements () {
 		if (JqueryUtil._isEnhancementsInit) return;
 		JqueryUtil._isEnhancementsInit = true;
-
-		JqueryUtil.addSelectors();
 
 		TemplateUtil.initVanilla();
 		TemplateUtil.initJquery();
 
+		// eslint-disable-next-line vet-jquery/jquery
 		$.fn.extend({
 			// avoid setting input type to "search" as it visually offsets the contents of the input
 			disableSpellcheck: function () { return this.attr("autocomplete", "new-password").attr("autocapitalize", "off").attr("spellcheck", "false"); },
@@ -989,90 +998,48 @@ globalThis.JqueryUtil = {
 				else return this.toggleClass("ve-hidden", !val);
 			},
 		});
+	}
 
-		$.event.special.destroyed = {
-			remove: function (o) {
-				if (o.handler) o.handler();
-			},
-		};
-	},
+	static showCopiedEffect (ele, {text = "Copied!", isBubble = false} = {}) {
+		// eslint-disable-next-line vet-jquery/jquery
+		ele = ele instanceof $ ? ele[0] : ele;
 
-	addSelectors () {
-		// Add a selector to match exact text (case insensitive) to jQuery's arsenal
-		//   Note that the search text should be `trim().toLowerCase()`'d before being passed in
-		$.expr[":"].textEquals = (el, i, m) => $(el).text().toLowerCase().trim() === m[3].unescapeQuotes();
+		const {top, left, width} = ele.getBoundingClientRect();
 
-		// Add a selector to match contained text (case insensitive)
-		$.expr[":"].containsInsensitive = (el, i, m) => {
-			const searchText = m[3];
-			const textNode = $(el).contents().filter((i, e) => e.nodeType === 3)[0];
-			if (!textNode) return false;
-			const match = textNode.nodeValue.toLowerCase().trim().match(`${searchText.toLowerCase().trim().escapeRegexp()}`);
-			return match && match.length > 0;
-		};
-	},
-
-	showCopiedEffect ($_ele, text = "Copied!", bubble) {
-		const $ele = $_ele instanceof $ ? $_ele : $($_ele);
-
-		const top = $(window).scrollTop();
-		const pos = $ele.offset();
-
-		const animationOptions = {
-			top: "-=8",
-			opacity: 0,
-		};
-		if (bubble) {
-			animationOptions.left = `${Math.random() > 0.5 ? "-" : "+"}=${~~(Math.random() * 17)}`;
-		}
 		const seed = Math.random();
-		const duration = bubble ? 250 + seed * 200 : 250;
-		const offsetY = bubble ? 16 : 0;
+		const duration = isBubble ? 250 + seed * 200 : 250;
 
-		const $dispCopied = $(`<div class="clp__disp-copied ve-flex-vh-center py-2 px-4"></div>`);
-		$dispCopied
+		const dispCopied = ee`<div class="clp__disp-copied ve-flex-vh-center"></div>`;
+		dispCopied
 			.html(text)
 			.css({
-				top: (pos.top - 24) + offsetY - top,
-				left: pos.left + ($ele.width() / 2),
+				top: `${(top - 14)}px`,
+				left: `${left + (width / 2)}px`,
+				animationDuration: `${duration}ms`,
 			})
-			.appendTo(document.body)
-			.animate(
-				animationOptions,
-				{
-					duration,
-					complete: () => $dispCopied.remove(),
-					progress: (_, progress) => { // progress is 0..1
-						if (bubble) {
-							const diffProgress = 0.5 - progress;
-							animationOptions.top = `${diffProgress > 0 ? "-" : "+"}=40`;
-							$dispCopied.css("transform", `rotate(${seed > 0.5 ? "-" : ""}${seed * 500 * progress}deg)`);
-						}
-					},
-				},
-			);
-	},
-
-	_dropdownInit: false,
-	bindDropdownButton ($ele) {
-		if (!JqueryUtil._dropdownInit) {
-			JqueryUtil._dropdownInit = true;
-			document.addEventListener("click", () => [...document.querySelectorAll(`.open`)].filter(ele => !(ele.className || "").split(" ").includes(`dropdown--navbar`)).forEach(ele => ele.classList.remove("open")));
+			.appendTo(document.body);
+		if (isBubble) {
+			dispCopied
+				.addClass(`clp__disp-copied--bubble`)
+				.addClass(`clp__disp-copied--bubble-variant-${RollerUtil.randomise(5)}`);
+		} else {
+			dispCopied.addClass(`clp__disp-copied--basic`);
 		}
-		$ele.click(() => setTimeout(() => $ele.parent().addClass("open"), 1)); // defer to allow the above to complete
-	},
 
-	_WRP_TOAST: null,
-	_ACTIVE_TOAST: [],
+		setTimeout(() => dispCopied.remove(), duration);
+	}
+
+	static _WRP_TOAST = null;
+	static _ACTIVE_TOAST = [];
 	/**
-	 * @param {{content: jQuery|string, type?: string, autoHideTime?: boolean} | string} options The options for the toast.
-	 * @param {(jQuery|string)} options.content Toast contents. Supports jQuery objects.
+	 * @param {{content: jQuery|string|HTMLElementExtended, type?: string, autoHideTime?: boolean} | string} options The options for the toast.
+	 * @param {(jQuery|string|HTMLElementExtended)} options.content Toast contents. Supports jQuery objects.
 	 * @param {string} options.type Toast type. Can be any Bootstrap alert type ("success", "info", "warning", or "danger").
 	 * @param {number} options.autoHideTime The time in ms before the toast will be automatically hidden.
 	 * Defaults to 5000 ms.
 	 * @param {boolean} options.isAutoHide
 	 */
-	doToast (options) {
+	static doToast (options) {
 		if (typeof window === "undefined") return;
 
 		if (JqueryUtil._WRP_TOAST == null) {
@@ -1102,6 +1069,7 @@ globalThis.JqueryUtil = {
 					tag: "div",
 					clazz: "toast__wrp-content",
 					children: [
+						// eslint-disable-next-line vet-jquery/jquery
 						options.content instanceof $ ? options.content[0] : options.content,
 					],
 				}),
@@ -1163,19 +1131,19 @@ globalThis.JqueryUtil = {
 						});
 				}
 			});
-	},
+	}
 
-	_doToastCleanup (toastMeta) {
+	static _doToastCleanup (toastMeta) {
 		toastMeta.eleToast.removeClass("toast--animate");
 		JqueryUtil._ACTIVE_TOAST.splice(JqueryUtil._ACTIVE_TOAST.indexOf(toastMeta), 1);
 		setTimeout(() => toastMeta.eleToast.parentElement && toastMeta.eleToast.remove(), 85);
-	},
+	}
 
-	isMobile () {
+	static isMobile () {
 		if (navigator?.userAgentData?.mobile) return true;
 		// Equivalent to `$width-screen-sm`
 		return window.matchMedia("(max-width: 768px)").matches;
-	},
+	}
 };
 
 if (typeof window !== "undefined") window.addEventListener("load", JqueryUtil.initEnhancements);
@@ -1184,6 +1152,7 @@ class ElementUtil {
 	static _ATTRS_NO_FALSY = new Set([
 		"checked",
 		"disabled",
+		"readonly",
 	]);
 
 	/**
@@ -1192,17 +1161,24 @@ class ElementUtil {
 	 *
 	 * @property {function(string): ?HTMLElementExtended} find
 	 * @property {function(string): Array<HTMLElementExtended>} findAll
+	 * @property {function(string=): ?HTMLElementExtended} prev
+	 * @property {function(): Array<HTMLElementExtended>} prevAll
+	 * @property {function(string=): ?HTMLElementExtended} next
+	 * @property {function(): Array<HTMLElementExtended>} nextAll
 	 *
 	 * @property {function(HTMLElement|string): HTMLElementExtended} appends
+	 * @property {function(HTMLElement|string): HTMLElementExtended} prepends
 	 * @property {function(HTMLElement): HTMLElementExtended} appendTo
 	 * @property {function(HTMLElement): HTMLElementExtended} prependTo
 	 * @property {function(HTMLElement|string): HTMLElementExtended} aftere
 	 * @property {function(HTMLElement): HTMLElementExtended} insertAfter
+	 * @property {function(HTMLElement|string): HTMLElementExtended} beforee
+	 * @property {function(HTMLElement|string): HTMLElementExtended} insertBeforee
 	 *
 	 * @property {function(string): HTMLElementExtended} addClass
 	 * @property {function(string): HTMLElementExtended} removeClass
 	 * @property {function(string, ?boolean): HTMLElementExtended} toggleClass
-	 * @property {function(string): HTMLElementExtended} hasClass
+	 * @property {function(string): boolean} hasClass
 	 *
 	 * @property {function(): HTMLElementExtended} showVe
 	 * @property {function(): HTMLElementExtended} hideVe
@@ -1218,12 +1194,15 @@ class ElementUtil {
 	 * @property {function(string=): (HTMLElementExtended|string)} html
 	 * @property {function(string=): (HTMLElementExtended|string)} txt
 	 *
-	 * @property {function(string): HTMLElementExtended} tooltip
+	 * @property {function(?string): HTMLElementExtended} tooltip
+	 * @property {function(?string): HTMLElementExtended} placeholdere
 	 * @property {function(): HTMLElementExtended} disableSpellcheck
+	 * @property {function(Array<string>): HTMLElementExtended} typeahead
 	 *
 	 * @property {function(object): HTMLElementExtended} css
 	 *
 	 * @property {function(string, function, object=): HTMLElementExtended} onn
+	 * @property {function(string, function=, object=): HTMLElementExtended} off
 	 * @property {function(function): HTMLElementExtended} onClick
 	 * @property {function(function): HTMLElementExtended} onContextmenu
 	 * @property {function(function): HTMLElementExtended} onChange
@@ -1232,24 +1211,27 @@ class ElementUtil {
 	 *
 	 * @property {function(string): HTMLElementExtended} trigger
 	 *
-	 * @property {function(string): HTMLElementExtended} first
+	 * @property {function(string=): HTMLElementExtended} first
 	 * @property {function(string): HTMLElementExtended} closeste
 	 * @property {function(string): Array<HTMLElementExtended>} childrene
 	 * @property {function(string): Array<HTMLElementExtended>} siblings
 	 * @property {function(): HTMLElementExtended} parente
 	 *
 	 * @property {function(): number} outerWidthe
-	 * @property {function(): number} outerWidthe
-	 * @property {function(): number} outerHeighte
 	 * @property {function(): number} outerHeighte
 	 *
 	 * @property {function(): HTMLElementExtended} focuse
 	 * @property {function(): HTMLElementExtended} selecte
 	 * @property {function(): HTMLElementExtended} blure
 	 *
+	 * @property {function(?number): HTMLElementExtended} scrollTope
+	 *
+	 * @property {function(string): boolean} is
+	 *
 	 * @return {HTMLElementExtended}
 	 */
 	static getOrModify (opts) {
+		if (!opts) return null;
 		if (opts instanceof Element) opts = {ele: opts};
 
 		const {
@@ -1266,6 +1248,7 @@ class ElementUtil {
 			pointerup,
 			keydown,
 			html,
+			/** @deprecated */
 			text,
 			txt,
 			children,
@@ -1295,6 +1278,9 @@ class ElementUtil {
 		});
 		ele = metaEle.ele;
 
+		// TODO(Future) remove `text` option
+		const _txt = txt ?? text;
+
 		if (clazz) ele.className = clazz;
 		if (style) ele.setAttribute("style", style);
 		if (click) ele.addEventListener("click", click);
@@ -1307,7 +1293,10 @@ class ElementUtil {
 		if (pointerup) ele.addEventListener("pointerup", pointerup);
 		if (keydown) ele.addEventListener("keydown", keydown);
 		if (html != null) ele.innerHTML = html;
-		if (text != null || txt != null) ele.textContent = text;
+		if (_txt != null) {
+			if (ele instanceof HTMLOptionElement) ele.text = _txt;
+			else ele.textContent = _txt;
+		}
 		if (id != null && metaEle.isSetId) ele.setAttribute("id", id);
 		if (name != null) ele.setAttribute("name", name);
 		if (title != null) ele.setAttribute("title", title);
@@ -1332,11 +1321,18 @@ class ElementUtil {
 
 		ele.find = ele.find || ElementUtil._find.bind(ele);
 		ele.findAll = ele.findAll || ElementUtil._findAll.bind(ele);
+		ele.prev = ele.prev || ElementUtil._prev.bind(ele);
+		ele.prevAll = ele.prevAll || ElementUtil._prevAll.bind(ele);
+		ele.next = ele.next || ElementUtil._next.bind(ele);
+		ele.nextAll = ele.nextAll || ElementUtil._nextAll.bind(ele);
 		ele.appends = ele.appends || ElementUtil._appends.bind(ele);
+		ele.prepends = ele.prepends || ElementUtil._prepends.bind(ele);
 		ele.appendTo = ele.appendTo || ElementUtil._appendTo.bind(ele);
 		ele.prependTo = ele.prependTo || ElementUtil._prependTo.bind(ele);
 		ele.aftere = ele.aftere || ElementUtil._aftere.bind(ele);
 		ele.insertAfter = ele.insertAfter || ElementUtil._insertAfter.bind(ele);
+		ele.beforee = ele.beforee || ElementUtil._beforee.bind(ele);
+		ele.insertBeforee = ele.insertBeforee || ElementUtil._insertBeforee.bind(ele);
 		ele.addClass = ele.addClass || ElementUtil._addClass.bind(ele);
 		ele.removeClass = ele.removeClass || ElementUtil._removeClass.bind(ele);
 		ele.toggleClass = ele.toggleClass || ElementUtil._toggleClass.bind(ele);
@@ -1352,7 +1348,9 @@ class ElementUtil {
 		ele.html = ele.html || ElementUtil._html.bind(ele);
 		ele.txt = ele.txt || ElementUtil._txt.bind(ele);
 		ele.tooltip = ele.tooltip || ElementUtil._tooltip.bind(ele);
+		ele.placeholdere = ele.placeholdere || ElementUtil._placeholdere.bind(ele);
 		ele.disableSpellcheck = ele.disableSpellcheck || ElementUtil._disableSpellcheck.bind(ele);
+		ele.typeahead = ele.typeahead || ElementUtil._typeahead.bind(ele);
 		ele.css = ele.css || ElementUtil._css.bind(ele);
 		ele.onn = ele.onn || ElementUtil._onX.bind(ele);
 		ele.off = ele.off || ElementUtil._offX.bind(ele);
@@ -1372,6 +1370,8 @@ class ElementUtil {
 		ele.focuse = ele.focuse || ElementUtil._focuse.bind(ele);
 		ele.selecte = ele.selecte || ElementUtil._selecte.bind(ele);
 		ele.blure = ele.blure || ElementUtil._blure.bind(ele);
+		ele.scrollTope = ele.scrollTope || ElementUtil._scrollTope.bind(ele);
+		ele.is = ele.is || ElementUtil._is.bind(ele);
 
 		return ele;
 	}
@@ -1385,7 +1385,13 @@ class ElementUtil {
 		},
 	) {
 		if (ele) return {ele, isSetId: true};
-		if (outer) return {ele: (new DOMParser()).parseFromString(outer, "text/html").body.childNodes[0], isSetId: true};
+		if (outer) {
+			const eleTmpTemplate = document.createElement("template");
+			eleTmpTemplate.innerHTML = outer.trim();
+			const {content: eleTmp} = eleTmpTemplate;
+			if (eleTmp.childNodes.length !== 1) throw new Error(`Failed to create exactly one DOM element from HTML "${outer}"!`);
+			return {ele: eleTmp.childNodes[0], isSetId: true};
+		}
 		if (tag) return {ele: document.createElement(tag), isSetId: true};
 		if (id) {
 			const eleId = document.getElementById(id);
@@ -1409,6 +1415,42 @@ class ElementUtil {
 	}
 
 	/** @this {HTMLElementExtended} */
+	static _prev (selector) {
+		let prv = this.previousElementSibling;
+		if (selector != null) while (prv && !prv.matches(selector)) prv = prv.previousElementSibling;
+		return prv ? e_({ele: prv}) : null;
+	}
+
+	/** @this {HTMLElementExtended} */
+	static _prevAll () {
+		const out = [];
+		let tmp = this;
+		while (tmp.previousElementSibling) {
+			out.push(e_({ele: tmp.previousElementSibling}));
+			tmp = tmp.previousElementSibling;
+		}
+		return out;
+	}
+
+	/** @this {HTMLElementExtended} */
+	static _next (selector) {
+		let nxt = this.nextElementSibling;
+		if (selector != null) while (nxt && !nxt.matches(selector)) nxt = nxt.nextElementSibling;
+		return nxt ? e_({ele: nxt}) : null;
+	}
+
+	/** @this {HTMLElementExtended} */
+	static _nextAll () {
+		const out = [];
+		let tmp = this;
+		while (tmp.nextElementSibling) {
+			out.push(e_({ele: tmp.nextElementSibling}));
+			tmp = tmp.nextElementSibling;
+		}
+		return out;
+	}
+
+	/** @this {HTMLElementExtended} */
 	static _appends (child) {
 		if (typeof child === "string") child = ee`${child}`;
 
@@ -1416,6 +1458,17 @@ class ElementUtil {
 		if (child instanceof $) throw new Error(`Unhandled jQuery instance!`); // TODO(jquery) migrate
 
 		this.appendChild(child);
+		return this;
+	}
+
+	/** @this {HTMLElementExtended} */
+	static _prepends (child) {
+		if (typeof child === "string") child = ee`${child}`;
+
+		// eslint-disable-next-line vet-jquery/jquery
+		if (child instanceof $) throw new Error(`Unhandled jQuery instance!`); // TODO(jquery) migrate
+
+		this.prepend(child);
 		return this;
 	}
 
@@ -1457,6 +1510,25 @@ class ElementUtil {
 	}
 
 	/** @this {HTMLElementExtended} */
+	static _beforee (other) {
+		// eslint-disable-next-line vet-jquery/jquery
+		if (other instanceof $) throw new Error(`Unhandled jQuery instance!`); // TODO(jquery) migrate
+
+		if (typeof other === "string") other = ee`${other}`;
+		this.before(other);
+		return this;
+	}
+
+	/** @this {HTMLElementExtended} */
+	static _insertBeforee (parent) {
+		// eslint-disable-next-line vet-jquery/jquery
+		if (parent instanceof $) throw new Error(`Unhandled jQuery instance!`); // TODO(jquery) migrate
+
+		parent.before(this);
+		return this;
+	}
+
+	/** @this {HTMLElementExtended} */
 	static _addClass (clazz) {
 		this.classList.add(clazz);
 		return this;
@@ -1478,8 +1550,7 @@ class ElementUtil {
 
 	/** @this {HTMLElementExtended} */
 	static _hasClass (clazz) {
-		this.classList.contains(clazz);
-		return this;
+		return this.classList.contains(clazz);
 	}
 
 	/** @this {HTMLElementExtended} */
@@ -1543,7 +1614,14 @@ class ElementUtil {
 
 	/** @this {HTMLElementExtended} */
 	static _tooltip (title) {
+		if (title === undefined) return this.getAttribute("title");
 		return this.attr("title", title);
+	}
+
+	/** @this {HTMLElementExtended} */
+	static _placeholdere (placeholder) {
+		if (placeholder === undefined) return this.getAttribute("placeholder");
+		return this.attr("placeholder", placeholder);
 	}
 
 	/** @this {HTMLElementExtended} */
@@ -1556,21 +1634,60 @@ class ElementUtil {
 	}
 
 	/** @this {HTMLElementExtended} */
-	static _css (obj) {
-		Object.entries(obj)
+	static _typeahead (values) {
+		const id = CryptUtil.md5(JSON.stringify(values));
+
+		if (!document.getElementById(id)) {
+			ee`<datalist id="${id}">${values.map(val => `<option value="${val.qq()}"></option>`).join("")}</datalist>`
+				.appendTo(document.body);
+		}
+
+		return this
+			.attr("list", id);
+	}
+
+	/** @this {HTMLElementExtended} */
+	static _css (keyOrObj, val) {
+		if (typeof keyOrObj === "string") {
+			if (val === undefined) return this.style[keyOrObj];
+			this.style[keyOrObj] = val;
+			return this;
+		}
+		Object.entries(keyOrObj)
 			.forEach(([k, v]) => this.style[k] = v);
 		return this;
 	}
 
 	/** @this {HTMLElementExtended} */
 	static _onX (evtName, fn, opts) {
+		// TODO(jquery) migrate
+		if (evtName.includes(" ")) throw new Error(`Event name "${evtName}" contains a space! This should be split into multiple ".onn" calls.`);
+		if (evtName.includes(".")) throw new Error(`Event name "${evtName}" contains a "."! This should be revised as a non-namespaced name.`);
+
+		((this._veListeners ||= {})[evtName] ||= []).push({fn, opts});
+
 		if (opts) this.addEventListener(evtName, fn, opts);
 		else this.addEventListener(evtName, fn);
 		return this;
 	}
 
 	/** @this {HTMLElementExtended} */
-	static _offX (evtName, fn) {
+	static _offX (evtName, fn, opts) {
+		// TODO(jquery) migrate
+		if (evtName.includes(" ")) throw new Error(`Event name "${evtName}" contains a space! This should be split into multiple ".onn" calls.`);
+		if (evtName.includes(".")) throw new Error(`Event name "${evtName}" contains a "."! This should be revised as a non-namespaced name.`);
+
+		if (!fn) {
+			(this._veListeners?.[evtName] || [])
+				.forEach(({fn, opts}) => {
+					this.removeEventListener(evtName, fn);
+					if (opts) this.removeEventListener(evtName, fn, opts);
+					else this.removeEventListener(evtName, fn);
+				});
+			return this;
+		}
+
+		if (this._veListeners?.[evtName]) this._veListeners[evtName] = this._veListeners[evtName].filter(({fn: fn_, opts: opts_}) => fn_ === fn && MiscUtil.isNearStrictlyEqual(opts_?.capture, opts?.capture));
 		this.removeEventListener(evtName, fn);
 		return this;
 	}
@@ -1618,6 +1735,9 @@ class ElementUtil {
 
 	/** @this {HTMLElementExtended} */
 	static _first (selector) {
+		if (selector == null) {
+			return this.firstElementChild ? e_({ele: this.firstElementChild}) : this.firstElementChild;
+		}
 		const child = this.querySelector(selector);
 		if (!child) return child;
 		return e_({ele: child});
@@ -1625,9 +1745,9 @@ class ElementUtil {
 
 	/** @this {HTMLElementExtended} */
 	static _closeste (selector) {
-		const sibling = this.closest(selector);
-		if (!sibling) return sibling;
-		return e_({ele: sibling});
+		const ancestor = this.closest(selector);
+		if (!ancestor) return ancestor;
+		return e_({ele: ancestor});
 	}
 
 	/** @this {HTMLElementExtended} */
@@ -1677,6 +1797,27 @@ class ElementUtil {
 	static _blure () {
 		this.blur();
 		return this;
+	}
+
+	/* -------------------------------------------- */
+
+	/** @this {HTMLElementExtended} */
+	static _scrollTope (val) {
+		if (val === undefined) return this.scrollTop;
+		this.scrollTop = val;
+		return this;
+	}
+
+	/* -------------------------------------------- */
+
+	/** @this {HTMLElementExtended} */
+	static _is (nodeTypeOrEle) {
+		// eslint-disable-next-line vet-jquery/jquery
+		if (nodeTypeOrEle instanceof $) throw new Error(`Unhandled jQuery instance!`); // TODO(jquery) migrate
+
+		if (typeof nodeTypeOrEle === "string") return this.nodeName.toLowerCase() === nodeTypeOrEle.toLowerCase();
+
+		return nodeTypeOrEle === this;
 	}
 
 	/* -------------------------------------------- */
@@ -1820,6 +1961,7 @@ globalThis.MiscUtil = class {
 	static COLOR_HURT = "#c5ca00";
 	static COLOR_BLOODIED = "#f7a100";
 	static COLOR_DEFEATED = "#cc0000";
+	static COLOR_DEAD = "#9b1d20";
 
 	/**
 	 * @param obj
@@ -1844,12 +1986,12 @@ globalThis.MiscUtil = class {
 
 	static async pCopyTextToClipboard (text) {
 		function doCompatibilityCopy () {
-			const $iptTemp = $(`<textarea class="clp__wrp-temp"></textarea>`)
+			const iptTemp = ee`<textarea class="clp__wrp-temp"></textarea>`
 				.appendTo(document.body)
 				.val(text)
-				.select();
+				.selecte();
 			document.execCommand("Copy");
-			$iptTemp.remove();
+			iptTemp.remove();
 		}
 
 		try {
@@ -2794,6 +2936,7 @@ globalThis.EventUtil = class {
 	static getKeyIgnoreCapsLock (evt) {
 		if (!evt.key) return null;
 		if (evt.key.length !== 1) return evt.key;
+		// TODO(jquery) migrate
 		const isCaps = (evt.originalEvent || evt).getModifierState("CapsLock");
 		if (!isCaps) return evt.key;
 		const asciiCode = evt.key.charCodeAt(0);
@@ -2956,7 +3099,7 @@ globalThis.ContextUtil = class {
 		}
 
 		width () { return this._ele ? this._ele.outerWidthe() : undefined; }
-		height () { return this._ele ? this._ele.outerWidthe() : undefined; }
+		height () { return this._ele ? this._ele.outerHeighte() : undefined; }
 
 		pOpen (evt, {userData = null, offsetY = null, boundsX = null} = {}) {
 			evt.stopPropagation();
@@ -3028,13 +3171,13 @@ globalThis.ContextUtil = class {
 		}
 
 		_getMenuPosition (evt, axis, {bounds = null, offset = null} = {}) {
-			const {fnMenuSize, fnGetEventPos, fnWindowSize, fnScrollDir} = axis === "x"
-				? {fnMenuSize: "width", fnGetEventPos: "getClientX", fnWindowSize: "width", fnScrollDir: "scrollLeft"}
-				: {fnMenuSize: "height", fnGetEventPos: "getClientY", fnWindowSize: "height", fnScrollDir: "scrollTop"};
+			const {fnMenuSize, fnGetEventPos, propWindowSize, propScrollPos} = axis === "x"
+				? {fnMenuSize: "width", fnGetEventPos: "getClientX", propWindowSize: "innerWidth", propScrollPos: "scrollX"}
+				: {fnMenuSize: "height", fnGetEventPos: "getClientY", propWindowSize: "innerHeight", propScrollPos: "scrollY"};
 
 			const posMouse = EventUtil[fnGetEventPos](evt);
-			const szWin = $(window)[fnWindowSize]();
-			const posScroll = $(window)[fnScrollDir]();
+			const szWin = window[propWindowSize];
+			const posScroll = window[propScrollPos];
 			const posMouseOffset = offset ? posMouse + offset : posMouse;
 			const szMenu = this[fnMenuSize]();
 
@@ -3112,7 +3255,7 @@ globalThis.ContextUtil = class {
 			return {
 				action: this,
 				eleRow: ee`<div class="ui-ctx__row ve-flex-v-center ${this.style || ""}">${btnAction}${btnActionAlt}</div>`,
-				eleBtn: btnAction,
+				btn: btnAction,
 			};
 		}
 
@@ -3818,6 +3961,7 @@ UrlUtil.URL_TO_HASH_BUILDER["sense"] = UrlUtil.URL_TO_HASH_GENERIC;
 UrlUtil.URL_TO_HASH_BUILDER["raceFeature"] = (it) => UrlUtil.encodeArrayForHash(it.name, it.raceName, it.raceSource, it.source);
 UrlUtil.URL_TO_HASH_BUILDER["citation"] = UrlUtil.URL_TO_HASH_GENERIC;
 UrlUtil.URL_TO_HASH_BUILDER["languageScript"] = UrlUtil.URL_TO_HASH_GENERIC;
+UrlUtil.URL_TO_HASH_BUILDER["encounterShape"] = UrlUtil.URL_TO_HASH_GENERIC;
 
 // Add lowercase aliases
 Object.keys(UrlUtil.URL_TO_HASH_BUILDER)
@@ -4028,19 +4172,19 @@ if (!IS_DEPLOYED && !globalThis.IS_VTT && typeof window !== "undefined") {
 }
 
 // SORTING =============================================================================================================
-globalThis.SortUtil = {
-	ascSort: (a, b) => {
+globalThis.SortUtil = class {
+	static ascSort (a, b) {
 		if (typeof FilterItem !== "undefined") {
 			if (a instanceof FilterItem) a = a.item;
 			if (b instanceof FilterItem) b = b.item;
 		}
 
 		return SortUtil._ascSort(a, b);
-	},
+	}
 
-	ascSortProp: (prop, a, b) => { return SortUtil.ascSort(a[prop], b[prop]); },
+	static ascSortProp (prop, a, b) { return SortUtil.ascSort(a[prop], b[prop]); }
 
-	ascSortLower: (a, b) => {
+	static ascSortLower (a, b) {
 		if (typeof FilterItem !== "undefined") {
 			if (a instanceof FilterItem) a = a.item;
 			if (b instanceof FilterItem) b = b.item;
@@ -4050,12 +4194,12 @@ globalThis.SortUtil = {
 		b = b ? b.toLowerCase() : b;
 
 		return SortUtil._ascSort(a, b);
-	},
+	}
 
-	ascSortLowerProp: (prop, a, b) => { return SortUtil.ascSortLower(a[prop], b[prop]); },
+	static ascSortLowerProp (prop, a, b) { return SortUtil.ascSortLower(a[prop], b[prop]); }
 
 	// warning: slow
-	ascSortNumericalSuffix (a, b) {
+	static ascSortNumericalSuffix (a, b) {
 		if (typeof FilterItem !== "undefined") {
 			if (a instanceof FilterItem) a = a.item;
 			if (b instanceof FilterItem) b = b.item;
@@ -4071,58 +4215,58 @@ globalThis.SortUtil = {
 		const initialSort = SortUtil.ascSort(aStr, bStr);
 		if (initialSort) return initialSort;
 		return SortUtil.ascSort(aNum, bNum);
-	},
+	}
 
-	_RE_SORT_NUM: /\d+/g,
-	ascSortLowerPropNumeric (prop, a, b) {
+	static _RE_SORT_NUM = /\d+/g;
+	static ascSortLowerPropNumeric (prop, a, b) {
 		a._sortName ||= (a[prop] || "").replace(SortUtil._RE_SORT_NUM, (...m) => `${m[0].padStart(10, "0")}`);
 		b._sortName ||= (b[prop] || "").replace(SortUtil._RE_SORT_NUM, (...m) => `${m[0].padStart(10, "0")}`);
 		return SortUtil.ascSortLower(a._sortName, b._sortName);
-	},
+	}
 
-	_ascSort: (a, b) => {
+	static _ascSort (a, b) {
 		if (b === a) return 0;
 		return b < a ? 1 : -1;
-	},
+	}
 
-	ascSortDate (a, b) {
+	static ascSortDate (a, b) {
 		return b.getTime() - a.getTime();
-	},
+	}
 
-	ascSortDateString (a, b) {
+	static ascSortDateString (a, b) {
 		return SortUtil.ascSortDate(new Date(a || "1970-01-01"), new Date(b || "1970-01-01"));
-	},
+	}
 
-	compareListNames (a, b) { return SortUtil._ascSort(a.name.toLowerCase(), b.name.toLowerCase()); },
+	static compareListNames (a, b) { return SortUtil._ascSort(a.name.toLowerCase(), b.name.toLowerCase()); }
 
-	listSort (a, b, opts) {
+	static listSort (a, b, opts) {
 		opts = opts || {sortBy: "name"};
 		if (opts.sortBy === "name") return SortUtil.compareListNames(a, b);
 		if (opts.sortBy === "source") return SortUtil._listSort_compareBy(a, b, opts.sortBy) || SortUtil._listSort_compareBy(a, b, "page") || SortUtil.compareListNames(a, b);
 		return SortUtil._compareByOrDefault_compareByOrDefault(a, b, opts.sortBy);
-	},
+	}
 
-	_listSort_compareBy (a, b, sortBy) {
+	static _listSort_compareBy (a, b, sortBy) {
 		const aValue = typeof a.values[sortBy] === "string" ? a.values[sortBy].toLowerCase() : a.values[sortBy];
 		const bValue = typeof b.values[sortBy] === "string" ? b.values[sortBy].toLowerCase() : b.values[sortBy];
 
 		return SortUtil._ascSort(aValue, bValue);
-	},
+	}
 
-	_compareByOrDefault_compareByOrDefault (a, b, sortBy) {
+	static _compareByOrDefault_compareByOrDefault (a, b, sortBy) {
 		return SortUtil._listSort_compareBy(a, b, sortBy) || SortUtil.compareListNames(a, b);
-	},
+	}
 
 	/**
 	 * "Special Equipment" first, then alphabetical
 	 */
-	_MON_TRAIT_ORDER: [
+	static _MON_TRAIT_ORDER = [
 		"temporary statblock",
 
 		"special equipment",
 		"shapechanger",
-	],
-	monTraitSort: (a, b) => {
+	];
+	static monTraitSort (a, b) {
 		if (a.sort != null && b.sort != null) return a.sort - b.sort;
 		if (a.sort != null && b.sort == null) return -1;
 		if (a.sort == null && b.sort != null) return 1;
@@ -4142,20 +4286,20 @@ globalThis.SortUtil = {
 		else if (~ixA) return -1;
 		else if (~ixB) return 1;
 		else return SortUtil.ascSort(aClean, bClean);
-	},
+	}
 
-	_alignFirst: ["L", "C"],
-	_alignSecond: ["G", "E"],
-	alignmentSort: (a, b) => {
+	static _alignFirst = ["L", "C"];
+	static _alignSecond = ["G", "E"];
+	static alignmentSort (a, b) {
 		if (a === b) return 0;
 		if (SortUtil._alignFirst.includes(a)) return -1;
 		if (SortUtil._alignSecond.includes(a)) return 1;
 		if (SortUtil._alignFirst.includes(b)) return 1;
 		if (SortUtil._alignSecond.includes(b)) return -1;
 		return 0;
-	},
+	}
 
-	ascSortCr (a, b) {
+	static ascSortCr (a, b) {
 		if (typeof FilterItem !== "undefined") {
 			if (a instanceof FilterItem) a = a.item;
 			if (b instanceof FilterItem) b = b.item;
@@ -4166,21 +4310,17 @@ globalThis.SortUtil = {
 		if (a === "\u2014" || a == null) a = "999";
 		if (b === "\u2014" || b == null) b = "999";
 		return SortUtil.ascSort(Parser.crToNumber(a), Parser.crToNumber(b));
-	},
+	}
 
-	ascSortAtts (a, b) {
+	static ascSortAtts (a, b) {
 		const aSpecial = a === "special";
 		const bSpecial = b === "special";
 		return aSpecial && bSpecial ? 0 : aSpecial ? 1 : bSpecial ? -1 : Parser.ABIL_ABVS.indexOf(a) - Parser.ABIL_ABVS.indexOf(b);
-	},
+	}
 
-	ascSortSize (a, b) { return Parser.SIZE_ABVS.indexOf(a) - Parser.SIZE_ABVS.indexOf(b); },
+	static ascSortSize (a, b) { return Parser.SIZE_ABVS.indexOf(a) - Parser.SIZE_ABVS.indexOf(b); }
 
-	initBtnSortHandlers (wrpBtnsSort, list) {
-		if (wrpBtnsSort instanceof $) { // TODO(jquery) migrate
-			wrpBtnsSort = wrpBtnsSort[0];
-		}
-
+	static initBtnSortHandlers (wrpBtnsSort, list) {
 		let dispCaretInitial = null;
 
 		const dispCarets = [...wrpBtnsSort.querySelectorAll(`[data-sort]`)]
@@ -4211,22 +4351,22 @@ globalThis.SortUtil = {
 		dispCaretInitial = dispCaretInitial || dispCarets[0]; // Fall back on displaying the first caret
 
 		SortUtil._initBtnSortHandlers_showCaret({dispCaret: dispCaretInitial, dispCarets, direction: list.sortDir});
-	},
+	}
 
-	_initBtnSortHandlers_showCaret (
+	static _initBtnSortHandlers_showCaret (
 		{
 			dispCaret,
 			dispCarets,
 			direction,
 		},
 	) {
-		dispCarets.forEach($it => $it.removeClass("lst__caret--active"));
+		dispCarets.forEach(it => it.removeClass("lst__caret--active"));
 		dispCaret.addClass("lst__caret--active").toggleClass("lst__caret--reverse", direction === "asc");
-	},
+	}
 
 	/** Add more list sort on-clicks to existing sort buttons. */
-	initBtnSortHandlersAdditional ($wrpBtnsSort, list) {
-		[...$wrpBtnsSort[0].querySelectorAll(".sort")]
+	static initBtnSortHandlersAdditional (wrpBtnsSort, list) {
+		[...wrpBtnsSort.querySelectorAll(".sort")]
 			.map(btnSort => {
 				const btnSortField = btnSort.dataset.sort;
 
@@ -4239,57 +4379,57 @@ globalThis.SortUtil = {
 					},
 				});
 			});
-	},
+	}
 
-	ascSortSourceGroup (a, b) {
+	static ascSortSourceGroup (a, b) {
 		const grpA = a.group || "other";
 		const grpB = b.group || "other";
 		const ixA = SourceUtil.ADV_BOOK_GROUPS.findIndex(it => it.group === grpA);
 		const ixB = SourceUtil.ADV_BOOK_GROUPS.findIndex(it => it.group === grpB);
 		return SortUtil.ascSort(ixA, ixB);
-	},
+	}
 
-	ascSortAdventure (a, b) {
+	static ascSortAdventure (a, b) {
 		return SortUtil.ascSortDateString(b.published, a.published)
 			|| SortUtil.ascSortLower(a.parentSource || "", b.parentSource || "")
 			|| SortUtil.ascSort(a.publishedOrder ?? 0, b.publishedOrder ?? 0)
 			|| SortUtil.ascSortLower(a.storyline, b.storyline)
 			|| SortUtil.ascSort(a.level?.start ?? 20, b.level?.start ?? 20)
 			|| SortUtil.ascSortLower(a.name, b.name);
-	},
+	}
 
-	ascSortBook (a, b) {
+	static ascSortBook (a, b) {
 		return SortUtil.ascSortDateString(b.published, a.published)
 			|| SortUtil.ascSortLower(a.parentSource || "", b.parentSource || "")
 			|| SortUtil.ascSortLower(a.name, b.name);
-	},
+	}
 
-	ascSortBookData (a, b) {
+	static ascSortBookData (a, b) {
 		return SortUtil.ascSortLower(a.id || "", b.id || "");
-	},
+	}
 
-	ascSortGenericEntity (a, b) {
+	static ascSortGenericEntity (a, b) {
 		return SortUtil.ascSortLower(a.name || "", b.name || "") || SortUtil.ascSortLower(a.source || "", b.source || "");
-	},
+	}
 
-	ascSortDeity (a, b) {
+	static ascSortDeity (a, b) {
 		return SortUtil.ascSortLower(a.name, b.name) || SortUtil.ascSortLower(a.source, b.source) || SortUtil.ascSortLower(a.pantheon, b.pantheon);
-	},
+	}
 
-	ascSortCard (a, b) {
+	static ascSortCard (a, b) {
 		return SortUtil.ascSortLower(a.set, b.set) || SortUtil.ascSortLower(a.source, b.source) || SortUtil.ascSortLower(a.name, b.name);
-	},
+	}
 
-	ascSortEncounter (a, b) {
+	static ascSortEncounter (a, b) {
 		return SortUtil.ascSortLower(a.name, b.name) || SortUtil.ascSortLower(a.caption || "", b.caption || "") || SortUtil.ascSort(a.minlvl || 0, b.minlvl || 0) || SortUtil.ascSort(a.maxlvl || Number.MAX_SAFE_INTEGER, b.maxlvl || Number.MAX_SAFE_INTEGER);
-	},
+	}
 
-	_ITEM_RARITY_ORDER: ["none", "common", "uncommon", "rare", "very rare", "legendary", "artifact", "varies", "unknown (magic)", "unknown"],
-	ascSortItemRarity (a, b) {
+	static _ITEM_RARITY_ORDER = ["none", "common", "uncommon", "rare", "very rare", "legendary", "artifact", "varies", "unknown (magic)", "unknown"];
+	static ascSortItemRarity (a, b) {
 		const ixA = SortUtil._ITEM_RARITY_ORDER.indexOf(a);
 		const ixB = SortUtil._ITEM_RARITY_ORDER.indexOf(b);
 		return (~ixA ? ixA : Number.MAX_SAFE_INTEGER) - (~ixB ? ixB : Number.MAX_SAFE_INTEGER);
-	},
+	}
 };
 
 globalThis.MultiSourceUtil = class {
@@ -5093,6 +5233,7 @@ globalThis.DataUtil = class {
 		static _MERGE_REQUIRES_PRESERVE_BASE = {
 			page: true,
 			otherSources: true,
+			referenceSources: true,
 			srd: true,
 			srd52: true,
 			basicRules: true,
@@ -5101,6 +5242,8 @@ globalThis.DataUtil = class {
 			hasFluff: true,
 			hasFluffImages: true,
 			hasToken: true,
+			tokenCredit: true,
+			tokenCustom: true,
 			_versions: true,
 		};
 
@@ -5176,11 +5319,14 @@ globalThis.DataUtil = class {
 			}
 
 			if (DataUtil.dbg.isTrackCopied) entParent.dbg_isCopied = true;
+
 			// Handle recursive copy
 			if (entParent._copy) await DataUtil.generic._pMergeCopy(impl, page, entryList, entParent, options);
+			if (!entry._copy) return; // Another merge may have completed for this entry, if multiple entries use it as a parent
 
 			// Preload templates, if required
 			const templates = await this._pMergeCopy_pGetTemplates(entry);
+			if (!entry._copy) return; // Another merge may have completed for this entry, if multiple entries use it as a parent
 
 			return DataUtil.generic.copyApplier.getCopy(impl, MiscUtil.copyFast(entParent), entry, templates, options);
 		}
@@ -5232,8 +5378,9 @@ globalThis.DataUtil = class {
 				return new RegExp(replace, `g${flags || ""}`);
 			}
 
-			static _doReplaceStringHandler ({re, withStr}, str) {
-				// TODO(Future) may need to have this handle replaces inside _some_ tags
+			static _doReplaceStringHandler ({re, withStr, isTagInsensitive = false}, str) {
+				if (isTagInsensitive) return str.replace(re, withStr);
+
 				const split = Renderer.splitByTags(str);
 				const len = split.length;
 				for (let i = 0; i < len; ++i) {
@@ -5255,7 +5402,7 @@ globalThis.DataUtil = class {
 
 				DataUtil.generic._walker_replaceTxt = DataUtil.generic._walker_replaceTxt || MiscUtil.getWalker();
 				const re = this._getRegexFromReplaceModInfo({replace: modInfo.replace, flags: modInfo.flags});
-				const handlers = {string: this._doReplaceStringHandler.bind(null, {re: re, withStr: modInfo.with})};
+				const handlers = {string: this._doReplaceStringHandler.bind(null, {re: re, withStr: modInfo.with, isTagInsensitive: modInfo.tagInsensitive})};
 
 				ents.forEach(ent => {
 					if (ent.name) ent.name = DataUtil.generic._walker_replaceTxt.walk(ent.name, handlers);
@@ -5268,7 +5415,7 @@ globalThis.DataUtil = class {
 
 				DataUtil.generic._walker_replaceTxt = DataUtil.generic._walker_replaceTxt || MiscUtil.getWalker();
 				const re = this._getRegexFromReplaceModInfo({replace: modInfo.replace, flags: modInfo.flags});
-				const handlers = {string: this._doReplaceStringHandler.bind(null, {re: re, withStr: modInfo.with})};
+				const handlers = {string: this._doReplaceStringHandler.bind(null, {re: re, withStr: modInfo.with, isTagInsensitive: modInfo.tagInsensitive})};
 
 				const props = modInfo.props || [null, "entries", "headerEntries", "footerEntries"];
 				if (!props.length) return;
@@ -5505,8 +5652,12 @@ globalThis.DataUtil = class {
 			static _doMod_addSpells ({copyTo, copyFrom, modInfo, msgPtFailed}) {
 				if (!copyTo.spellcasting) throw new Error(`${msgPtFailed} Creature did not have a spellcasting property!`);
 
-				// TODO could accept a "position" or "name" parameter should spells need to be added to other spellcasting traits
-				const spellcasting = copyTo.spellcasting[0];
+				// TODO could accept a "position" parameter should spells need to be added to other spellcasting traits
+				const spellcasting = modInfo.name
+					? copyTo.spellcasting.find(ent => ent.name === modInfo.name)
+					: copyTo.spellcasting[0];
+
+				if (modInfo.name && !spellcasting) throw new Error(`${msgPtFailed} Creature did not have spellcasting trait named "${modInfo.name}"!`);
 
 				if (modInfo.spells) {
 					const spells = spellcasting.spells;
@@ -5784,6 +5935,15 @@ globalThis.DataUtil = class {
 				else this._doMod_handleProp({copyTo, copyFrom, modInfos, msgPtFailed});
 			}
 
+			static _PROPS_TAIL = [
+				"_",
+				"*",
+			];
+
+			static _sortProps (propA, propB) {
+				return SortUtil.ascSort(this._PROPS_TAIL.indexOf(propA), this._PROPS_TAIL.indexOf(propB));
+			}
+
 			static getCopy (impl, copyFrom, copyTo, templates, {isExternalApplicationKeepCopy = false, isExternalApplicationIdentityOnly = false} = {}) {
 				this._WALKER ||= MiscUtil.getWalker();
 
@@ -5872,11 +6032,13 @@ globalThis.DataUtil = class {
 						copyMeta._mod[k] = DataUtil.generic.variableResolver.resolve({obj: v, ent: copyTo});
 					});
 
-					Object.entries(copyMeta._mod).forEach(([prop, modInfos]) => {
-						if (prop === "*") this._doMod({copyTo, copyFrom, modInfos, props: DataUtil.generic.COPY_ENTRY_PROPS, msgPtFailed, isExternalApplicationIdentityOnly});
-						else if (prop === "_") this._doMod({copyTo, copyFrom, modInfos, msgPtFailed, isExternalApplicationIdentityOnly});
-						else this._doMod({copyTo, copyFrom, modInfos, props: [prop], msgPtFailed, isExternalApplicationIdentityOnly});
-					});
+					Object.entries(copyMeta._mod)
+						.sort(([propA], [propB]) => this._sortProps(propA, propB))
+						.forEach(([prop, modInfos]) => {
+							if (prop === "*") this._doMod({copyTo, copyFrom, modInfos, props: DataUtil.generic.COPY_ENTRY_PROPS, msgPtFailed, isExternalApplicationIdentityOnly});
+							else if (prop === "_") this._doMod({copyTo, copyFrom, modInfos, msgPtFailed, isExternalApplicationIdentityOnly});
+							else this._doMod({copyTo, copyFrom, modInfos, props: [prop], msgPtFailed, isExternalApplicationIdentityOnly});
+						});
 				}
 
 				// add filter tag
@@ -6161,7 +6323,7 @@ globalThis.DataUtil = class {
 			delete cpyParentEntity.hasFluff;
 			delete cpyParentEntity.hasFluffImages;
 
-			["additionalSources", "otherSources"]
+			["additionalSources", "otherSources", "referenceSources"]
 				.forEach(prop => {
 					if (cpyParentEntity[prop]?.length) cpyParentEntity[prop] = cpyParentEntity[prop].filter(srcMeta => srcMeta.source !== version.source);
 					if (!cpyParentEntity[prop]?.length) delete cpyParentEntity[prop];
@@ -7588,7 +7750,7 @@ globalThis.RollerUtil = {
 };
 RollerUtil.DICE_REGEX = new RegExp(RollerUtil._DICE_REGEX_STR, "g");
 RollerUtil.DICE_REGEX_FULLMATCH = new RegExp(`^\\s*${RollerUtil._DICE_REGEX_STR}\\s*$`);
-RollerUtil.REGEX_DAMAGE_DICE = /(?<average>\d+)(?<prefix> \((?:{@dice |{@damage ))(?<diceExp>[-+0-9d ]*)(?<suffix>}\)(?:\s*\+\s*the spell's level)? [a-z]+( \([-a-zA-Z0-9 ]+\))?( or [a-z]+( \([-a-zA-Z0-9 ]+\))?)? damage)/gi;
+RollerUtil.REGEX_DAMAGE_DICE = /(?<average>\d+)(?<prefix> \((?:{@dice |{@damage ))(?<diceExp>[-+0-9d ]*)(?<suffix>}\)(?:\s*\+\s*the spell's level)?(?: magic(?:al)?)? [a-z]+( \([-a-zA-Z0-9 ]+\))?( or [a-z]+( \([-a-zA-Z0-9 ]+\))?)? damage)/gi;
 RollerUtil.REGEX_DAMAGE_FLAT = /(?<prefix>Hit(?: or Miss)?: |Miss: |{@hom}|{@h}|{@m})(?<flatVal>[0-9]+)(?<suffix> [a-z]+( \([-a-zA-Z0-9 ]+\))?( or [a-z]+( \([-a-zA-Z0-9 ]+\))?)? damage)/gi;
 RollerUtil._REGEX_ROLLABLE_COL_LABEL = /^(.*?\d)(\s*[-+/*^×÷]\s*)([a-zA-Z0-9 ]+)$/;
 RollerUtil._REGEX_ROLLABLE_COL_TRAILING_VARIABLE = /^(.*?\d)(\s*[-+/*^×÷]\s*)(#\$.*?\$#)$/;
@@ -8354,6 +8516,17 @@ Array.prototype.getNext || Object.defineProperty(Array.prototype, "getNext", {
 	},
 });
 
+Array.prototype.getPrevious || Object.defineProperty(Array.prototype, "getPrevious", {
+	enumerable: false,
+	writable: true,
+	value: function (curVal) {
+		let ix = this.indexOf(curVal);
+		if (!~ix) throw new Error("Value was not in array!");
+		if (--ix < 0) ix = this.length - 1;
+		return this[ix];
+	},
+});
+
 // See: https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle
 Array.prototype.shuffle || Object.defineProperty(Array.prototype, "shuffle", {
 	enumerable: false,
@@ -8511,20 +8684,13 @@ Array.prototype.prevWrap || Object.defineProperty(Array.prototype, "prevWrap", {
 	},
 });
 
-Array.prototype.findLast || Object.defineProperty(Array.prototype, "findLast", {
+Array.prototype.rotateRight || Object.defineProperty(Array.prototype, "rotateRight", {
 	enumerable: false,
 	writable: true,
-	value: function (fn) {
-		for (let i = this.length - 1; i >= 0; --i) if (fn(this[i])) return this[i];
-	},
-});
-
-Array.prototype.findLastIndex || Object.defineProperty(Array.prototype, "findLastIndex", {
-	enumerable: false,
-	writable: true,
-	value: function (fn) {
-		for (let i = this.length - 1; i >= 0; --i) if (fn(this[i])) return i;
-		return -1;
+	value: function (n) {
+		n = n % this.length;
+		this.unshift.apply(this, this.splice(n, this.length));
+		return this;
 	},
 });
 
@@ -8574,8 +8740,8 @@ Map.prototype.getOrSet || Object.defineProperty(Map.prototype, "getOrSet", {
  *
  * @param opts Options object.
  * @param opts.hashKey to use in the URL so that forward/back can open/close the view
- * @param opts.$btnOpen jQuery-selected button to bind click open/close
- * @param [opts.$eleNoneVisible] "error" message to display if user has not selected any viewable content
+ * @param opts.btnOpen jQuery-selected button to bind click open/close
+ * @param [opts.eleNoneVisible] "error" message to display if user has not selected any viewable content
  * @param opts.pageTitle Title.
  * @param opts.state State to modify when opening/closing.
  * @param opts.stateKey Key in state to set true/false when opening/closing.
@@ -8597,17 +8763,17 @@ class BookModeViewBase {
 
 	constructor (opts) {
 		opts = opts || {};
-		const {$btnOpen, state} = opts;
+		const {btnOpen, state} = opts;
 
 		if (this._hashKey && this._stateKey) throw new Error(`Only one of "hashKey" and "stateKey" may be specified!`);
 
 		this._state = state;
-		this._$btnOpen = $btnOpen;
+		this._btnOpen = e_({ele: btnOpen});
 
 		this._isActive = false;
-		this._$wrpBook = null;
+		this._wrpBook = null;
 
-		this._$btnOpen.off("click").on("click", () => this.setStateOpen());
+		this._btnOpen.onn("click", () => this.setStateOpen());
 	}
 
 	/* -------------------------------------------- */
@@ -8624,67 +8790,75 @@ class BookModeViewBase {
 
 	/* -------------------------------------------- */
 
-	_$getWindowHeaderLhs () {
-		return $(`<div class="ve-flex-v-center"></div>`);
+	_getWindowHeaderLhs () {
+		return ee`<div class="ve-flex-v-center"></div>`;
 	}
 
-	_$getBtnWindowClose () {
-		return $(`<button class="ve-btn ve-btn-xs ve-btn-danger br-0 bt-0 btl-0 btr-0 bbr-0 bbl-0 h-20p" title="Close"><span class="glyphicon glyphicon-remove"></span></button>`)
-			.click(() => this.setStateClosed());
+	_getBtnWindowClose () {
+		return ee`<button class="ve-btn ve-btn-xs ve-btn-danger br-0 bt-0 btl-0 btr-0 bbr-0 bbl-0 h-20p" title="Close"><span class="glyphicon glyphicon-remove"></span></button>`
+			.onn("click", () => this.setStateClosed());
 	}
 
 	/* -------------------------------------------- */
 
-	async _$pGetWrpControls ({$wrpContent}) {
-		const $wrp = $(`<div class="w-100 ve-flex-col no-shrink no-print"></div>`);
+	async _pGetWrpControls ({wrpContent}) {
+		const wrp = ee`<div class="w-100 ve-flex-col no-shrink no-print"></div>`;
 
-		if (!this._hasPrintColumns) return $wrp;
+		if (!this._hasPrintColumns) return {wrp};
 
-		$wrp.addClass("px-2 mt-2 bb-1p pb-1");
+		["px-2", "mt-2", "bb-1p", "pb-1"].forEach(clz => wrp.addClass(clz));
 
 		const onChangeColumnCount = (cols) => {
-			$wrpContent.toggleClass(`bkmv__wrp--columns-1`, cols === 1);
-			$wrpContent.toggleClass(`bkmv__wrp--columns-2`, cols === 2);
+			wrpContent.toggleClass(`bkmv__wrp--columns-1`, cols === 1);
+			wrpContent.toggleClass(`bkmv__wrp--columns-2`, cols === 2);
 		};
 
 		const lastColumns = StorageUtil.syncGetForPage(BookModeViewBase._BOOK_VIEW_COLUMNS_K);
 
-		const $selColumns = $(`<select class="form-control input-sm">
+		const onChangeSelColumns = () => {
+			const val = Number(selColumns.val());
+			if (val === 0) onChangeColumnCount(2);
+			else onChangeColumnCount(1);
+
+			StorageUtil.syncSetForPage(BookModeViewBase._BOOK_VIEW_COLUMNS_K, val);
+		};
+
+		const selColumns = ee`<select class="form-control input-sm">
 			<option value="0">Two (book style)</option>
 			<option value="1">One</option>
-		</select>`)
-			.change(() => {
-				const val = Number($selColumns.val());
-				if (val === 0) onChangeColumnCount(2);
-				else onChangeColumnCount(1);
+		</select>`
+			.onn("change", () => onChangeSelColumns());
+		selColumns.val(`${lastColumns ?? 0}`);
+		onChangeSelColumns();
 
-				StorageUtil.syncSetForPage(BookModeViewBase._BOOK_VIEW_COLUMNS_K, val);
-			});
-		if (lastColumns != null) $selColumns.val(lastColumns);
-		$selColumns.change();
+		const wrpPrint = ee`<div class="w-100 ve-flex">
+			<div class="ve-flex-vh-center"><div class="mr-2 no-wrap help-subtle" title="Applied when printing the page.">Print columns:</div>${selColumns}</div>
+		</div>`.appendTo(wrp);
 
-		const $wrpPrint = $$`<div class="w-100 ve-flex">
-			<div class="ve-flex-vh-center"><div class="mr-2 no-wrap help-subtle" title="Applied when printing the page.">Print columns:</div>${$selColumns}</div>
-		</div>`.appendTo($wrp);
-
-		return {$wrp, $wrpPrint};
+		return {wrp, wrpPrint};
 	}
 
 	/* -------------------------------------------- */
 
-	_$getEleNoneVisible () { return null; }
+	_getEleNoneVisible () { return null; }
 
-	_$getBtnNoneVisibleClose () {
-		return $(`<button class="ve-btn ve-btn-default">Close</button>`)
-			.click(() => this.setStateClosed());
+	_getBtnNoneVisibleClose () {
+		return ee`<button class="ve-btn ve-btn-default">Close</button>`
+			.onn("click", () => this.setStateClosed());
 	}
 
 	/** @abstract */
-	async _pGetRenderContentMeta ({$wrpContent, $wrpContentOuter}) {
+	async _pGetRenderContentMeta ({wrpContent, wrpContentOuter}) {
 		return {cntSelectedEnts: 0, isAnyEntityRendered: false};
 	}
 
 	/* -------------------------------------------- */
+
+	async pInit () {
+		await this._pInit();
+	}
+
+	async _pInit () { /* Implement as required */ }
 
 	async pOpen () {
 		if (this._isActive) return;
@@ -8694,33 +8868,43 @@ class BookModeViewBase {
 		document.body.style.overflow = "hidden";
 		document.body.classList.add("bkmv-active");
 
-		const {$wrpContentOuter, $wrpContent} = await this._pGetContentElementMetas();
+		await this._pRender();
+	}
 
-		this._$wrpBook = $$`<div class="bkmv print__h-initial ve-flex-col print__ve-block">
-			<div class="bkmv__spacer-name no-print split-v-center no-shrink no-print">${this._$getWindowHeaderLhs()}${this._$getBtnWindowClose()}</div>
-			${(await this._$pGetWrpControls({$wrpContent})).$wrp}
-			${$wrpContentOuter}
+	_preRender () { /* Implement as required */ }
+
+	async _pRender () {
+		this._preRender();
+
+		const {wrpContentOuter, wrpContent} = await this._pGetContentElementMetas();
+
+		if (this._wrpBook) this._wrpBook.remove();
+
+		this._wrpBook = ee`<div class="bkmv print__h-initial ve-flex-col print__ve-block">
+			<div class="bkmv__spacer-name no-print split-v-center no-shrink no-print">${this._getWindowHeaderLhs()}${this._getBtnWindowClose()}</div>
+			${(await this._pGetWrpControls({wrpContent})).wrp}
+			${wrpContentOuter}
 		</div>`
 			.appendTo(document.body);
 	}
 
 	async _pGetContentElementMetas () {
-		const $wrpContent = $(`<div class="bkmv__scroller smooth-scroll ve-overflow-y-auto print__overflow-visible ${this._isColumns ? "bkmv__wrp" : "ve-flex-col"} w-100 min-h-0"></div>`);
+		const wrpContent = ee`<div class="bkmv__scroller smooth-scroll ve-overflow-y-auto print__overflow-visible ${this._isColumns ? "bkmv__wrp" : "ve-flex-col"} w-100 min-h-0"></div>`;
 
-		const $wrpContentOuter = $$`<div class="h-100 print__h-initial w-100 min-h-0 ve-flex-col print__ve-block">${$wrpContent}</div>`;
+		const wrpContentOuter = ee`<div class="h-100 print__h-initial w-100 min-h-0 ve-flex-col print__ve-block">${wrpContent}</div>`;
 
 		const out = {
-			$wrpContentOuter,
-			$wrpContent,
+			wrpContentOuter,
+			wrpContent,
 		};
 
-		const {cntSelectedEnts, isAnyEntityRendered} = await this._pGetRenderContentMeta({$wrpContent, $wrpContentOuter});
+		const {cntSelectedEnts, isAnyEntityRendered} = await this._pGetRenderContentMeta({wrpContent, wrpContentOuter});
 
-		if (isAnyEntityRendered) $wrpContentOuter.append($wrpContent);
+		if (isAnyEntityRendered) wrpContentOuter.appends(wrpContent);
 
 		if (cntSelectedEnts) return out;
 
-		$wrpContentOuter.append(this._$getEleNoneVisible());
+		wrpContentOuter.appends(this._getEleNoneVisible());
 
 		return out;
 	}
@@ -8731,7 +8915,7 @@ class BookModeViewBase {
 		document.body.style.overflow = "";
 		document.body.classList.remove("bkmv-active");
 
-		this._$wrpBook.remove();
+		this._wrpBook.remove();
 		this._isActive = false;
 	}
 
@@ -8750,22 +8934,23 @@ class BookModeViewBase {
 }
 
 // CONTENT EXCLUSION ===================================================================================================
-globalThis.ExcludeUtil = {
-	isInitialised: false,
-	_excludes: null,
-	_cache_excludesLookup: null,
-	_lock: null,
+globalThis.ExcludeUtil = class {
+	static isInitialised = false;
+	static _excludes = null;
+	static _cache_excludesLookup = null;
+	static _lock = null;
 
-	async pInitialise ({lockToken = null} = {}) {
+	static async pInitialise ({lockToken = null} = {}) {
+		if (ExcludeUtil.isInitialised) return;
 		try {
 			await ExcludeUtil._lock.pLock({token: lockToken});
 			await ExcludeUtil._pInitialise();
 		} finally {
 			ExcludeUtil._lock.unlock();
 		}
-	},
+	}
 
-	async _pInitialise () {
+	static async _pInitialise () {
 		if (ExcludeUtil.isInitialised) return;
 
 		ExcludeUtil.pSave = MiscUtil.throttle(ExcludeUtil._pSave, 50);
@@ -8773,6 +8958,7 @@ globalThis.ExcludeUtil = {
 			ExcludeUtil._excludes = ExcludeUtil._getValidExcludes(
 				await StorageUtil.pGet(VeCt.STORAGE_EXCLUDES) || [],
 			);
+			this._doBuildCache();
 		} catch (e) {
 			JqueryUtil.doToast({
 				content: "Error when loading content blocklist! Purged blocklist data. (See the log for more information.)",
@@ -8788,61 +8974,74 @@ globalThis.ExcludeUtil = {
 			setTimeout(() => { throw e; });
 		}
 		ExcludeUtil.isInitialised = true;
-	},
+	}
 
-	_getValidExcludes (excludes) {
+	static _getValidExcludes (excludes) {
 		return excludes
 			.filter(it => it.hash) // remove legacy rows
-			.filter(it => it.hash != null && it.category != null && it.source != null); // remove invalid rows
-	},
+			.filter(it => it.hash != null && it.category != null && it.source != null) // remove invalid rows
+			// update legacy rows
+			.map(it => {
+				it.isAuto ??= false;
+				return it;
+			})
+		;
+	}
 
-	getList () {
+	static getList () {
 		return MiscUtil.copyFast(ExcludeUtil._excludes || []);
-	},
+	}
 
-	async pSetList (toSet) {
+	static async pSetList (toSet) {
 		ExcludeUtil._excludes = toSet;
 		ExcludeUtil._cache_excludesLookup = null;
 		await ExcludeUtil.pSave();
-	},
+	}
 
-	async pExtendList (toAdd) {
+	/**
+	 * @param {{displayName, hash, category, source, isAuto}[]} toAdd
+	 */
+	static async pExtendList (toAdd) {
 		try {
 			const lockToken = await ExcludeUtil._lock.pLock();
+			await ExcludeUtil.pInitialise({lockToken});
 			await ExcludeUtil._pExtendList({toAdd, lockToken});
 		} finally {
 			ExcludeUtil._lock.unlock();
 		}
-	},
+	}
 
-	async _pExtendList ({toAdd, lockToken}) {
+	static async _pExtendList ({toAdd, lockToken}) {
 		await ExcludeUtil.pInitialise({lockToken});
-		this._doBuildCache();
 
 		const out = MiscUtil.copyFast(ExcludeUtil._excludes || []);
 		MiscUtil.copyFast(toAdd || [])
 			.filter(({hash, category, source}) => {
 				if (!hash || !category || !source) return false;
-				const cacheUid = ExcludeUtil._getCacheUids(hash, category, source, true);
+				const [cacheUid] = ExcludeUtil._getCacheUids(hash, category, source, {isExact: true});
 				return !ExcludeUtil._cache_excludesLookup[cacheUid];
 			})
-			.forEach(it => out.push(it));
+			.forEach(it => {
+				it.isAuto ??= false;
+				out.push(it);
+			});
 
 		await ExcludeUtil.pSetList(out);
-	},
+	}
 
-	_doBuildCache () {
+	static _doBuildCache () {
 		if (ExcludeUtil._cache_excludesLookup) return;
 		if (!ExcludeUtil._excludes) return;
 
 		ExcludeUtil._cache_excludesLookup = {};
-		ExcludeUtil._excludes.forEach(({source, category, hash}) => {
-			const cacheUid = ExcludeUtil._getCacheUids(hash, category, source, true);
-			ExcludeUtil._cache_excludesLookup[cacheUid] = true;
-		});
-	},
+		ExcludeUtil._excludes
+			.forEach(({source, category, hash}) => {
+				const [cacheUid] = ExcludeUtil._getCacheUids(hash, category, source, {isExact: true});
+				ExcludeUtil._cache_excludesLookup[cacheUid] = true;
+			});
+	}
 
-	_getCacheUids (hash, category, source, isExact) {
+	static _getCacheUids (hash, category, source, {isExact = false} = {}) {
 		hash = (hash || "").toLowerCase();
 		category = (category || "").toLowerCase();
 		source = (source?.source || source || "").toLowerCase();
@@ -8851,7 +9050,7 @@ globalThis.ExcludeUtil = {
 		if (isExact) return [exact];
 
 		return [
-			`${hash}__${category}__${source}`,
+			exact,
 			`*__${category}__${source}`,
 			`${hash}__*__${source}`,
 			`${hash}__${category}__*`,
@@ -8860,9 +9059,9 @@ globalThis.ExcludeUtil = {
 			`${hash}__*__*`,
 			`*__*__*`,
 		];
-	},
+	}
 
-	_excludeCount: 0,
+	static _excludeCount = 0;
 	/**
 	 * @param hash
 	 * @param category
@@ -8870,7 +9069,7 @@ globalThis.ExcludeUtil = {
 	 * @param [opts]
 	 * @param [opts.isNoCount]
 	 */
-	isExcluded (hash, category, source, opts) {
+	static isExcluded (hash, category, source, opts) {
 		if (!ExcludeUtil._excludes || !ExcludeUtil._excludes.length) return false;
 		if (!source) throw new Error(`Entity had no source!`);
 		opts = opts || {};
@@ -8887,24 +9086,24 @@ globalThis.ExcludeUtil = {
 		if (!opts.isNoCount) ++ExcludeUtil._excludeCount;
 
 		return isExcluded;
-	},
+	}
 
-	_isExcluded (hash, category, source) {
+	static _isExcluded (hash, category, source) {
 		for (const cacheUid of ExcludeUtil._getCacheUids(hash, category, source)) {
 			if (ExcludeUtil._cache_excludesLookup[cacheUid]) return true;
 		}
 		return false;
-	},
+	}
 
-	isAllContentExcluded (list) { return (!list.length && ExcludeUtil._excludeCount) || (list.length > 0 && list.length === ExcludeUtil._excludeCount); },
-	getAllContentBlocklistedHtml () { return `<div class="initial-message initial-message--med">(All content <a href="blocklist.html">blocklisted</a>)</div>`; },
+	static isAllContentExcluded (list) { return (!list.length && ExcludeUtil._excludeCount) || (list.length > 0 && list.length === ExcludeUtil._excludeCount); }
+	static getAllContentBlocklistedHtml () { return `<div class="initial-message initial-message--med">(All content <a href="blocklist.html">blocklisted</a>)</div>`; }
 
-	async _pSave () {
+	static async _pSave () {
 		return StorageUtil.pSet(VeCt.STORAGE_EXCLUDES, ExcludeUtil._excludes);
-	},
+	}
 
 	// The throttled version, available post-initialisation
-	async pSave () { /* no-op */ },
+	static async pSave () { /* no-op */ }
 };
 
 // EXTENSIONS ==========================================================================================================
@@ -8949,11 +9148,11 @@ globalThis.ExtensionUtil = class {
 	}
 
 	static _getElementData ({ele}) {
-		const $parent = $(ele).closest(`[data-page]`);
-		const page = $parent.attr("data-page");
-		const source = $parent.attr("data-source");
-		const hash = $parent.attr("data-hash");
-		const rawExtensionData = $parent.attr("data-extension");
+		const eleParent = e_({ele}).closeste(`[data-page]`);
+		const page = eleParent.attr("data-page");
+		const source = eleParent.attr("data-source");
+		const hash = eleParent.attr("data-hash");
+		const rawExtensionData = eleParent.attr("data-extension");
 		const extensionData = rawExtensionData ? JSON.parse(rawExtensionData) : null;
 
 		return {page, source, hash, extensionData};
@@ -9108,16 +9307,29 @@ DatetimeUtil._SECS_PER_DAY = 86400;
 DatetimeUtil._SECS_PER_HOUR = 3600;
 DatetimeUtil._SECS_PER_MINUTE = 60;
 
-globalThis.EditorUtil = {
-	getTheme () {
+globalThis.EditorUtil = class {
+	static getTheme () {
 		const {isNight} = styleSwitcher.getSummary();
 		return isNight ? "ace/theme/tomorrow_night" : "ace/theme/textmate";
-	},
+	}
 
-	initEditor (id, additionalOpts = null) {
+	static _P_LOADING_ACE = null;
+
+	static async _pLoadAce () {
+		if (typeof ace !== "undefined") return;
+
+		return this._P_LOADING_ACE ||= (async () => {
+			await import("../lib/ace.js");
+			ace.config.set("basePath", "../lib");
+		})();
+	}
+
+	static async pInitEditor (eleOrId, additionalOpts = null) {
+		await this._pLoadAce();
+
 		additionalOpts = additionalOpts || {};
 
-		const editor = ace.edit(id);
+		const editor = ace.edit(eleOrId);
 		editor.setOptions({
 			theme: EditorUtil.getTheme(),
 			wrap: true,
@@ -9140,10 +9352,10 @@ globalThis.EditorUtil = {
 			});
 		}
 
-		styleSwitcher.addFnOnChange(() => editor.setOptions({theme: EditorUtil.getTheme()}));
+		styleSwitcher.addFnOnChangeTheme(() => editor.setOptions({theme: EditorUtil.getTheme()}));
 
 		return editor;
-	},
+	}
 };
 
 globalThis.BrowserUtil = class {
@@ -9194,14 +9406,14 @@ if (!globalThis.IS_VTT && typeof window !== "undefined") {
 				"div-gpt-ad-5etools36834", // mobile middle
 			].forEach(id => {
 				const iv = setInterval(() => {
-					const $wrp = $(`#${id}`);
-					if (!$wrp.length) return;
-					if (!$wrp.children().length) return;
-					if ($wrp.children()[0].tagName === "SCRIPT") return;
-					const $tgt = $wrp.closest(".cancer__anchor").find(".cancer__disp-cancer");
-					if ($tgt.length) {
+					const wrp = es(`#${id}`);
+					if (!wrp.length) return;
+					if (!wrp.childrene().length) return;
+					if (wrp.childrene()[0].tagName === "SCRIPT") return;
+					const tgt = wrp.closeste(".cancer__anchor")?.find(".cancer__disp-cancer");
+					if (tgt) {
 						anyFound = true;
-						$tgt.css({display: "flex"}).text("Advertisements");
+						tgt.css({display: "flex"}).text("Advertisements");
 						clearInterval(iv);
 					}
 				}, 250);
@@ -9214,25 +9426,25 @@ if (!globalThis.IS_VTT && typeof window !== "undefined") {
 				if (isPadded) return;
 				isPadded = true;
 				// Pad the bottom of the page so the adhesive unit doesn't overlap the content
-				$(`.view-col-group--cancer`).append(`<div class="w-100 no-shrink" style="height: 110px;"></div>`);
+				em(`.view-col-group--cancer`).forEach(ele => ele.appends(`<div class="w-100 no-shrink" style="height: 110px;"></div>`));
 			}, 300);
 			ivsCancer.push(ivPad);
 		});
 
 		// Hack to lock the ad space at a fixed size--prevents the screen from shifting around once loaded
 		setTimeout(() => {
-			const $wrp = $(`.cancer__wrp-leaderboard-inner`);
-			if (anyFound) $wrp.css({height: 90});
+			const wrps = em(`.cancer__wrp-leaderboard-inner`);
+			if (anyFound) wrps.forEach(ele => ele.css({height: 90}));
 			ivsCancer.forEach(iv => clearInterval(iv));
 		}, 6500);
 	} else {
-		if (!isDbgCancer) window.addEventListener("load", () => $(`.cancer__anchor`).remove());
+		if (!isDbgCancer) window.addEventListener("load", () => em(`.cancer__anchor`).forEach(ele => ele.remove()));
 	}
 
 	if (isDbgCancer) {
 		window.addEventListener("load", () => {
-			$(`.cancer__sidebar-inner--top`).append(`<div style="width: 300px; height: 600px; background: #f0f;"></div>`);
-			$(`.cancer__sidebar-inner--bottom`).append(`<div style="width: 300px; height: 600px; background: #f0f;"></div>`);
+			em(`.cancer__sidebar-inner--top`).forEach(ele => ele.appends(`<div style="width: 300px; height: 600px; background: #f0f;"></div>`));
+			em(`.cancer__sidebar-inner--bottom`).forEach(ele => ele.appends(`<div style="width: 300px; height: 600px; background: #f0f;"></div>`));
 		});
 	}
 	// endregion

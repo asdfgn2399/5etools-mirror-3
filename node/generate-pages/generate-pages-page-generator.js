@@ -11,6 +11,7 @@ export class PageGeneratorBase {
 	_navbarTitle;
 	_navbarTitleHtml;
 	_navbarDescription;
+	_navbarDescriptionHtml;
 	_navbarPageTitleStyleAdditional;
 	_isFontAwesome = false;
 	_stylesheets;
@@ -57,6 +58,7 @@ export class PageGeneratorBase {
 			navbarTitle: this._navbarTitle ?? this._pageTitle,
 			navbarTitleHtml: this._navbarTitleHtml,
 			navbarDescription: this._navbarDescription,
+			navbarDescriptionHtml: this._navbarDescriptionHtml,
 			navbarPageTitleStyleAdditional: this._navbarPageTitleStyleAdditional,
 			isFontAwesome: this._isFontAwesome,
 			stylesheets: this._stylesheets,
@@ -69,6 +71,12 @@ export class PageGeneratorBase {
 			.split("\n")
 			.map(l => l.trimEnd())
 			.join("\n");
+
+		if (this._page.includes("/")) {
+			const parentDir = this._page.split("/").slice(0, -1).join("/");
+			fs.mkdirSync(parentDir, {recursive: true});
+		}
+
 		fs.writeFileSync(this._page, rendered, "utf-8");
 	}
 
@@ -297,4 +305,15 @@ export class PageGeneratorManagerBase extends PageGeneratorGeneric {
 	_scriptsUtilsAdditional = [
 		"utils-list.js",
 	];
+}
+
+export class PageGeneratorSeoIndexBase extends PageGeneratorGeneric {
+	_filename = "seo/template-seo-index.hbs";
+
+	_registerPartials () {
+		super._registerPartials();
+
+		this._registerPartial({ident: "seoHeadInner", filename: "seo/template-seo-index-head-inner.hbs"});
+		this._registerPartial({ident: "seoBody", filename: "seo/template-seo-index-body.hbs"});
+	}
 }

@@ -606,10 +606,10 @@
 				{
 					"source": "VGM",
 					"page": 172
-				},
-				{
-					"source": "CoA"
 				}
+			],
+			"referenceSources": [
+				"CoA"
 			],
 			"size": [
 				"M"
@@ -1167,10 +1167,10 @@
 				{
 					"source": "MTF",
 					"page": 164
-				},
-				{
-					"source": "CoA"
 				}
+			],
+			"referenceSources": [
+				"CoA"
 			],
 			"size": [
 				"M"
@@ -1663,10 +1663,10 @@
 				{
 					"source": "VGM",
 					"page": 209
-				},
-				{
-					"source": "SjA"
 				}
+			],
+			"referenceSources": [
+				"SjA"
 			],
 			"size": [
 				"M"
@@ -2189,10 +2189,10 @@
 				{
 					"source": "MTF",
 					"page": 117
-				},
-				{
-					"source": "VEoR"
 				}
+			],
+			"referenceSources": [
+				"VEoR"
 			],
 			"size": [
 				"G"
@@ -3360,10 +3360,10 @@
 				{
 					"source": "MTF",
 					"page": 143
-				},
-				{
-					"source": "CoA"
 				}
+			],
+			"referenceSources": [
+				"CoA"
 			],
 			"size": [
 				"H"
@@ -3586,10 +3586,10 @@
 				{
 					"source": "VGM",
 					"page": 211
-				},
-				{
-					"source": "AATM"
 				}
+			],
+			"referenceSources": [
+				"AATM"
 			],
 			"size": [
 				"M"
@@ -4276,10 +4276,10 @@
 				{
 					"source": "MTF",
 					"page": 160
-				},
-				{
-					"source": "CoA"
 				}
+			],
+			"referenceSources": [
+				"CoA"
 			],
 			"size": [
 				"M"
@@ -4638,13 +4638,11 @@
 				{
 					"source": "MTF",
 					"page": 161
-				},
-				{
-					"source": "VEoR"
-				},
-				{
-					"source": "CoA"
 				}
+			],
+			"referenceSources": [
+				"VEoR",
+				"CoA"
 			],
 			"size": [
 				"M"
@@ -4838,10 +4836,10 @@
 				{
 					"source": "VGM",
 					"page": 127
-				},
-				{
-					"source": "SatO"
 				}
+			],
+			"referenceSources": [
+				"SatO"
 			],
 			"size": [
 				"M"
@@ -5361,7 +5359,7 @@
 				{
 					"name": "Tail",
 					"entries": [
-						"{@atk mw} {@hit 8} to hit, reach 20 ft., one target. {@h}32 ({@damage 6d8 + 5}) bludgeoning damage"
+						"{@atk mw} {@hit 8} to hit, reach 20 ft., one target. {@h}32 ({@damage 6d8 + 5}) bludgeoning damage."
 					]
 				}
 			],
@@ -5522,13 +5520,11 @@
 				{
 					"source": "MTF",
 					"page": 122
-				},
-				{
-					"source": "AATM"
-				},
-				{
-					"source": "VEoR"
 				}
+			],
+			"referenceSources": [
+				"AATM",
+				"VEoR"
 			],
 			"size": [
 				"L"
@@ -8113,13 +8109,11 @@
 				{
 					"source": "MTF",
 					"page": 128
-				},
-				{
-					"source": "AATM"
-				},
-				{
-					"source": "BMT"
 				}
+			],
+			"referenceSources": [
+				"AATM",
+				"BMT"
 			],
 			"size": [
 				"M"
@@ -8297,10 +8291,10 @@
 				{
 					"source": "MTF",
 					"page": 129
-				},
-				{
-					"source": "AATM"
 				}
+			],
+			"referenceSources": [
+				"AATM"
 			],
 			"size": [
 				"M"
@@ -9275,10 +9269,10 @@
 				{
 					"source": "MTF",
 					"page": 158
-				},
-				{
-					"source": "QftIS"
 				}
+			],
+			"referenceSources": [
+				"QftIS"
 			],
 			"size": [
 				"S"
@@ -10598,7 +10592,11 @@
 			"type": {
 				"type": "humanoid",
 				"tags": [
-					"elf"
+					{
+						"tag": "elf",
+						"prefix": "Drow",
+						"prefixHidden": true
+					}
 				]
 			},
 			"alignment": [
@@ -10814,7 +10812,11 @@
 			"type": {
 				"type": "humanoid",
 				"tags": [
-					"elf",
+					{
+						"tag": "elf",
+						"prefix": "Drow",
+						"prefixHidden": true
+					},
 					"wizard"
 				]
 			},
@@ -10995,7 +10997,11 @@
 			"type": {
 				"type": "humanoid",
 				"tags": [
-					"elf"
+					{
+						"tag": "elf",
+						"prefix": "Drow",
+						"prefixHidden": true
+					}
 				]
 			},
 			"alignment": [
@@ -11191,7 +11197,11 @@
 				"type": "humanoid",
 				"tags": [
 					"cleric",
-					"elf"
+					{
+						"tag": "elf",
+						"prefix": "Drow",
+						"prefixHidden": true
+					}
 				]
 			},
 			"alignment": [
@@ -11393,7 +11403,11 @@
 				"type": "humanoid",
 				"tags": [
 					"cleric",
-					"elf"
+					{
+						"tag": "elf",
+						"prefix": "Drow",
+						"prefixHidden": true
+					}
 				]
 			},
 			"alignment": [
@@ -11653,7 +11667,11 @@
 			"type": {
 				"type": "humanoid",
 				"tags": [
-					"elf"
+					{
+						"tag": "elf",
+						"prefix": "Drow",
+						"prefixHidden": true
+					}
 				]
 			},
 			"alignment": [
@@ -13134,10 +13152,10 @@
 				{
 					"source": "MTF",
 					"page": 132
-				},
-				{
-					"source": "AATM"
 				}
+			],
+			"referenceSources": [
+				"AATM"
 			],
 			"size": [
 				"M"
@@ -13610,13 +13628,11 @@
 				{
 					"source": "VGM",
 					"page": 173
-				},
-				{
-					"source": "PaBTSO"
-				},
-				{
-					"source": "CoA"
 				}
+			],
+			"referenceSources": [
+				"PaBTSO",
+				"CoA"
 			],
 			"size": [
 				"L"
@@ -14607,10 +14623,10 @@
 				{
 					"source": "MTF",
 					"page": 203
-				},
-				{
-					"source": "BMT"
 				}
+			],
+			"referenceSources": [
+				"BMT"
 			],
 			"size": [
 				"M"
@@ -15644,13 +15660,11 @@
 				{
 					"source": "VGM",
 					"page": 145
-				},
-				{
-					"source": "QftIS"
-				},
-				{
-					"source": "CoA"
 				}
+			],
+			"referenceSources": [
+				"QftIS",
+				"CoA"
 			],
 			"size": [
 				"H"
@@ -15992,8 +16006,7 @@
 				{
 					"name": "Burning Fury",
 					"entries": [
-						"When the salamander takes fire damage, its",
-						"Freezing Breath automatically recharges."
+						"When the salamander takes fire damage, its Freezing Breath automatically recharges."
 					]
 				}
 			],
@@ -16254,10 +16267,10 @@
 				{
 					"source": "VGM",
 					"page": 126
-				},
-				{
-					"source": "SjA"
 				}
+			],
+			"referenceSources": [
+				"SjA"
 			],
 			"size": [
 				"T"
@@ -16804,10 +16817,10 @@
 				{
 					"source": "MTF",
 					"page": 204
-				},
-				{
-					"source": "SjA"
 				}
+			],
+			"referenceSources": [
+				"SjA"
 			],
 			"size": [
 				"M"
@@ -17036,10 +17049,10 @@
 				{
 					"source": "WDMM",
 					"page": 312
-				},
-				{
-					"source": "BMT"
 				}
+			],
+			"referenceSources": [
+				"BMT"
 			],
 			"size": [
 				"M"
@@ -18242,10 +18255,10 @@
 				{
 					"source": "MTF",
 					"page": 209
-				},
-				{
-					"source": "CoA"
 				}
+			],
+			"referenceSources": [
+				"CoA"
 			],
 			"size": [
 				"L"
@@ -18360,6 +18373,9 @@
 					"source": "MTF",
 					"page": 149
 				}
+			],
+			"referenceSources": [
+				"KftGV"
 			],
 			"size": [
 				"L"
@@ -18587,13 +18603,11 @@
 				{
 					"source": "MTF",
 					"page": 162
-				},
-				{
-					"source": "VEoR"
-				},
-				{
-					"source": "CoA"
 				}
+			],
+			"referenceSources": [
+				"VEoR",
+				"CoA"
 			],
 			"size": [
 				"M"
@@ -23076,10 +23090,10 @@
 				{
 					"source": "MTF",
 					"page": 232
-				},
-				{
-					"source": "VEoR"
 				}
+			],
+			"referenceSources": [
+				"VEoR"
 			],
 			"size": [
 				"M"
@@ -23211,13 +23225,11 @@
 				{
 					"source": "MTF",
 					"page": 233
-				},
-				{
-					"source": "AATM"
-				},
-				{
-					"source": "VEoR"
 				}
+			],
+			"referenceSources": [
+				"AATM",
+				"VEoR"
 			],
 			"size": [
 				"M"
@@ -23584,10 +23596,10 @@
 				{
 					"source": "MTF",
 					"page": 213
-				},
-				{
-					"source": "SatO"
 				}
+			],
+			"referenceSources": [
+				"SatO"
 			],
 			"size": [
 				"L"
@@ -24073,10 +24085,10 @@
 				{
 					"source": "VGM",
 					"page": 137
-				},
-				{
-					"source": "BMT"
 				}
+			],
+			"referenceSources": [
+				"BMT"
 			],
 			"size": [
 				"M"
@@ -24237,7 +24249,7 @@
 				{
 					"name": "Shortsword",
 					"entries": [
-						"{@atk mw} {@hit 5} to hit, reach 5 ft., one target. {@h}6 ({@damage 1d6 + 3}) piercing damage plus 3 ({@damage 1d6}) necrotic damage"
+						"{@atk mw} {@hit 5} to hit, reach 5 ft., one target. {@h}6 ({@damage 1d6 + 3}) piercing damage plus 3 ({@damage 1d6}) necrotic damage."
 					]
 				},
 				{
@@ -24425,10 +24437,10 @@
 				{
 					"source": "MTF",
 					"page": 166
-				},
-				{
-					"source": "CoA"
 				}
+			],
+			"referenceSources": [
+				"CoA"
 			],
 			"size": [
 				"M"
@@ -26136,10 +26148,10 @@
 				{
 					"source": "MTF",
 					"page": 167
-				},
-				{
-					"source": "AATM"
 				}
+			],
+			"referenceSources": [
+				"AATM"
 			],
 			"size": [
 				"M"
@@ -26309,10 +26321,10 @@
 				{
 					"source": "VGM",
 					"page": 217
-				},
-				{
-					"source": "VEoR"
 				}
+			],
+			"referenceSources": [
+				"VEoR"
 			],
 			"size": [
 				"M"
@@ -26462,10 +26474,10 @@
 				{
 					"source": "VGM",
 					"page": 180
-				},
-				{
-					"source": "CoA"
 				}
+			],
+			"referenceSources": [
+				"CoA"
 			],
 			"size": [
 				"S"
@@ -26604,10 +26616,10 @@
 				{
 					"source": "VGM",
 					"page": 179
-				},
-				{
-					"source": "SjA"
 				}
+			],
+			"referenceSources": [
+				"SjA"
 			],
 			"size": [
 				"T"
@@ -26701,10 +26713,10 @@
 				{
 					"source": "VGM",
 					"page": 180
-				},
-				{
-					"source": "CoA"
 				}
+			],
+			"referenceSources": [
+				"CoA"
 			],
 			"size": [
 				"M"
@@ -27034,6 +27046,7 @@
 				"P"
 			],
 			"miscTags": [
+				"AOE",
 				"MW",
 				"RCH"
 			],
@@ -27374,10 +27387,10 @@
 				{
 					"source": "MTF",
 					"page": 168
-				},
-				{
-					"source": "CoA"
 				}
+			],
+			"referenceSources": [
+				"CoA"
 			],
 			"size": [
 				"M"
@@ -28470,10 +28483,10 @@
 				{
 					"source": "MTF",
 					"page": 169
-				},
-				{
-					"source": "CoA"
 				}
+			],
+			"referenceSources": [
+				"CoA"
 			],
 			"size": [
 				"L"
@@ -28761,10 +28774,10 @@
 				{
 					"source": "MTF",
 					"page": 199
-				},
-				{
-					"source": "CoA"
 				}
+			],
+			"referenceSources": [
+				"CoA"
 			],
 			"size": [
 				"G"
@@ -29147,13 +29160,11 @@
 				{
 					"source": "MTF",
 					"page": 160
-				},
-				{
-					"source": "VEoR"
-				},
-				{
-					"source": "CoA"
 				}
+			],
+			"referenceSources": [
+				"VEoR",
+				"CoA"
 			],
 			"size": [
 				"M"
@@ -30923,10 +30934,10 @@
 				{
 					"source": "VGM",
 					"page": 137
-				},
-				{
-					"source": "BMT"
 				}
+			],
+			"referenceSources": [
+				"BMT"
 			],
 			"size": [
 				"L"
@@ -31538,10 +31549,10 @@
 				{
 					"source": "MTF",
 					"page": 230
-				},
-				{
-					"source": "AATM"
 				}
+			],
+			"referenceSources": [
+				"AATM"
 			],
 			"size": [
 				"M"
@@ -31919,10 +31930,10 @@
 				{
 					"source": "VGM",
 					"page": 192
-				},
-				{
-					"source": "AATM"
 				}
+			],
+			"referenceSources": [
+				"AATM"
 			],
 			"size": [
 				"M"
@@ -32385,10 +32396,10 @@
 				{
 					"source": "MTF",
 					"page": 234
-				},
-				{
-					"source": "BMT"
 				}
+			],
+			"referenceSources": [
+				"BMT"
 			],
 			"size": [
 				"S"
@@ -32477,10 +32488,10 @@
 				{
 					"source": "MTF",
 					"page": 234
-				},
-				{
-					"source": "BMT"
 				}
+			],
+			"referenceSources": [
+				"BMT"
 			],
 			"size": [
 				"L"
@@ -32612,10 +32623,10 @@
 				{
 					"source": "MTF",
 					"page": 235
-				},
-				{
-					"source": "BMT"
 				}
+			],
+			"referenceSources": [
+				"BMT"
 			],
 			"size": [
 				"M"
@@ -32824,10 +32835,10 @@
 				{
 					"source": "MTF",
 					"page": 236
-				},
-				{
-					"source": "BMT"
 				}
+			],
+			"referenceSources": [
+				"BMT"
 			],
 			"size": [
 				"M"
@@ -32956,10 +32967,10 @@
 				{
 					"source": "MTF",
 					"page": 236
-				},
-				{
-					"source": "BMT"
 				}
+			],
+			"referenceSources": [
+				"BMT"
 			],
 			"size": [
 				"M"
@@ -33310,10 +33321,10 @@
 				{
 					"source": "VGM",
 					"page": 140
-				},
-				{
-					"source": "BMT"
 				}
+			],
+			"referenceSources": [
+				"BMT"
 			],
 			"size": [
 				"H"
@@ -33385,10 +33396,10 @@
 				{
 					"source": "VGM",
 					"page": 208
-				},
-				{
-					"source": "AATM"
 				}
+			],
+			"referenceSources": [
+				"AATM"
 			],
 			"size": [
 				"L"
@@ -34228,10 +34239,10 @@
 				{
 					"source": "VGM",
 					"page": 208
-				},
-				{
-					"source": "AATM"
 				}
+			],
+			"referenceSources": [
+				"AATM"
 			],
 			"size": [
 				"M"
@@ -34452,6 +34463,9 @@
 					"page": 241
 				}
 			],
+			"referenceSources": [
+				"CRCotN"
+			],
 			"size": [
 				"M"
 			],
@@ -34611,6 +34625,9 @@
 					"source": "MTF",
 					"page": 241
 				}
+			],
+			"referenceSources": [
+				"CRCotN"
 			],
 			"size": [
 				"M"
@@ -36093,13 +36110,11 @@
 				{
 					"source": "MTF",
 					"page": 246
-				},
-				{
-					"source": "AATM"
-				},
-				{
-					"source": "BMT"
 				}
+			],
+			"referenceSources": [
+				"AATM",
+				"BMT"
 			],
 			"size": [
 				"M"
@@ -36257,10 +36272,10 @@
 				{
 					"source": "VGM",
 					"page": 195
-				},
-				{
-					"source": "AATM"
 				}
+			],
+			"referenceSources": [
+				"AATM"
 			],
 			"size": [
 				"T"
@@ -37368,10 +37383,10 @@
 				{
 					"source": "VGM",
 					"page": 220
-				},
-				{
-					"source": "BMT"
 				}
+			],
+			"referenceSources": [
+				"BMT"
 			],
 			"size": [
 				"M"
@@ -37987,10 +38002,10 @@
 				{
 					"source": "MTF",
 					"page": 163
-				},
-				{
-					"source": "CoA"
 				}
+			],
+			"referenceSources": [
+				"CoA"
 			],
 			"size": [
 				"M"
@@ -38164,6 +38179,9 @@
 					"source": "MTF",
 					"page": 197
 				}
+			],
+			"referenceSources": [
+				"FRAiF"
 			],
 			"size": [
 				"M"
@@ -39324,10 +39342,10 @@
 				{
 					"source": "VGM",
 					"page": 201
-				},
-				{
-					"source": "BMT"
 				}
+			],
+			"referenceSources": [
+				"BMT"
 			],
 			"size": [
 				"L"

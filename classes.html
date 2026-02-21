@@ -52,7 +52,7 @@
 
 	<script type="text/javascript" src="sw-injector.js"></script>
 
-	<script type="module" src="js/styleswitch.js"></script>
+	<script blocking="render" type="module" src="js/styleswitch.js"></script>
 	<script type="text/javascript" src="js/navigation.js"></script>
 	<script type="module" src="js/browsercheck.js"></script>
 </head>
@@ -94,7 +94,7 @@
 					<button class="sort ve-btn ve-btn-default ve-btn-xs ve-grow" data-sort="source">Source</button>
 				</div>
 
-				<div class="list list--stats classes cls__list"></div>
+				<div class="list list--stats classes cls__list" id="list"></div>
 			</div>
 
 			<div class="ve-flex-vh-center my-3">
@@ -105,7 +105,7 @@
 				</div>
 			</div>
 		</div>
-		<div class="col-md-9 mobile__ve-overflow-x-auto" id="classtable"></div>
+		<div class="col-md-9 mobile-sm__ve-overflow-x-auto" id="classtable"></div>
 	</div>
 
 	<hr class="mt-0">

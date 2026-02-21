@@ -4,10 +4,8 @@
 			"name": "Abyssal Wretch",
 			"source": "MTF",
 			"page": 136,
-			"otherSources": [
-				{
-					"source": "BGDIA"
-				}
+			"referenceSources": [
+				"BGDIA"
 			],
 			"size": [
 				"M"
@@ -211,10 +209,8 @@
 			"name": "Adult Oblex",
 			"source": "MTF",
 			"page": 218,
-			"otherSources": [
-				{
-					"source": "IMR"
-				}
+			"referenceSources": [
+				"IMR"
 			],
 			"reprintedAs": [
 				"Adult Oblex|MPMM"
@@ -392,18 +388,14 @@
 			"page": 202,
 			"otherSources": [
 				{
-					"source": "DC"
-				},
-				{
-					"source": "DIP"
-				},
-				{
-					"source": "SLW"
-				},
-				{
 					"source": "PotA",
 					"page": 212
 				}
+			],
+			"referenceSources": [
+				"DC",
+				"DIP",
+				"SLW"
 			],
 			"reprintedAs": [
 				"Air Elemental Myrmidon|MPMM"
@@ -541,13 +533,9 @@
 			"name": "Alkilith",
 			"source": "MTF",
 			"page": 130,
-			"otherSources": [
-				{
-					"source": "DIP"
-				},
-				{
-					"source": "SDW"
-				}
+			"referenceSources": [
+				"DIP",
+				"SDW"
 			],
 			"reprintedAs": [
 				"Alkilith|MPMM"
@@ -707,13 +695,9 @@
 			"name": "Allip",
 			"source": "MTF",
 			"page": 116,
-			"otherSources": [
-				{
-					"source": "DIP"
-				},
-				{
-					"source": "SLW"
-				}
+			"referenceSources": [
+				"DIP",
+				"SLW"
 			],
 			"reprintedAs": [
 				"Allip|MPMM"
@@ -843,6 +827,9 @@
 				"O",
 				"Y"
 			],
+			"miscTags": [
+				"AOE"
+			],
 			"conditionInflict": [
 				"stunned"
 			],
@@ -857,10 +844,8 @@
 			"name": "Amnizu",
 			"source": "MTF",
 			"page": 164,
-			"otherSources": [
-				{
-					"source": "BGDIA"
-				}
+			"referenceSources": [
+				"BGDIA"
 			],
 			"reprintedAs": [
 				"Amnizu|MPMM"
@@ -1884,6 +1869,9 @@
 			"name": "Balhannoth",
 			"source": "MTF",
 			"page": 119,
+			"referenceSources": [
+				"RtG"
+			],
 			"reprintedAs": [
 				"Balhannoth|MPMM"
 			],
@@ -2042,10 +2030,10 @@
 				{
 					"source": "OotA",
 					"page": 235
-				},
-				{
-					"source": "BGDIA"
 				}
+			],
+			"referenceSources": [
+				"BGDIA"
 			],
 			"reprintedAs": [
 				"Baphomet|MPMM"
@@ -2528,7 +2516,7 @@
 				{
 					"name": "Shadow Stealth",
 					"entries": [
-						"While in dim light or darkness, the abishai can take the Hide action as a bonus action."
+						"While in dim light or darkness, the abishai can take the {@action Hide} action as a bonus action."
 					]
 				}
 			],
@@ -2853,13 +2841,9 @@
 			"name": "Boneclaw",
 			"source": "MTF",
 			"page": 121,
-			"otherSources": [
-				{
-					"source": "DC"
-				},
-				{
-					"source": "DIP"
-				}
+			"referenceSources": [
+				"DC",
+				"DIP"
 			],
 			"reprintedAs": [
 				"Boneclaw|MPMM"
@@ -2940,7 +2924,7 @@
 				{
 					"name": "Shadow Stealth",
 					"entries": [
-						"While in dim light or darkness, the boneclaw can take the Hide action as a bonus action."
+						"While in dim light or darkness, the boneclaw can take the {@action Hide} action as a bonus action."
 					]
 				}
 			],
@@ -3016,6 +3000,9 @@
 			"name": "Bronze Scout",
 			"source": "MTF",
 			"page": 125,
+			"referenceSources": [
+				"RtG"
+			],
 			"reprintedAs": [
 				"Clockwork Bronze Scout|MPMM"
 			],
@@ -3140,10 +3127,8 @@
 			"name": "Bulezau",
 			"source": "MTF",
 			"page": 131,
-			"otherSources": [
-				{
-					"source": "BGDIA"
-				}
+			"referenceSources": [
+				"BGDIA"
 			],
 			"reprintedAs": [
 				"Bulezau|MPMM"
@@ -4141,10 +4126,8 @@
 			"name": "Deathlock Mastermind",
 			"source": "MTF",
 			"page": 129,
-			"otherSources": [
-				{
-					"source": "SDW"
-				}
+			"referenceSources": [
+				"SDW"
 			],
 			"reprintedAs": [
 				"Deathlock Mastermind|MPMM"
@@ -5346,6 +5329,7 @@
 				"I"
 			],
 			"miscTags": [
+				"AOE",
 				"MW"
 			],
 			"savingThrowForced": [
@@ -5494,6 +5478,7 @@
 				"S"
 			],
 			"miscTags": [
+				"AOE",
 				"MW",
 				"RCH"
 			],
@@ -5517,7 +5502,11 @@
 			"type": {
 				"type": "humanoid",
 				"tags": [
-					"elf"
+					{
+						"tag": "elf",
+						"prefix": "Drow",
+						"prefixHidden": true
+					}
 				]
 			},
 			"alignment": [
@@ -5775,7 +5764,11 @@
 			"type": {
 				"type": "humanoid",
 				"tags": [
-					"elf"
+					{
+						"tag": "elf",
+						"prefix": "Drow",
+						"prefixHidden": true
+					}
 				]
 			},
 			"alignment": [
@@ -6018,6 +6011,9 @@
 			"name": "Drow House Captain",
 			"source": "MTF",
 			"page": 184,
+			"referenceSources": [
+				"WDMM"
+			],
 			"reprintedAs": [
 				"Drow House Captain|MPMM"
 			],
@@ -6027,7 +6023,11 @@
 			"type": {
 				"type": "humanoid",
 				"tags": [
-					"elf"
+					{
+						"tag": "elf",
+						"prefix": "Drow",
+						"prefixHidden": true
+					}
 				]
 			},
 			"alignment": [
@@ -6097,7 +6097,7 @@
 				{
 					"name": "Battle Command",
 					"entries": [
-						"As a bonus action, the drow targets one ally he can see within 30 feet of him. If the target can see or hear the drow, the target can use its reaction to make one melee attack or to take the Dodge or Hide action."
+						"As a bonus action, the drow targets one ally he can see within 30 feet of him. If the target can see or hear the drow, the target can use its reaction to make one melee attack or to take the {@action Dodge} or {@action Hide} action."
 					]
 				},
 				{
@@ -6216,7 +6216,11 @@
 			"type": {
 				"type": "humanoid",
 				"tags": [
-					"elf"
+					{
+						"tag": "elf",
+						"prefix": "Drow",
+						"prefixHidden": true
+					}
 				]
 			},
 			"alignment": [
@@ -6489,7 +6493,11 @@
 			"type": {
 				"type": "humanoid",
 				"tags": [
-					"elf"
+					{
+						"tag": "elf",
+						"prefix": "Drow",
+						"prefixHidden": true
+					}
 				]
 			},
 			"alignment": [
@@ -6809,7 +6817,11 @@
 			"type": {
 				"type": "humanoid",
 				"tags": [
-					"elf"
+					{
+						"tag": "elf",
+						"prefix": "Drow",
+						"prefixHidden": true
+					}
 				]
 			},
 			"alignment": [
@@ -7151,6 +7163,7 @@
 				"P"
 			],
 			"miscTags": [
+				"AOE",
 				"MW"
 			],
 			"conditionInflict": [
@@ -7170,10 +7183,8 @@
 			"name": "Duergar Hammerer",
 			"source": "MTF",
 			"page": 188,
-			"otherSources": [
-				{
-					"source": "IDRotF"
-				}
+			"referenceSources": [
+				"IDRotF"
 			],
 			"reprintedAs": [
 				"Duergar Hammerer|MPMM"
@@ -7441,10 +7452,8 @@
 			"name": "Duergar Mind Master",
 			"source": "MTF",
 			"page": 189,
-			"otherSources": [
-				{
-					"source": "IDRotF"
-				}
+			"referenceSources": [
+				"IDRotF"
 			],
 			"reprintedAs": [
 				"Duergar Mind Master|MPMM"
@@ -7549,7 +7558,7 @@
 				{
 					"name": "Reduce (Recharges after a Short or Long Rest)",
 					"entries": [
-						"For 1 minute, the duergar magically decreases in size, along with anything it is wearing or carrying. While reduced, the duergar is Tiny, reduces its weapon damage to 1, and makes attacks, checks, and saving throws with disadvantage if they use Strength. It gains a +5 bonus to all Dexterity ({@skill Stealth}) checks and a +5 bonus to its AC. It can also take a bonus action on each of its turns to take the Hide action."
+						"For 1 minute, the duergar magically decreases in size, along with anything it is wearing or carrying. While reduced, the duergar is Tiny, reduces its weapon damage to 1, and makes attacks, checks, and saving throws with disadvantage if they use Strength. It gains a +5 bonus to all Dexterity ({@skill Stealth}) checks and a +5 bonus to its AC. It can also take a bonus action on each of its turns to take the {@action Hide} action."
 					]
 				}
 			],
@@ -8628,16 +8637,10 @@
 			"name": "Eidolon",
 			"source": "MTF",
 			"page": 194,
-			"otherSources": [
-				{
-					"source": "DC"
-				},
-				{
-					"source": "DIP"
-				},
-				{
-					"source": "IMR"
-				}
+			"referenceSources": [
+				"DC",
+				"DIP",
+				"IMR"
 			],
 			"reprintedAs": [
 				"Eidolon|MPMM"
@@ -8739,7 +8742,7 @@
 				{
 					"name": "Divine Dread",
 					"entries": [
-						"Each creature within 60 feet of the eidolon that can see it must succeed on a {@dc 15} Wisdom saving throw or be {@condition frightened} for 1 minute. While {@condition frightened} in this way, the creature must take the Dash action and move away from the eidolon by the safest available route at the start of each of its turns, unless there is nowhere for it to move, in which case the creature also becomes {@condition stunned} until it can move again. A {@condition frightened} target can repeat the saving throw at the end of each of its turns, ending the effect on itself on a success. If a target's saving throw is successful or the effect ends for it, the target is immune to any eidolon's Divine Dread for the next 24 hours."
+						"Each creature within 60 feet of the eidolon that can see it must succeed on a {@dc 15} Wisdom saving throw or be {@condition frightened} for 1 minute. While {@condition frightened} in this way, the creature must take the {@action Dash} action and move away from the eidolon by the safest available route at the start of each of its turns, unless there is nowhere for it to move, in which case the creature also becomes {@condition stunned} until it can move again. A {@condition frightened} target can repeat the saving throw at the end of each of its turns, ending the effect on itself on a success. If a target's saving throw is successful or the effect ends for it, the target is immune to any eidolon's Divine Dread for the next 24 hours."
 					]
 				}
 			],
@@ -8767,6 +8770,9 @@
 			],
 			"damageTags": [
 				"O"
+			],
+			"miscTags": [
+				"AOE"
 			],
 			"conditionInflict": [
 				"frightened",
@@ -9132,6 +9138,7 @@
 				"T"
 			],
 			"miscTags": [
+				"AOE",
 				"MW",
 				"RCH"
 			],
@@ -9150,11 +9157,8 @@
 			"name": "Female Steeder",
 			"source": "MTF",
 			"page": 238,
-			"otherSources": [
-				{
-					"source": "OotA",
-					"page": 231
-				}
+			"referenceSources": [
+				"OotA"
 			],
 			"reprintedAs": [
 				"Female Steeder|MPMM"
@@ -10173,6 +10177,7 @@
 				"S"
 			],
 			"miscTags": [
+				"AOE",
 				"MLW",
 				"MW",
 				"RW"
@@ -10192,10 +10197,8 @@
 			"name": "Githyanki Gish",
 			"source": "MTF",
 			"page": 205,
-			"otherSources": [
-				{
-					"source": "WDMM"
-				}
+			"referenceSources": [
+				"WDMM"
 			],
 			"reprintedAs": [
 				"Githyanki Gish|MPMM"
@@ -12594,12 +12597,12 @@
 			"page": 125,
 			"otherSources": [
 				{
-					"source": "GoS"
-				},
-				{
 					"source": "RtG",
 					"page": 33
 				}
+			],
+			"referenceSources": [
+				"GoS"
 			],
 			"reprintedAs": [
 				"Clockwork Iron Cobra|MPMM"
@@ -12672,7 +12675,7 @@
 					"entries": [
 						"{@atk mw} {@hit 5} to hit, reach 5 ft., one target. {@h}6 ({@damage 1d6 + 3}) piercing damage. If the target is a creature, it must succeed on a {@dc 13} Constitution saving throw or suffer one random poison effect:",
 						"1. Poison Damage: The target takes 13 ({@damage 3d8}) poison damage.",
-						"2. Confusion: On its next turn, the target must use its action to make one weapon attack against a random creature it can see within 30 feet of it, using whatever weapon it has in hand and moving beforehand if necessary to get in range. If it's holding no weapon, it makes an unarmed strike. If no creature is visible within 30 feet, it takes the Dash action, moving toward the nearest creature.",
+						"2. Confusion: On its next turn, the target must use its action to make one weapon attack against a random creature it can see within 30 feet of it, using whatever weapon it has in hand and moving beforehand if necessary to get in range. If it's holding no weapon, it makes an unarmed strike. If no creature is visible within 30 feet, it takes the {@action Dash} action, moving toward the nearest creature.",
 						"3. Paralysis: The target is {@condition paralyzed} until the end of its next turn."
 					]
 				}
@@ -13281,11 +13284,8 @@
 			"name": "Male Steeder",
 			"source": "MTF",
 			"page": 238,
-			"otherSources": [
-				{
-					"source": "OotA",
-					"page": 231
-				}
+			"referenceSources": [
+				"OotA"
 			],
 			"reprintedAs": [
 				"Male Steeder|MPMM"
@@ -13780,7 +13780,7 @@
 				{
 					"name": "Shadow Stealth",
 					"entries": [
-						"While in dim light or darkness, the meazel can take the Hide action as a bonus action."
+						"While in dim light or darkness, the meazel can take the {@action Hide} action as a bonus action."
 					]
 				}
 			],
@@ -13848,10 +13848,8 @@
 			"name": "Merregon",
 			"source": "MTF",
 			"page": 166,
-			"otherSources": [
-				{
-					"source": "BGDIA"
-				}
+			"referenceSources": [
+				"BGDIA"
 			],
 			"reprintedAs": [
 				"Merregon|MPMM"
@@ -14003,6 +14001,9 @@
 			"name": "Merrenoloth",
 			"source": "MTF",
 			"page": 250,
+			"referenceSources": [
+				"LLK"
+			],
 			"reprintedAs": [
 				"Merrenoloth|MPMM"
 			],
@@ -14372,7 +14373,7 @@
 				{
 					"name": "Breath of Despair {@recharge 5}",
 					"entries": [
-						"Moloch exhales in a 30-foot cube. Each creature in that area must succeed on a {@dc 21} Wisdom saving throw or take 27 ({@damage 5d10}) psychic damage, drop whatever it is holding, and become {@condition frightened} for 1 minute. While {@condition frightened} in this way, a creature must take the Dash action and move away from Moloch by the safest available route on each of its turns, unless there is nowhere to move, in which case it needn't take the Dash action. If the creature ends its turn in a location where it doesn't have line of sight to Moloch, the creature can repeat the saving throw. On a success, the effect ends."
+						"Moloch exhales in a 30-foot cube. Each creature in that area must succeed on a {@dc 21} Wisdom saving throw or take 27 ({@damage 5d10}) psychic damage, drop whatever it is holding, and become {@condition frightened} for 1 minute. While {@condition frightened} in this way, a creature must take the {@action Dash} action and move away from Moloch by the safest available route on each of its turns, unless there is nowhere to move, in which case it needn't take the {@action Dash} action. If the creature ends its turn in a location where it doesn't have line of sight to Moloch, the creature can repeat the saving throw. On a success, the effect ends."
 					]
 				},
 				{
@@ -15081,6 +15082,7 @@
 				"CW"
 			],
 			"miscTags": [
+				"AOE",
 				"MW"
 			],
 			"conditionInflict": [
@@ -15112,10 +15114,8 @@
 			"name": "Narzugon",
 			"source": "MTF",
 			"page": 167,
-			"otherSources": [
-				{
-					"source": "BGDIA"
-				}
+			"referenceSources": [
+				"BGDIA"
 			],
 			"reprintedAs": [
 				"Narzugon|MPMM"
@@ -15430,10 +15430,8 @@
 			"name": "Nupperibo",
 			"source": "MTF",
 			"page": 168,
-			"otherSources": [
-				{
-					"source": "BGDIA"
-				}
+			"referenceSources": [
+				"BGDIA"
 			],
 			"reprintedAs": [
 				"Nupperibo|MPMM"
@@ -15556,6 +15554,10 @@
 			"name": "Oaken Bolter",
 			"source": "MTF",
 			"page": 126,
+			"referenceSources": [
+				"LLK",
+				"RtG"
+			],
 			"reprintedAs": [
 				"Clockwork Oaken Bolter|MPMM"
 			],
@@ -15677,6 +15679,7 @@
 				"S"
 			],
 			"miscTags": [
+				"AOE",
 				"MW",
 				"RW"
 			],
@@ -16621,10 +16624,8 @@
 			"name": "Orthon",
 			"source": "MTF",
 			"page": 169,
-			"otherSources": [
-				{
-					"source": "BGDIA"
-				}
+			"referenceSources": [
+				"BGDIA"
 			],
 			"reprintedAs": [
 				"Orthon|MPMM"
@@ -16810,6 +16811,7 @@
 				"T"
 			],
 			"miscTags": [
+				"AOE",
 				"MLW",
 				"MW",
 				"RW"
@@ -16832,10 +16834,8 @@
 			"name": "Phoenix",
 			"source": "MTF",
 			"page": 199,
-			"otherSources": [
-				{
-					"source": "MOT"
-				}
+			"referenceSources": [
+				"MOT"
 			],
 			"reprintedAs": [
 				"Phoenix|MPMM"
@@ -17394,15 +17394,13 @@
 			"page": 244,
 			"otherSources": [
 				{
-					"source": "DIP"
-				},
-				{
-					"source": "SLW"
-				},
-				{
 					"source": "RtG",
 					"page": 34
 				}
+			],
+			"referenceSources": [
+				"DIP",
+				"SLW"
 			],
 			"reprintedAs": [
 				"Rot Troll|MPMM"
@@ -17503,6 +17501,7 @@
 				"S"
 			],
 			"miscTags": [
+				"AOE",
 				"MW"
 			],
 			"hasToken": true,
@@ -17617,16 +17616,10 @@
 			"name": "Sacred Statue",
 			"source": "MTF",
 			"page": 194,
-			"otherSources": [
-				{
-					"source": "DC"
-				},
-				{
-					"source": "DIP"
-				},
-				{
-					"source": "IMR"
-				}
+			"referenceSources": [
+				"DC",
+				"DIP",
+				"IMR"
 			],
 			"reprintedAs": [
 				"Sacred Statue|MPMM"
@@ -17911,10 +17904,8 @@
 			"name": "Sibriex",
 			"source": "MTF",
 			"page": 137,
-			"otherSources": [
-				{
-					"source": "BGDIA"
-				}
+			"referenceSources": [
+				"BGDIA"
 			],
 			"reprintedAs": [
 				"Sibriex|MPMM"
@@ -19354,6 +19345,7 @@
 				"Y"
 			],
 			"miscTags": [
+				"AOE",
 				"MW",
 				"RCH"
 			],
@@ -19372,10 +19364,8 @@
 			"name": "Star Spawn Larva Mage",
 			"source": "MTF",
 			"page": 235,
-			"otherSources": [
-				{
-					"source": "WDMM"
-				}
+			"referenceSources": [
+				"WDMM"
 			],
 			"reprintedAs": [
 				"Star Spawn Larva Mage|MPMM"
@@ -19575,16 +19565,10 @@
 			"name": "Star Spawn Mangler",
 			"source": "MTF",
 			"page": 236,
-			"otherSources": [
-				{
-					"source": "DC"
-				},
-				{
-					"source": "DIP"
-				},
-				{
-					"source": "SLW"
-				}
+			"referenceSources": [
+				"DC",
+				"DIP",
+				"SLW"
 			],
 			"reprintedAs": [
 				"Star Spawn Mangler|MPMM"
@@ -19650,7 +19634,7 @@
 				{
 					"name": "Shadow Stealth",
 					"entries": [
-						"While in dim light or darkness, the mangler can take the Hide action as a bonus action."
+						"While in dim light or darkness, the mangler can take the {@action Hide} action as a bonus action."
 					]
 				}
 			],
@@ -20150,6 +20134,9 @@
 			"name": "Stone Defender",
 			"source": "MTF",
 			"page": 126,
+			"referenceSources": [
+				"RtG"
+			],
 			"reprintedAs": [
 				"Clockwork Stone Defender|MPMM"
 			],
@@ -20438,16 +20425,10 @@
 			"name": "Sword Wraith Commander",
 			"source": "MTF",
 			"page": 241,
-			"otherSources": [
-				{
-					"source": "DC"
-				},
-				{
-					"source": "DIP"
-				},
-				{
-					"source": "SDW"
-				}
+			"referenceSources": [
+				"DC",
+				"DIP",
+				"SDW"
 			],
 			"reprintedAs": [
 				"Sword Wraith Commander|MPMM"
@@ -20597,16 +20578,10 @@
 			"name": "Sword Wraith Warrior",
 			"source": "MTF",
 			"page": 241,
-			"otherSources": [
-				{
-					"source": "DC"
-				},
-				{
-					"source": "DIP"
-				},
-				{
-					"source": "SDW"
-				}
+			"referenceSources": [
+				"DC",
+				"DIP",
+				"SDW"
 			],
 			"reprintedAs": [
 				"Sword Wraith Warrior|MPMM"
@@ -21072,6 +21047,7 @@
 				"Y"
 			],
 			"miscTags": [
+				"AOE",
 				"MW",
 				"RCH"
 			],
@@ -21212,6 +21188,9 @@
 			"name": "The Wretched",
 			"source": "MTF",
 			"page": 233,
+			"referenceSources": [
+				"LLK"
+			],
 			"reprintedAs": [
 				"Wretched Sorrowsworn|MPMM"
 			],
@@ -21465,7 +21444,7 @@
 				{
 					"name": "Frightful Word",
 					"entries": [
-						"Titivilus targets one creature he can see within 10 feet of him. The target must succeed on a {@dc 21} Wisdom saving throw or become {@condition frightened} for 1 minute. While {@condition frightened} in this way, the target must take the Dash action and move away from Titivilus by the safest available route on each of its turns, unless there is nowhere to move, in which case it needn't take the Dash action. The target can repeat the saving throw at the end of each of its turns, ending the effect on itself on a success."
+						"Titivilus targets one creature he can see within 10 feet of him. The target must succeed on a {@dc 21} Wisdom saving throw or become {@condition frightened} for 1 minute. While {@condition frightened} in this way, the target must take the {@action Dash} action and move away from Titivilus by the safest available route on each of its turns, unless there is nowhere to move, in which case it needn't take the {@action Dash} action. The target can repeat the saving throw at the end of each of its turns, ending the effect on itself on a success."
 					]
 				},
 				{
@@ -22330,12 +22309,12 @@
 			"page": 203,
 			"otherSources": [
 				{
-					"source": "LR"
-				},
-				{
 					"source": "PotA",
 					"page": 213
 				}
+			],
+			"referenceSources": [
+				"LR"
 			],
 			"reprintedAs": [
 				"Water Elemental Myrmidon|MPMM"
@@ -22464,10 +22443,8 @@
 			"name": "White Abishai",
 			"source": "MTF",
 			"page": 163,
-			"otherSources": [
-				{
-					"source": "BGDIA"
-				}
+			"referenceSources": [
+				"BGDIA"
 			],
 			"reprintedAs": [
 				"White Abishai|MPMM"
@@ -23048,10 +23025,10 @@
 				{
 					"source": "OotA",
 					"page": 247
-				},
-				{
-					"source": "BGDIA"
 				}
+			],
+			"referenceSources": [
+				"BGDIA"
 			],
 			"reprintedAs": [
 				"Yeenoghu|MPMM"
@@ -23257,6 +23234,7 @@
 				"I"
 			],
 			"miscTags": [
+				"AOE",
 				"MLW",
 				"MW",
 				"RCH"
