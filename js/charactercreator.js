@@ -1,3 +1,5 @@
+import {ModalFilterClasses} from "./filter-classes-raw.js";
+
 "use strict";
 /* ============================================================
    D&D 5e Character Creator — vanilla JS port for 5etools mirror
@@ -18,167 +20,10 @@ const CASTER_CLASSES = ["Bard","Cleric","Druid","Paladin","Ranger","Sorcerer","W
 // via DataLoader.pCacheAndGetAllSite/pCacheAndGetAllPrerelease/pCacheAndGetAllBrew — see below.
 let RACES = [];
 
-const CLASSES = [
-	{name:"Barbarian", source:"PHB", hd:12, primary:["str"], saves:["str","con"], armorProf:["light","medium","shields"], skillChoices:["Animal Handling","Athletics","Intimidation","Nature","Perception","Survival"], numSkills:2, features:["Rage","Unarmored Defense"],
-		equipment:[["Greataxe","Two handaxes + 4 more handaxes","Any martial melee weapon"],["Explorer's Pack","Dungeoneer's Pack"]], bgEquip:["4 javelins"]},
-	{name:"Bard", source:"PHB", hd:8, primary:["cha"], saves:["dex","cha"], armorProf:["light"], skillChoices:"any", numSkills:3, features:["Bardic Inspiration","Spellcasting","Jack of All Trades"],
-		equipment:[["Rapier","Longsword","Any simple weapon"],["Diplomat's Pack","Entertainer's Pack"],["Lute","Any musical instrument"]], bgEquip:["Leather armor","Dagger"]},
-	{name:"Cleric", source:"PHB", hd:8, primary:["wis"], saves:["wis","cha"], armorProf:["light","medium","shields"], skillChoices:["History","Insight","Medicine","Persuasion","Religion"], numSkills:2, features:["Spellcasting","Divine Domain"],
-		equipment:[["Mace","Warhammer (if proficient)"],["Scale mail","Leather armor","Chain mail (if proficient)"],["Light crossbow + 20 bolts","Any simple weapon"],["Priest's Pack","Explorer's Pack"]], bgEquip:["Shield","Holy symbol"]},
-	{name:"Druid", source:"PHB", hd:8, primary:["wis"], saves:["int","wis"], armorProf:["light","medium","shields (non-metal)"], skillChoices:["Arcana","Animal Handling","Insight","Medicine","Nature","Perception","Religion","Survival"], numSkills:2, features:["Druidic","Spellcasting","Wild Shape"],
-		equipment:[["Wooden shield","Any simple weapon"],["Scimitar","Any simple melee weapon"]], bgEquip:["Leather armor","Explorer's Pack","Druidic focus"]},
-	{name:"Fighter", source:"PHB", hd:10, primary:["str","dex"], saves:["str","con"], armorProf:["all armor","shields"], skillChoices:["Acrobatics","Animal Handling","Athletics","History","Insight","Intimidation","Perception","Survival"], numSkills:2, features:["Fighting Style","Second Wind","Action Surge"],
-		equipment:[["Chain mail","Leather armor + longbow + 20 arrows"],["Martial weapon + shield","Two martial weapons"],["Light crossbow + 20 bolts","Two handaxes"],["Dungeoneer's Pack","Explorer's Pack"]], bgEquip:[]},
-	{name:"Monk", source:"PHB", hd:8, primary:["dex","wis"], saves:["str","dex"], armorProf:[], skillChoices:["Acrobatics","Athletics","History","Insight","Religion","Stealth"], numSkills:2, features:["Unarmored Defense","Martial Arts","Ki"],
-		equipment:[["Shortsword","Any simple weapon"],["Dungeoneer's Pack","Explorer's Pack"]], bgEquip:["10 darts"]},
-	{name:"Paladin", source:"PHB", hd:10, primary:["str","cha"], saves:["wis","cha"], armorProf:["all armor","shields"], skillChoices:["Athletics","Insight","Intimidation","Medicine","Persuasion","Religion"], numSkills:2, features:["Divine Sense","Lay on Hands","Divine Smite"],
-		equipment:[["Martial weapon + shield","Two martial weapons"],["Five javelins","Any simple melee weapon"],["Priest's Pack","Explorer's Pack"]], bgEquip:["Chain mail","Holy symbol"]},
-	{name:"Ranger", source:"PHB", hd:10, primary:["dex","wis"], saves:["str","dex"], armorProf:["light","medium","shields"], skillChoices:["Animal Handling","Athletics","Insight","Investigation","Nature","Perception","Stealth","Survival"], numSkills:3, features:["Favored Enemy","Natural Explorer","Spellcasting"],
-		equipment:[["Scale mail","Leather armor"],["Two shortswords","Two simple melee weapons"],["Dungeoneer's Pack","Explorer's Pack"]], bgEquip:["Longbow + 20 arrows"]},
-	{name:"Rogue", source:"PHB", hd:8, primary:["dex"], saves:["dex","int"], armorProf:["light"], skillChoices:["Acrobatics","Athletics","Deception","Insight","Intimidation","Investigation","Perception","Performance","Persuasion","Sleight of Hand","Stealth"], numSkills:4, features:["Expertise","Sneak Attack","Thieves' Cant"],
-		equipment:[["Rapier","Shortsword"],["Shortbow + quiver of 20 arrows","Shortsword"],["Burglar's Pack","Dungeoneer's Pack","Explorer's Pack"]], bgEquip:["Leather armor","Two daggers","Thieves' tools"]},
-	{name:"Sorcerer", source:"PHB", hd:6, primary:["cha"], saves:["con","cha"], armorProf:[], skillChoices:["Arcana","Deception","Insight","Intimidation","Persuasion","Religion"], numSkills:2, features:["Spellcasting","Sorcerous Origin","Font of Magic"],
-		equipment:[["Light crossbow + 20 bolts","Any simple weapon"],["Component pouch","Arcane focus"],["Dungeoneer's Pack","Explorer's Pack"]], bgEquip:["Two daggers"]},
-	{name:"Warlock", source:"PHB", hd:8, primary:["cha"], saves:["wis","cha"], armorProf:["light"], skillChoices:["Arcana","Deception","History","Intimidation","Investigation","Nature","Religion"], numSkills:2, features:["Otherworldly Patron","Pact Magic","Eldritch Invocations"],
-		equipment:[["Light crossbow + 20 bolts","Any simple weapon"],["Component pouch","Arcane focus"],["Scholar's Pack","Dungeoneer's Pack"]], bgEquip:["Leather armor","Any simple weapon","Two daggers"]},
-	{name:"Wizard", source:"PHB", hd:6, primary:["int"], saves:["int","wis"], armorProf:[], skillChoices:["Arcana","History","Insight","Investigation","Medicine","Religion"], numSkills:2, features:["Spellcasting","Arcane Recovery","Arcane Tradition"],
-		equipment:[["Quarterstaff","Dagger"],["Component pouch","Arcane focus"],["Scholar's Pack","Explorer's Pack"]], bgEquip:["Spellbook"]},
-	{name:"Artificer", source:"TCE", hd:8, primary:["int"], saves:["con","int"], armorProf:["light","medium","shields"], skillChoices:["Arcana","History","Investigation","Medicine","Nature","Perception","Sleight of Hand"], numSkills:2, features:["Magical Tinkering","Spellcasting","Infuse Item"],
-		equipment:[["Two daggers"],["Thieves' tools","Any artisan's tools"],["Light crossbow + 20 bolts"]], bgEquip:["Leather armor","Scholar's Pack"]},
-];
-
-const SUBCLASSES = {
-	Barbarian:[
-		{name:"Berserker", source:"PHB", desc:"Tap into a vicious fury to rampage through combat.", features:["Frenzy","Mindless Rage","Intimidating Presence"]},
-		{name:"Totem Warrior", source:"PHB", desc:"Channel a primal spirit to gain bestial powers.", features:["Spirit Seeker","Totem Spirit"]},
-		{name:"Ancestral Guardian", source:"XGE", desc:"Honor your ancestors by calling on them to defend allies.", features:["Ancestral Protectors","Spirit Shield"]},
-		{name:"Storm Herald", source:"XGE", desc:"Wield a storm aura tied to sea, desert, or tundra.", features:["Storm Aura","Storm Soul"]},
-		{name:"Zealot", source:"XGE", desc:"Fueled by divine power, you fight with divine fury.", features:["Divine Fury","Warrior of the Gods"]},
-		{name:"Beast", source:"TCE", desc:"Your rage manifests as bestial appendages.", features:["Form of the Beast","Bestial Soul"]},
-		{name:"Wild Magic", source:"TCE", desc:"A wild surge of magic amplifies your rage.", features:["Magic Awareness","Wild Surge"]},
-	],
-	Bard:[
-		{name:"Lore", source:"PHB", desc:"Gather knowledge and cut enemies with Cutting Words.", features:["Bonus Proficiencies","Cutting Words","Additional Magical Secrets"]},
-		{name:"Valor", source:"PHB", desc:"A bold skald who inspires allies in combat.", features:["Bonus Proficiencies","Combat Inspiration","Extra Attack"]},
-		{name:"Glamour", source:"XGE", desc:"Draw on the Feywild to charm and enthrall.", features:["Mantle of Inspiration","Enthralling Performance"]},
-		{name:"Swords", source:"XGE", desc:"Entertain with displays of weapon prowess.", features:["Bonus Proficiencies","Fighting Style","Blade Flourish"]},
-		{name:"Whispers", source:"XGE", desc:"Exploit secrets and fear to manipulate foes.", features:["Psychic Blades","Words of Terror"]},
-		{name:"Creation", source:"TCE", desc:"Weave music and magic to create matter.", features:["Note of Potential","Performance of Creation"]},
-		{name:"Eloquence", source:"TCE", desc:"Master the art of oratory and persuasion.", features:["Silver Tongue","Unsettling Words"]},
-	],
-	Cleric:[
-		{name:"Life", source:"PHB", desc:"Channel divine energy to heal the wounded.", features:["Bonus Proficiency","Disciple of Life","Preserve Life"]},
-		{name:"Light", source:"PHB", desc:"Wield fire and radiance to repel darkness.", features:["Bonus Cantrip","Warding Flare","Radiance of the Dawn"]},
-		{name:"Trickery", source:"PHB", desc:"Use deception and illusion to serve your deity.", features:["Blessing of the Trickster","Invoke Duplicity"]},
-		{name:"Knowledge", source:"PHB", desc:"Learn the secrets of history and magic.", features:["Blessings of Knowledge","Knowledge of the Ages"]},
-		{name:"Nature", source:"PHB", desc:"Harness the power of the natural world.", features:["Acolyte of Nature","Dampen Elements"]},
-		{name:"Tempest", source:"PHB", desc:"Wield storms and lightning.", features:["Bonus Proficiencies","Wrath of the Storm","Thunderbolt Strike"]},
-		{name:"War", source:"PHB", desc:"Inspire warriors and smite enemies.", features:["Bonus Proficiencies","War Priest","Guided Strike"]},
-		{name:"Arcana", source:"SCAG", desc:"Blend divine and arcane power.", features:["Arcane Initiate","Spell Breaker"]},
-		{name:"Death", source:"DMG", desc:"Channel necrotic energy and the power of death.", features:["Bonus Proficiency","Reaper","Touch of Death"]},
-		{name:"Forge", source:"XGE", desc:"Bless the works of artisans and smiths.", features:["Bonus Proficiency","Blessing of the Forge","Artisan's Blessing"]},
-		{name:"Grave", source:"XGE", desc:"Stand between life and death.", features:["Circle of Mortality","Eyes of the Grave"]},
-		{name:"Order", source:"TCE", desc:"Impose structure and law on the world.", features:["Bonus Proficiencies","Voice of Authority","Order's Demand"]},
-		{name:"Peace", source:"TCE", desc:"Unite allies with bonds of harmony.", features:["Emboldening Bond","Balm of Peace"]},
-		{name:"Twilight", source:"TCE", desc:"Guard against the terrors of the night.", features:["Eyes of Night","Vigilant Blessing"]},
-	],
-	Druid:[
-		{name:"Land", source:"PHB", desc:"Draw power from the natural terrain around you.", features:["Bonus Cantrip","Natural Recovery","Circle Spells"]},
-		{name:"Moon", source:"PHB", desc:"Wild Shape into powerful beasts.", features:["Combat Wild Shape","Circle Forms","Elemental Wild Shape"]},
-		{name:"Dreams", source:"XGE", desc:"Channel the magic of the Feywild.", features:["Balm of the Summer Court","Hearth of Moonlight and Shadow"]},
-		{name:"Shepherd", source:"XGE", desc:"Speak with beasts and summon spirit totems.", features:["Speech of the Woods","Spirit Totem"]},
-		{name:"Spores", source:"TCE", desc:"Spread life-giving and death-dealing spores.", features:["Halo of Spores","Symbiotic Entity"]},
-		{name:"Stars", source:"TCE", desc:"Chart the heavens and draw on starlight.", features:["Star Map","Starry Form"]},
-		{name:"Wildfire", source:"TCE", desc:"Kindle fire to purge and regrow.", features:["Wildfire Spirit","Enhanced Bond"]},
-	],
-	Fighter:[
-		{name:"Champion", source:"PHB", desc:"Pursue physical excellence with expanded critical hits.", features:["Improved Critical","Remarkable Athlete","Additional Fighting Style"]},
-		{name:"Battle Master", source:"PHB", desc:"Use combat maneuvers to control the battlefield.", features:["Combat Superiority","Student of War","Know Your Enemy"]},
-		{name:"Eldritch Knight", source:"PHB", desc:"Blend weapon mastery with arcane magic.", features:["Spellcasting","Weapon Bond","War Magic"]},
-		{name:"Arcane Archer", source:"XGE", desc:"Infuse arrows with magical power.", features:["Arcane Archer Lore","Arcane Shot"]},
-		{name:"Cavalier", source:"XGE", desc:"Specialize in mounted combat.", features:["Bonus Proficiency","Born to the Saddle","Unwavering Mark"]},
-		{name:"Samurai", source:"XGE", desc:"Draw on indomitable fighting spirit.", features:["Bonus Proficiency","Fighting Spirit","Elegant Courtier"]},
-		{name:"Psi Warrior", source:"TCE", desc:"Augment your attacks with psionic power.", features:["Psionic Power","Telekinetic Adept"]},
-		{name:"Rune Knight", source:"TCE", desc:"Learn to carve magical runes.", features:["Bonus Proficiencies","Rune Carver","Giant's Might"]},
-	],
-	Monk:[
-		{name:"Open Hand", source:"PHB", desc:"Master unarmed combat with fluid techniques.", features:["Open Hand Technique","Wholeness of Body","Tranquility"]},
-		{name:"Shadow", source:"PHB", desc:"Use ki to manipulate darkness and shadow.", features:["Shadow Arts","Shadow Step","Cloak of Shadows"]},
-		{name:"Four Elements", source:"PHB", desc:"Bend the elements to your will.", features:["Disciple of the Elements","Elemental Attunement"]},
-		{name:"Drunken Master", source:"XGE", desc:"Confuse foes with an unpredictable style.", features:["Bonus Proficiencies","Drunken Technique","Tipsy Sway"]},
-		{name:"Kensei", source:"XGE", desc:"Become one with your chosen weapons.", features:["Path of the Kensei","One with the Blade"]},
-		{name:"Sun Soul", source:"XGE", desc:"Channel ki into bolts of radiant energy.", features:["Radiant Sun Bolt","Searing Arc Strike"]},
-		{name:"Mercy", source:"TCE", desc:"Heal allies and sap the life of foes.", features:["Implements of Mercy","Hand of Healing","Hand of Harm"]},
-		{name:"Astral Self", source:"TCE", desc:"Summon an astral projection of your body.", features:["Arms of the Astral Self","Visage of the Astral Self"]},
-	],
-	Paladin:[
-		{name:"Devotion", source:"PHB", desc:"Embody the ideal of the just knight.", features:["Sacred Weapon","Turn the Unholy","Aura of Devotion"]},
-		{name:"Ancients", source:"PHB", desc:"Protect the light of life and nature.", features:["Nature's Wrath","Turn the Faithless","Aura of Warding"]},
-		{name:"Vengeance", source:"PHB", desc:"Hunt down the wicked with relentless fury.", features:["Abjure Enemy","Vow of Enmity","Relentless Avenger"]},
-		{name:"Conquest", source:"XGE", desc:"Crush your enemies and inspire terror.", features:["Conquering Presence","Guided Strike","Aura of Conquest"]},
-		{name:"Redemption", source:"XGE", desc:"Offer a chance at redemption to the fallen.", features:["Emissary of Peace","Rebuke the Violent","Aura of the Guardian"]},
-		{name:"Glory", source:"TCE", desc:"Inspire others through acts of heroism.", features:["Peerless Athlete","Inspiring Smite","Aura of Alacrity"]},
-		{name:"Watchers", source:"TCE", desc:"Guard against extraplanar threats.", features:["Watcher's Will","Abjure the Extraplanar"]},
-	],
-	Ranger:[
-		{name:"Hunter", source:"PHB", desc:"Learn specialized techniques to hunt your quarry.", features:["Hunter's Prey","Defensive Tactics","Multiattack"]},
-		{name:"Beast Master", source:"PHB", desc:"Form a powerful bond with a beast companion.", features:["Ranger's Companion","Exceptional Training","Bestial Fury"]},
-		{name:"Gloom Stalker", source:"XGE", desc:"Lurk in darkness, striking with deadly precision.", features:["Dread Ambusher","Umbral Sight","Iron Mind"]},
-		{name:"Horizon Walker", source:"XGE", desc:"Guard against threats from other planes.", features:["Detect Portal","Planar Warrior","Ethereal Step"]},
-		{name:"Monster Slayer", source:"XGE", desc:"Hunt deadly supernatural creatures.", features:["Hunter's Sense","Slayer's Prey","Supernatural Defense"]},
-		{name:"Fey Wanderer", source:"TCE", desc:"Carry a fey blessing into the world.", features:["Dreadful Strikes","Fey Wanderer Magic","Otherworldly Glamour"]},
-		{name:"Swarmkeeper", source:"TCE", desc:"Gather a swarm of spirits to your side.", features:["Gathered Swarm","Swarmkeeper Magic"]},
-	],
-	Rogue:[
-		{name:"Thief", source:"PHB", desc:"Hone your skills in stealth and larceny.", features:["Fast Hands","Second-Story Work","Supreme Sneak"]},
-		{name:"Assassin", source:"PHB", desc:"Specialize in ambush and disguise.", features:["Bonus Proficiencies","Assassinate","Infiltration Expertise"]},
-		{name:"Arcane Trickster", source:"PHB", desc:"Blend magic with your roguish talents.", features:["Spellcasting","Mage Hand Legerdemain","Magical Ambush"]},
-		{name:"Inquisitive", source:"XGE", desc:"Root out secrets and lies.", features:["Ear for Deceit","Eye for Detail","Insightful Fighting"]},
-		{name:"Mastermind", source:"XGE", desc:"Excel at intrigue and manipulation.", features:["Master of Intrigue","Master of Tactics"]},
-		{name:"Scout", source:"XGE", desc:"Specialize in exploration and survival.", features:["Skirmisher","Survivalist","Superior Mobility"]},
-		{name:"Swashbuckler", source:"XGE", desc:"Combine speed and style in melee combat.", features:["Fancy Footwork","Rakish Audacity"]},
-		{name:"Phantom", source:"TCE", desc:"Channel the power of death into your work.", features:["Whispers of the Dead","Wails from the Grave"]},
-		{name:"Soulknife", source:"TCE", desc:"Manifest blades of psychic energy.", features:["Psionic Power","Psychic Blades"]},
-	],
-	Sorcerer:[
-		{name:"Draconic Bloodline", source:"PHB", desc:"Your magic flows from draconic heritage.", features:["Dragon Ancestor","Draconic Resilience","Elemental Affinity"]},
-		{name:"Wild Magic", source:"PHB", desc:"Your magic comes from a wild surge of chaos.", features:["Wild Magic Surge","Tides of Chaos","Bend Luck"]},
-		{name:"Divine Soul", source:"XGE", desc:"Divine magic flows through your veins.", features:["Divine Magic","Favored by the Gods"]},
-		{name:"Shadow Magic", source:"XGE", desc:"Draw on the darkness of the Shadowfell.", features:["Eyes of the Dark","Strength of the Grave"]},
-		{name:"Storm Sorcery", source:"XGE", desc:"Your power is tied to wind and lightning.", features:["Wind Speaker","Tempestuous Magic"]},
-		{name:"Aberrant Mind", source:"TCE", desc:"Psionic power warps your spellcasting.", features:["Telepathic Speech","Psionic Spells"]},
-		{name:"Clockwork Soul", source:"TCE", desc:"Channel the orderly power of Mechanus.", features:["Clockwork Magic","Restore Balance"]},
-	],
-	Warlock:[
-		{name:"Archfey", source:"PHB", desc:"Your patron is a lord of the Feywild.", features:["Fey Presence","Misty Escape","Beguiling Defenses"]},
-		{name:"Fiend", source:"PHB", desc:"Your patron is a powerful devil or demon.", features:["Dark One's Blessing","Dark One's Own Luck","Fiendish Resilience"]},
-		{name:"Great Old One", source:"PHB", desc:"Your patron is an incomprehensible ancient being.", features:["Awakened Mind","Entropic Ward","Thought Shield"]},
-		{name:"Celestial", source:"XGE", desc:"Your patron is a powerful celestial being.", features:["Bonus Cantrips","Healing Light","Radiant Soul"]},
-		{name:"Hexblade", source:"XGE", desc:"Forge a pact with a weapon from the Shadowfell.", features:["Hexblade's Curse","Hex Warrior","Accursed Specter"]},
-		{name:"Fathomless", source:"TCE", desc:"Your patron lurks in the ocean depths.", features:["Tentacle of the Deeps","Gift of the Sea"]},
-		{name:"Genie", source:"TCE", desc:"Strike a bargain with a noble genie.", features:["Genie's Vessel","Elemental Gift"]},
-	],
-	Wizard:[
-		{name:"Abjuration", source:"PHB", desc:"Specialize in protective and warding magic.", features:["Abjuration Savant","Arcane Ward","Projected Ward"]},
-		{name:"Conjuration", source:"PHB", desc:"Master the art of summoning and teleportation.", features:["Conjuration Savant","Minor Conjuration","Benign Transposition"]},
-		{name:"Divination", source:"PHB", desc:"Pierce the veil of the future with Portent.", features:["Divination Savant","Portent","Expert Divination"]},
-		{name:"Enchantment", source:"PHB", desc:"Bend the minds of others to your will.", features:["Enchantment Savant","Hypnotic Gaze","Instinctive Charm"]},
-		{name:"Evocation", source:"PHB", desc:"Specialize in destructive magical energy.", features:["Evocation Savant","Sculpt Spells","Potent Cantrip"]},
-		{name:"Illusion", source:"PHB", desc:"Weave illusions to deceive and confound.", features:["Illusion Savant","Improved Minor Illusion","Malleable Illusions"]},
-		{name:"Necromancy", source:"PHB", desc:"Manipulate the forces of life and death.", features:["Necromancy Savant","Grim Harvest","Undead Thralls"]},
-		{name:"Transmutation", source:"PHB", desc:"Alter the physical properties of objects.", features:["Transmutation Savant","Minor Alchemy","Transmuter's Stone"]},
-		{name:"Bladesinging", source:"SCAG", desc:"Blend swordplay and spellcasting.", features:["Training in War and Song","Bladesong","Extra Attack"]},
-		{name:"Order of Scribes", source:"TCE", desc:"Awaken your spellbook as a magical companion.", features:["Awakened Spellbook","Manifest Mind"]},
-		{name:"Chronurgy", source:"EGW", desc:"Bend time and manipulate fate.", features:["Chronal Shift","Temporal Awareness"]},
-		{name:"Graviturgy", source:"EGW", desc:"Control the forces of gravity.", features:["Adjust Density","Gravity Well"]},
-	],
-	Artificer:[
-		{name:"Alchemist", source:"TCE", desc:"Craft experimental elixirs to aid allies.", features:["Tool Proficiency","Alchemist Spells","Experimental Elixir"]},
-		{name:"Armorer", source:"TCE", desc:"Craft and wear a suit of magical armor.", features:["Tool Proficiency","Armorer Spells","Power Armor"]},
-		{name:"Artillerist", source:"TCE", desc:"Create magical cannons to blast enemies.", features:["Tool Proficiency","Artillerist Spells","Eldritch Cannon"]},
-		{name:"Battle Smith", source:"TCE", desc:"Craft a steel defender to aid in combat.", features:["Tool Proficiency","Battle Smith Spells","Steel Defender"]},
-	],
-};
+// Populated at startup by loadRuleData() from the site's own class/subclass data
+// (+ prerelease/brew), merged via ModalFilterClasses.pPostLoad() so each class carries
+// its subclasses embedded as cls.subclasses[] — see loadRuleData() below.
+let CLASSES = [];
 
 // Populated at startup by loadRuleData() from the site's own backgrounds.json (+ prerelease/brew).
 let BACKGROUNDS = [];
@@ -224,12 +69,13 @@ const L1_MAX = {Bard:2, Cleric:2, Druid:2, Paladin:2, Ranger:2, Sorcerer:2, Warl
 function scoreMod(s) { return Math.floor((s - 10) / 2); }
 function fmtMod(m) { return (m >= 0 ? "+" : "") + m; }
 function profBonus(lvl) { return Math.ceil(lvl / 4) + 1; }
-function getHP(cls, conScore, lvl) { return cls.hd + scoreMod(conScore) + (lvl - 1) * (Math.floor(cls.hd / 2) + 1 + scoreMod(conScore)); }
+function getHP(cls, conScore, lvl) { const faces = cls.hd?.faces || 8; return faces + scoreMod(conScore) + (lvl - 1) * (Math.floor(faces / 2) + 1 + scoreMod(conScore)); }
 function pbCost(s) { return s <= 13 ? s - 8 : (s - 8) + (s - 13); }
 function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
-// Class/subclass features aren't backed by real per-feature entry data (only the class/subclass
-// as a whole is), so this stays a placeholder for those. Races and feats use the real-data
-// helpers below (entriesToHtml/entriesToPlainText) instead, since we have full `entries` for them.
+// Class/subclass feature *names and levels* are real data (see classFeatureRefs/subclassFeatureRefs
+// below), but the feature *entries* (description text) aren't loaded/dereferenced this pass, so this
+// stays a placeholder. Races and feats use the real-data helpers below (entriesToHtml/entriesToPlainText)
+// instead, since we have full `entries` for them.
 function featureDesc(_name) { return "Full description coming soon."; }
 function equipmentDesc(_name) { return "Full item description coming soon."; }
 function spellDesc(_name) { return "Full spell description coming soon."; }
@@ -340,10 +186,67 @@ function backgroundSkillNames(bg) {
 	return [...out];
 }
 
+/**
+ * Real class data has no explicit "primary ability" field — we approximate it from the
+ * multiclassing prerequisite abilities (e.g. Fighter's str-or-dex requirement doubles as its
+ * two primary abilities), falling back to spellcastingAbility, then nothing.
+ */
+function classPrimaryAbilities(cls) {
+	const req = cls?.multiclassing?.requirements;
+	if (req) {
+		const groups = req.or || [req];
+		const keys = new Set();
+		groups.forEach(g => Object.keys(g).forEach(k => ABILITIES.includes(k) && keys.add(k)));
+		if (keys.size) return [...keys];
+	}
+	return cls?.spellcastingAbility ? [cls.spellcastingAbility] : [];
+}
+
+/** Real classFeatures entries are uid refs ("Name|Class||Level|Source") or {classFeature: uid, ...} —
+ * unpack down to {name, level} pairs. No feature *text* is loaded this pass, just names/levels. */
+function classFeatureRefs(cls) {
+	return (cls?.classFeatures || []).map(ref => {
+		const uid = typeof ref === "string" ? ref : ref?.classFeature;
+		if (!uid) return null;
+		const {name, level} = DataUtil.class.unpackUidClassFeature(uid);
+		return name ? {name, level} : null;
+	}).filter(Boolean);
+}
+
+/** Same idea as classFeatureRefs, for a subclass's subclassFeatures array. */
+function subclassFeatureRefs(sc) {
+	return (sc?.subclassFeatures || []).map(ref => {
+		const uid = typeof ref === "string" ? ref : ref?.subclassFeature;
+		if (!uid) return null;
+		const {name, level} = DataUtil.class.unpackUidSubclassFeature(uid);
+		return name ? {name, level} : null;
+	}).filter(Boolean);
+}
+
+/** A real class's skill-choice block — startingProficiencies.skills[0] is either {any: N} (e.g. Bard)
+ * or {choose: {from: [...lowercase skill keys], count: N}}. Resolves to display-cased skill names. */
+function classSkillChoice(cls) {
+	const entry = (cls?.startingProficiencies?.skills || [])[0];
+	if (!entry) return {count: 0, names: []};
+	if (entry.any != null) return {count: entry.any, names: ALL_SKILLS.map(s => s.name)};
+	if (entry.choose) {
+		const names = (entry.choose.from || []).map(k => ALL_SKILLS.find(s => s.name.toLowerCase() === k.toLowerCase())?.name || k);
+		return {count: entry.choose.count || 1, names};
+	}
+	return {count: 0, names: []};
+}
+
 const EQUIPMENT_TYPE_LABELS = {
 	instrumentMusical: "a musical instrument (your choice)",
 	setGaming: "a gaming set (your choice)",
 	toolArtisan: "a set of artisan's tools (your choice)",
+	weaponMartial: "a martial weapon (your choice)",
+	weaponMartialMelee: "a martial melee weapon (your choice)",
+	weaponSimple: "a simple weapon (your choice)",
+	weaponSimpleMelee: "a simple melee weapon (your choice)",
+	focusSpellcastingArcane: "an arcane focus (your choice)",
+	focusSpellcastingDruidic: "a druidic focus (your choice)",
+	focusSpellcastingHoly: "a holy symbol (your choice)",
 };
 
 /** Best-effort human-readable label for one real startingEquipment item entry. */
@@ -352,7 +255,7 @@ function equipItemLabel(it) {
 	if (Array.isArray(it)) return it.map(equipItemLabel).join(" + ");
 	if (it && typeof it === "object") {
 		if (it.displayName) return it.displayName;
-		if (it.equipmentType) return EQUIPMENT_TYPE_LABELS[it.equipmentType] || `${it.equipmentType} (your choice)`;
+		if (it.equipmentType) return (it.quantity ? `${it.quantity} ` : "") + (EQUIPMENT_TYPE_LABELS[it.equipmentType] || `${it.equipmentType} (your choice)`);
 		if (it.special) {
 			const worth = it.worthValue != null ? ` (worth ${it.worthValue / 100} gp)` : "";
 			return (it.quantity ? `${it.quantity} ` : "") + it.special + worth;
@@ -370,14 +273,16 @@ function equipItemLabel(it) {
 function safeEquipTag(e) { return typeof e === "string" ? e : equipItemLabel(e); }
 
 /**
- * Splits a real background's startingEquipment into unconditional items (an "_" set) and
+ * Splits a real "startingEquipment" sets array into unconditional items (an "_" set) and
  * choice rows (sets with lettered options like {a: [...], b: [...]}), each option bundled
- * into one display string so it can reuse the same single-toggle chip UI as class equipment.
+ * into one display string so it can reuse the same single-toggle chip UI everywhere.
+ * Used for both a background's `startingEquipment` and a class's `startingEquipment.defaultData`
+ * — both use the same {_, a, b, ...} set-array schema.
  */
-function backgroundEquipmentSets(bg) {
+function equipmentChoiceSets(sets) {
 	const fixed = [];
 	const choiceRows = [];
-	(bg?.startingEquipment || []).forEach(set => {
+	(sets || []).forEach(set => {
 		if (!set || typeof set !== "object") return;
 		if (Array.isArray(set._)) fixed.push(...set._.map(equipItemLabel));
 		const optionKeys = Object.keys(set).filter(k => k !== "_");
@@ -427,6 +332,7 @@ const EMPTY_CHAR = () => ({
 let modalFilterRaces = null;
 let modalFilterBackgrounds = null;
 let modalFilterFeats = null;
+let modalFilterClasses = null;
 
 async function pLoadAllFiltered(page, entityType) {
 	const all = [
@@ -451,20 +357,36 @@ async function loadRuleData() {
 	// equivalent here, which strips legacy ability scores under the 2024-rules site style.
 	// Left out for now to keep this pass focused on the ModalFilter wiring itself — races/
 	// backgrounds will show their as-published data regardless of the site's style switcher.
+	const [rawClasses, rawSubclasses] = await Promise.all([
+		pLoadAllFiltered(UrlUtil.PG_CLASSES, "class"),
+		pLoadAllFiltered("subclass", "subclass"),
+	]);
+
 	[RACES, BACKGROUNDS, FEATS] = await Promise.all([
 		pLoadAllFiltered(UrlUtil.PG_RACES, "race"),
 		pLoadAllFiltered(UrlUtil.PG_BACKGROUNDS, "background"),
 		pLoadAllFiltered(UrlUtil.PG_FEATS, "feat"),
 	]);
 
+	// Merge subclasses onto their parent classes (cls.subclasses[]) using the framework's own
+	// logic — the same static helper ModalFilterClasses uses internally when it loads its own
+	// data, so this stays byte-for-byte consistent with how the rest of the site handles it.
+	const mergedClassData = await ModalFilterClasses.pPostLoad({class: rawClasses, subclass: rawSubclasses});
+	CLASSES = mergedClassData.class;
+
 	modalFilterRaces = new ModalFilterRaces({namespace: "charactercreator.races", isRadio: true, allData: RACES});
 	modalFilterBackgrounds = new ModalFilterBackgrounds({namespace: "charactercreator.backgrounds", isRadio: true, allData: BACKGROUNDS});
 	modalFilterFeats = new ModalFilterFeats({namespace: "charactercreator.feats", isRadio: true, allData: FEATS});
+	// No isRadio here — ModalFilterClasses handles class+subclass single-select internally,
+	// and we call pGetUserSelection() with isClassDisabled/isSubclassDisabled per step (see
+	// renderClass()/renderSubclass()) rather than a blanket radio mode.
+	modalFilterClasses = new ModalFilterClasses({namespace: "charactercreator.classes", allData: CLASSES});
 
 	await Promise.all([
 		modalFilterRaces.pPopulateHiddenWrapper(),
 		modalFilterBackgrounds.pPopulateHiddenWrapper(),
 		modalFilterFeats.pPopulateHiddenWrapper(),
+		modalFilterClasses.pPopulateHiddenWrapper(),
 	]);
 }
 
@@ -557,8 +479,7 @@ const CB = {
 	bgSkills() { return backgroundSkillNames(this.char.background); },
 	allProfSkills() { return new Set([...this.bgSkills(), ...this.char.skills]); },
 	clsSkillOpts() {
-		if (!this.char.cls) return [];
-		return this.char.cls.skillChoices === "any" ? ALL_SKILLS.map(s => s.name) : this.char.cls.skillChoices;
+		return classSkillChoice(this.char.cls).names;
 	},
 	isCaster() { return CASTER_CLASSES.includes(this.char.cls?.name); },
 
@@ -570,7 +491,7 @@ const CB = {
 		if (step === 3) return true;
 		if (step === 4) return char.background !== null;
 		if (step === 5 && char.abilityMode === "standard") return ABILITIES.every(a => char.standardAssign[a] !== null);
-		if (step === 6) return char.skills.length === (char.cls?.numSkills || 2);
+		if (step === 6) return char.skills.length === classSkillChoice(char.cls).count;
 		return true;
 	},
 
@@ -751,69 +672,101 @@ const CB = {
 
 	// ─── STEP 2: CLASS ─────────────────────────────────────────────────────
 	renderClass() {
-		const list = CLASSES.map(c => `
-			<div class="cb__sel-card ${this.char.cls?.name === c.name ? "cb__sel-card--active" : ""}" data-cls="${esc(c.name)}">
+		const filtered = CLASSES.filter(c => c.name.toLowerCase().includes(this.search.toLowerCase()));
+		const isSelected = c => this.char.cls?.name === c.name && this.char.cls?.source === c.source;
+		const list = filtered.map(c => `
+			<div class="cb__sel-card ${isSelected(c) ? "cb__sel-card--active" : ""}" data-cls="${esc(c.name)}" data-cls-source="${esc(c.source)}">
 				<span class="cb__sel-title">${esc(c.name)}</span>${srcBadge(c.source)}
-				<div class="cb__sel-sub">d${c.hd} · ${c.primary.map(p => ABILITY_LABELS[p]).join("/")}</div>
+				<div class="cb__sel-sub">d${c.hd?.faces || "?"} · ${classPrimaryAbilities(c).map(p => ABILITY_LABELS[p]).join("/") || "—"}</div>
 			</div>
 		`).join("");
 
-		const detail = this.char.cls ? `
+		const cls = this.char.cls;
+		const skillChoice = classSkillChoice(cls);
+		const lvl1Features = classFeatureRefs(cls).filter(f => f.level === 1);
+		const detail = cls ? `
 			<div class="cb__detail-card">
-				<p class="cb__detail-title">${esc(this.char.cls.name)}</p>
+				<p class="cb__detail-title">${esc(cls.name)}</p>
 				<div class="cb__stat-grid">
-					${[["Hit Die","d"+this.char.cls.hd],["Saves",this.char.cls.saves.map(s=>ABILITY_LABELS[s].slice(0,3)).join("/")],["HP at 1st",this.char.cls.hd],["Skills",this.char.cls.numSkills+" choices"]].map(([l,v]) => `
+					${[["Hit Die","d"+(cls.hd?.faces ?? "?")],["Saves",(cls.proficiency||[]).map(s=>ABILITY_LABELS[s].slice(0,3)).join("/")],["HP at 1st",cls.hd?.faces ?? "?"],["Skills",skillChoice.count+" choices"]].map(([l,v]) => `
 						<div class="cb__stat-box"><p class="cb__stat-label">${esc(l)}</p><p class="cb__stat-value">${esc(v)}</p></div>
 					`).join("")}
 				</div>
 				<p class="cb__section-header">1st Level Features</p>
-				<div>${this.char.cls.features.map(f => `<span class="cb__pill cb__pill--purple" title="${esc(featureDesc(f))}">${esc(f)}</span>`).join("")}</div>
-				${CASTER_CLASSES.includes(this.char.cls.name) ? `<p class="cb__caster-note">✦ Spellcaster — you'll pick spells later</p>` : ""}
+				<div>${lvl1Features.map(f => `<span class="cb__pill cb__pill--purple" title="${esc(featureDesc(f.name))}">${esc(f.name)}</span>`).join("") || `<span class="cb__placeholder">None</span>`}</div>
+				${cls.spellcastingAbility ? `<p class="cb__caster-note">✦ Spellcaster — you'll pick spells later</p>` : ""}
 			</div>
 		` : `<p class="cb__placeholder">Select a class to see details</p>`;
 
 		setTimeout(() => {
-			document.querySelectorAll("[data-cls]").forEach(el => el.addEventListener("click", () => {
-				this.char.cls = CLASSES.find(x => x.name === el.dataset.cls);
+			document.getElementById("cb-cls-browse")?.addEventListener("click", async () => {
+				if (!modalFilterClasses) return;
+				const selected = await modalFilterClasses.pGetUserSelection({isSubclassDisabled: true});
+				if (!selected?.class) return;
+				this.char.cls = selected.class;
 				this.char.subclass = null;
 				this.render();
-			}));
-		}, 0);
-
-		return `<div class="cb__two-col"><div class="cb__scroll-list">${list}</div><div>${detail}</div></div>`;
-	},
-
-	// ─── STEP 3: SUBCLASS ──────────────────────────────────────────────────
-	renderSubclass() {
-		if (!this.char.cls) return `<p class="cb__placeholder">Select a class first (step 3).</p>`;
-		const options = SUBCLASSES[this.char.cls.name] || [];
-		const list = options.map(sc => `
-			<div class="cb__sel-card ${this.char.subclass?.name === sc.name ? "cb__sel-card--active" : ""}" data-subclass="${esc(sc.name)}">
-				<span class="cb__sel-title">${esc(sc.name)}</span>${srcBadge(sc.source)}
-				<div class="cb__sel-sub">${esc(sc.desc)}</div>
-			</div>
-		`).join("");
-		const detail = this.char.subclass ? `
-			<div class="cb__detail-card">
-				<p class="cb__detail-title">${esc(this.char.subclass.name)}</p>
-				<p class="cb__detail-sub cb__detail-sub--italic">${esc(this.char.subclass.desc)}</p>
-				<p class="cb__section-header">Subclass Features</p>
-				<div>${this.char.subclass.features.map(f => `<span class="cb__pill cb__pill--purple" title="${esc(featureDesc(f))}">${esc(f)}</span>`).join("")}</div>
-			</div>
-		` : `<p class="cb__placeholder">Select a subclass to see details</p>`;
-
-		setTimeout(() => {
-			document.querySelectorAll("[data-subclass]").forEach(el => el.addEventListener("click", () => {
-				this.char.subclass = options.find(x => x.name === el.dataset.subclass);
+			});
+			document.querySelectorAll("[data-cls]").forEach(el => el.addEventListener("click", () => {
+				this.char.cls = CLASSES.find(x => x.name === el.dataset.cls && x.source === el.dataset.clsSource);
+				this.char.subclass = null;
 				this.render();
 			}));
 		}, 0);
 
 		return `
 			<div class="cb__two-col">
-				<div class="cb__scroll-list">
-					<p class="cb__hint">${esc(this.char.cls.name)} subclasses are typically chosen at level 3 (or 1 for Cleric/Sorcerer/Warlock). Select now to plan ahead.</p>
-					${list}
+				<div>
+					<button id="cb-cls-browse" type="button" class="ve-btn ve-btn-default cb__search" title="Open the site's full class filter/search">🔍 Browse &amp; Filter Classes</button>
+					<input class="ve-form-control cb__search" data-search value="${esc(this.search)}" placeholder="...or quick-filter this list by name">
+					<div class="cb__scroll-list">${list}</div>
+				</div>
+				<div>${detail}</div>
+			</div>
+		`;
+	},
+
+	// ─── STEP 3: SUBCLASS ──────────────────────────────────────────────────
+	renderSubclass() {
+		if (!this.char.cls) return `<p class="cb__placeholder">Select a class first (step 3).</p>`;
+		const cls = this.char.cls;
+		const options = cls.subclasses || [];
+		const isSelected = sc => this.char.subclass?.name === sc.name && this.char.subclass?.source === sc.source;
+		const list = options.map(sc => `
+			<div class="cb__sel-card ${isSelected(sc) ? "cb__sel-card--active" : ""}" data-subclass="${esc(sc.name)}" data-subclass-source="${esc(sc.source)}">
+				<span class="cb__sel-title">${esc(sc.name)}</span>${srcBadge(sc.source)}
+			</div>
+		`).join("");
+		const subclass = this.char.subclass;
+		const scFeatures = subclassFeatureRefs(subclass);
+		const detail = subclass ? `
+			<div class="cb__detail-card">
+				<p class="cb__detail-title">${esc(subclass.name)}</p>
+				<p class="cb__section-header">Subclass Features</p>
+				<div>${scFeatures.map(f => `<span class="cb__pill cb__pill--purple" title="Level ${f.level} — ${esc(featureDesc(f.name))}">${esc(f.name)} <em>(Lv ${f.level})</em></span>`).join("") || `<span class="cb__placeholder">None</span>`}</div>
+			</div>
+		` : `<p class="cb__placeholder">Select a subclass to see details</p>`;
+
+		setTimeout(() => {
+			document.getElementById("cb-subclass-browse")?.addEventListener("click", async () => {
+				if (!modalFilterClasses) return;
+				const selected = await modalFilterClasses.pGetUserSelection({selectedClass: cls, selectedSubclass: this.char.subclass, isClassDisabled: true});
+				if (!selected?.subclass) return;
+				this.char.subclass = selected.subclass;
+				this.render();
+			});
+			document.querySelectorAll("[data-subclass]").forEach(el => el.addEventListener("click", () => {
+				this.char.subclass = options.find(x => x.name === el.dataset.subclass && x.source === el.dataset.subclassSource);
+				this.render();
+			}));
+		}, 0);
+
+		return `
+			<div class="cb__two-col">
+				<div>
+					<button id="cb-subclass-browse" type="button" class="ve-btn ve-btn-default cb__search" title="Open the site's full class filter/search, scoped to this class">🔍 Browse &amp; Filter Subclasses</button>
+					<p class="cb__hint">${esc(cls.name)} subclasses are typically chosen at level 3 (or 1 for Cleric/Sorcerer/Warlock). Select now to plan ahead.</p>
+					<div class="cb__scroll-list">${list}</div>
 				</div>
 				<div>${detail}</div>
 			</div>
@@ -1037,7 +990,7 @@ const CB = {
 
 	// ─── STEP 6: SKILLS ────────────────────────────────────────────────────
 	renderSkills() {
-		const numNeeded = this.char.cls?.numSkills || 2;
+		const numNeeded = classSkillChoice(this.char.cls).count;
 		const bgSkills = this.bgSkills();
 		const clsOpts = this.clsSkillOpts();
 		const finalScores = this.finalScores();
@@ -1079,11 +1032,10 @@ const CB = {
 
 	// ─── STEP 7: EQUIPMENT ─────────────────────────────────────────────────
 	renderEquipment() {
-		const clsEquip = this.char.cls ? [...(this.char.cls.bgEquip || [])] : [];
-		const {fixed: bgEquip, choiceRows: bgChoiceRows} = backgroundEquipmentSets(this.char.background);
-		const clsChoices = this.char.cls?.equipment || [];
+		const {fixed: clsEquip, choiceRows: clsChoiceRows} = equipmentChoiceSets(this.char.cls?.startingEquipment?.defaultData);
+		const {fixed: bgEquip, choiceRows: bgChoiceRows} = equipmentChoiceSets(this.char.background?.startingEquipment);
 
-		const choiceRows = clsChoices.map((choices, i) => `
+		const choiceRows = clsChoiceRows.map((choices, i) => `
 			<div class="cb__eq-choice-row" data-row="${i}">
 				${choices.map(opt => `<div class="cb__eq-chip ${this.char.equipment.includes(opt) ? "cb__eq-chip--active" : ""}" data-eq-choice="${esc(opt)}" data-row-i="${i}" title="${esc(equipmentDesc(opt))}">${esc(opt)}</div>`).join("")}
 			</div>
@@ -1105,7 +1057,7 @@ const CB = {
 		setTimeout(() => {
 			document.querySelectorAll("[data-eq-choice]").forEach(el => el.addEventListener("click", () => {
 				const opt = el.dataset.eqChoice, rowI = +el.dataset.rowI;
-				const choices = clsChoices[rowI];
+				const choices = clsChoiceRows[rowI];
 				const active = this.char.equipment.includes(opt);
 				const others = choices.filter(o => o !== opt);
 				let next = this.char.equipment.filter(e => !others.includes(e));
@@ -1137,7 +1089,7 @@ const CB = {
 
 		return `
 			<p class="cb__hint">Review and check off your starting equipment. Choice rows let you pick one option.</p>
-			${clsChoices.length ? `<p class="cb__section-header">${esc(this.char.cls?.name || "Class")} Starting Equipment (choose one per row)</p>${choiceRows}` : ""}
+			${clsChoiceRows.length ? `<p class="cb__section-header">${esc(this.char.cls?.name || "Class")} Starting Equipment (choose one per row)</p>${choiceRows}` : ""}
 			${clsEquip.length ? `<p class="cb__section-header">Additional Class Items</p>${clsEquip.map(simpleRow).join("")}` : ""}
 			${bgEquip.length ? `<p class="cb__section-header">${esc(this.char.background?.name || "Background")} Equipment</p>${bgEquip.map(simpleRow).join("")}` : ""}
 			${bgChoiceRows.length ? `<p class="cb__section-header">${esc(this.char.background?.name || "Background")} Equipment (choose one per row)</p>${bgChoiceRowsHtml}` : ""}
@@ -1300,7 +1252,7 @@ const CB = {
 			<div class="cb__sheet-grid">
 				<div>
 					${ABILITIES.map(a => {
-						const score = finalScores[a], m = scoreMod(score), isSave = char.cls?.saves.includes(a);
+						const score = finalScores[a], m = scoreMod(score), isSave = char.cls?.proficiency?.includes(a);
 						return `
 						<div class="cb__ab-box">
 							<p class="cb__ab-label">${ABILITY_LABELS[a].slice(0,3)}</p>
@@ -1313,7 +1265,7 @@ const CB = {
 				<div>
 					<p class="cb__section-header">Saving Throws</p>
 					${ABILITIES.map(a => {
-						const isProf = char.cls?.saves.includes(a), bonus = scoreMod(finalScores[a]) + (isProf ? pb : 0);
+						const isProf = char.cls?.proficiency?.includes(a), bonus = scoreMod(finalScores[a]) + (isProf ? pb : 0);
 						return `
 						<div class="cb__save-row">
 							<div class="cb__skill-dot ${isProf ? "cb__skill-dot--on" : ""}"></div>
@@ -1321,8 +1273,8 @@ const CB = {
 							<span class="cb__save-bonus">${fmtMod(bonus)}</span>
 						</div>`;
 					}).join("")}
-					${char.cls ? `<div class="cb__block"><p class="cb__section-header">Class Features</p><div>${char.cls.features.map(f => `<span class="cb__pill cb__pill--purple" title="${esc(featureDesc(f))}">${esc(f)}</span>`).join("")}</div></div>` : ""}
-					${char.subclass ? `<div class="cb__block"><p class="cb__section-header">Subclass Features</p><div>${char.subclass.features.map(f => `<span class="cb__pill cb__pill--indigo" title="${esc(featureDesc(f))}">${esc(f)}</span>`).join("")}</div></div>` : ""}
+					${char.cls ? `<div class="cb__block"><p class="cb__section-header">Class Features</p><div>${classFeatureRefs(char.cls).filter(f => f.level <= char.level).map(f => `<span class="cb__pill cb__pill--purple" title="Level ${f.level} — ${esc(featureDesc(f.name))}">${esc(f.name)}</span>`).join("") || `<span class="cb__placeholder">None yet</span>`}</div></div>` : ""}
+					${char.subclass ? `<div class="cb__block"><p class="cb__section-header">Subclass Features</p><div>${subclassFeatureRefs(char.subclass).filter(f => f.level <= char.level).map(f => `<span class="cb__pill cb__pill--indigo" title="Level ${f.level} — ${esc(featureDesc(f.name))}">${esc(f.name)}</span>`).join("") || `<span class="cb__placeholder">None yet</span>`}</div></div>` : ""}
 					${char.race ? `<div class="cb__block"><p class="cb__section-header">Racial Traits</p><div>${namedSubEntries(char.race.entries).map(t => `<span class="cb__pill cb__pill--teal" title="${esc(entriesToPlainText(t.entries))}">${esc(t.name)}</span>`).join("")}</div></div>` : ""}
 					${char.background && backgroundFeature(char.background) ? `<div class="cb__block"><p class="cb__section-header">Background Feature</p><div>${entriesToHtml([backgroundFeature(char.background)])}</div></div>` : ""}
 					${char.feats.length ? `<div class="cb__block"><p class="cb__section-header">Feats</p><div>${char.feats.map(cf => `<span class="cb__pill cb__pill--orange" title="${esc(entriesToPlainText(findFeat(cf.name, cf.source)?.entries))}">${esc(cf.name)}</span>`).join("")}</div></div>` : ""}
@@ -1414,12 +1366,12 @@ table{width:100%;border-collapse:collapse;}td{padding:2px 6px;font-size:11px;}
 @media print{body{padding:12px;}}</style></head><body>
 <h1>${esc(char.name || "Unnamed Adventurer")}</h1>
 <div class="sub">Level ${char.level} ${esc(raceName)} ${esc(char.cls?.name || "—")}${char.subclass ? ` (${esc(char.subclass.name)})` : ""} · ${esc(char.background?.name || "—")} · Prof +${pb_}</div>
-<div class="stats">${[["HP",hp],["AC",ac],["Initiative",fmtMod(scoreMod(s.dex))],["Speed",raceWalkSpeed(char.race) + "ft"],["Hit Die","d" + (char.cls?.hd || "—")]].map(([l,v]) => `<div class="stat"><div class="l">${esc(l)}</div><div class="v">${esc(v)}</div></div>`).join("")}</div>
+<div class="stats">${[["HP",hp],["AC",ac],["Initiative",fmtMod(scoreMod(s.dex))],["Speed",raceWalkSpeed(char.race) + "ft"],["Hit Die","d" + (char.cls?.hd?.faces || "—")]].map(([l,v]) => `<div class="stat"><div class="l">${esc(l)}</div><div class="v">${esc(v)}</div></div>`).join("")}</div>
 <div class="grid">
-<div>${ABILITIES.map(a => `<div class="ab"><div class="an">${ABILITY_LABELS[a].slice(0,3)}</div><div class="av">${s[a]}</div><div class="am">${fmtMod(scoreMod(s[a]))}</div>${char.cls?.saves.includes(a) ? '<div style="font-size:8px;color:green;">save</div>' : ""}</div>`).join("")}</div>
-<div><h3>Saving Throws</h3><table>${ABILITIES.map(a => { const p = char.cls?.saves.includes(a), b = scoreMod(s[a]) + (p ? pb_ : 0); return `<tr><td>${p ? "●" : "○"}</td><td>${ABILITY_LABELS[a]}</td><td style="text-align:right;font-weight:600;">${fmtMod(b)}</td></tr>`; }).join("")}</table>
-${char.cls ? `<h3>Class Features</h3><div>${char.cls.features.map(f => `<span class="tag">${esc(f)}</span>`).join("")}</div>` : ""}
-${char.subclass ? `<h3>Subclass: ${esc(char.subclass.name)}</h3><div>${char.subclass.features.map(f => `<span class="tag">${esc(f)}</span>`).join("")}</div>` : ""}
+<div>${ABILITIES.map(a => `<div class="ab"><div class="an">${ABILITY_LABELS[a].slice(0,3)}</div><div class="av">${s[a]}</div><div class="am">${fmtMod(scoreMod(s[a]))}</div>${char.cls?.proficiency?.includes(a) ? '<div style="font-size:8px;color:green;">save</div>' : ""}</div>`).join("")}</div>
+<div><h3>Saving Throws</h3><table>${ABILITIES.map(a => { const p = char.cls?.proficiency?.includes(a), b = scoreMod(s[a]) + (p ? pb_ : 0); return `<tr><td>${p ? "●" : "○"}</td><td>${ABILITY_LABELS[a]}</td><td style="text-align:right;font-weight:600;">${fmtMod(b)}</td></tr>`; }).join("")}</table>
+${char.cls ? `<h3>Class Features</h3><div>${classFeatureRefs(char.cls).filter(f => f.level <= char.level).map(f => `<span class="tag">${esc(f.name)}</span>`).join("")}</div>` : ""}
+${char.subclass ? `<h3>Subclass: ${esc(char.subclass.name)}</h3><div>${subclassFeatureRefs(char.subclass).filter(f => f.level <= char.level).map(f => `<span class="tag">${esc(f.name)}</span>`).join("")}</div>` : ""}
 ${char.race ? `<h3>Racial Traits</h3><div>${namedSubEntries(char.race.entries).map(t => `<span class="tag">${esc(t.name)}</span>`).join("")}</div>` : ""}
 ${char.background && backgroundFeature(char.background) ? `<h3>Background Feature</h3><div>${entriesToHtml([backgroundFeature(char.background)])}</div>` : ""}
 ${char.feats.length ? `<h3>Feats</h3><div>${char.feats.map(cf => `<span class="tag">${esc(cf.name)}</span>`).join("")}</div>` : ""}

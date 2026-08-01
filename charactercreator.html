@@ -16,6 +16,12 @@
 		Module scripts and deferred classic scripts execute in this relative order
 		regardless of where they sit in the document, so this list must stay in sync
 		with statgen.html if that file's own script list ever changes.
+
+		filter-classes.js is an addition beyond statgen.html's own list: it defines
+		PageFilterClassesBase (a plain global, same pattern as filter-races.js etc.),
+		which ModalFilterClasses (imported directly in charactercreator.js — see below)
+		depends on. No other page in the mirror wires ModalFilterClasses up, so we're
+		the first to load it; it isn't part of the shared statgen.html baseline.
 	-->
 	<script type="text/javascript" defer src="js/parser.js"></script>
 	<script type="text/javascript" defer src="js/utils.js"></script>
@@ -31,6 +37,7 @@
 	<script type="text/javascript" defer src="js/filter-races.js"></script>
 	<script type="text/javascript" defer src="js/filter-backgrounds.js"></script>
 	<script type="text/javascript" defer src="js/filter-feats.js"></script>
+	<script type="text/javascript" defer src="js/filter-classes.js"></script>
 	<script type="text/javascript" defer src="js/render.js"></script>
 	<script type="text/javascript" defer src="js/render-dice.js"></script>
 	<script type="module" src="js/shim-esmodules.js"></script>
