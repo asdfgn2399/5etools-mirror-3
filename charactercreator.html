@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<title>Character Creator - 5etools</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+	<link rel="stylesheet" href="css/bootstrap.css">
+	<link rel="stylesheet" href="css/main.css">
+	<link rel="stylesheet" href="css/charactercreator.css">
+
+	<!--
+		5etools framework, loaded in the same order as statgen.html so that the plain
+		(non-module) scripts can rely on globals attached by the module scripts that
+		precede them (e.g. filter.js attaches PageFilterBase/ModalFilterBase/FilterBox
+		to globalThis before filter-races.js/filter-backgrounds.js/filter-feats.js run).
+		Module scripts and deferred classic scripts execute in this relative order
+		regardless of where they sit in the document, so this list must stay in sync
+		with statgen.html if that file's own script list ever changes.
+	-->
+	<script type="text/javascript" defer src="js/parser.js"></script>
+	<script type="text/javascript" defer src="js/utils.js"></script>
+	<script type="text/javascript" defer src="js/utils-ui.js"></script>
+	<script type="text/javascript" defer src="lib/localforage.js"></script>
+	<script type="module" defer src="js/omnidexer.js"></script>
+	<script type="module" src="js/filter.js"></script>
+	<script type="module" src="js/utils-dataloader.js"></script>
+	<script type="module" src="js/utils-font.js"></script>
+	<script type="module" src="js/utils-brew.js"></script>
+	<script type="module" src="js/utils-config.js"></script>
+	<script type="text/javascript" defer src="js/filter-common.js"></script>
+	<script type="text/javascript" defer src="js/filter-races.js"></script>
+	<script type="text/javascript" defer src="js/filter-backgrounds.js"></script>
+	<script type="text/javascript" defer src="js/filter-feats.js"></script>
+	<script type="text/javascript" defer src="js/render.js"></script>
+	<script type="text/javascript" defer src="js/render-dice.js"></script>
+	<script type="module" src="js/shim-esmodules.js"></script>
+	<script type="text/javascript" defer src="js/hist.js"></script>
+	<script type="module" defer src="js/list2.js"></script>
+</head>
+<body>
+	<div class="container">
+		<div class="cb__wrap ve-mt-3 ve-mb-5">
+			<div class="cb__title-row">
+				<h2>D&amp;D 5e Character Creator</h2>
+				<span class="cb__title-sub">All official sources · 5etools schema</span>
+			</div>
+			<div class="cb__io-row">
+				<button id="cb-export-json" class="ve-btn ve-btn-xs ve-btn-default">⬇ Export JSON</button>
+				<button id="cb-import-json" class="ve-btn ve-btn-xs ve-btn-default">⬆ Import JSON</button>
+				<input id="cb-import-json-file" type="file" accept="application/json" style="display:none;">
+			</div>
+
+			<nav id="cb-nav"></nav>
+
+			<div id="cb-step-body"></div>
+
+			<div class="cb__footer">
+				<button id="cb-back" class="ve-btn ve-btn-default">← Back</button>
+				<button id="cb-next" class="ve-btn ve-btn-primary">Next →</button>
+				<div id="cb-export-wrap" style="display:none;">
+					<button id="cb-export" class="ve-btn ve-btn-success">⬇ Export HTML</button>
+					<button id="cb-reset" class="ve-btn ve-btn-default">New Character</button>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<script type="module" src="js/charactercreator.js"></script>
+</body>
+</html>
