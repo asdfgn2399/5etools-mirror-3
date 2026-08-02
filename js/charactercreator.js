@@ -10,8 +10,8 @@ import {ModalFilterClasses} from "./filter-classes-raw.js";
 
 // ─── DATA ────────────────────────────────────────────────────────────────────
 
-const ABILITY_LABELS = {str:"Strength", dex:"Dexterity", con:"Constitution", int:"Intelligence", wis:"Wisdom", cha:"Charisma"};
-const ABILITIES = ["str","dex","con","int","wis","cha"];
+const ABILITY_LABELS = Parser.ATB_ABV_TO_FULL; // {str:"Strength", dex:"Dexterity", ...} — from parser.js
+const ABILITIES = Parser.ABIL_ABVS; // ["str","dex","con","int","wis","cha"] — from parser.js
 const STANDARD_ARRAY = [15,14,13,12,10,8];
 const STEPS = ["Name","Race","Class","Subclass","Background","Abilities","Skills","Equipment","Feats","Spells","Sheet"];
 const CASTER_CLASSES = ["Bard","Cleric","Druid","Paladin","Ranger","Sorcerer","Warlock","Wizard","Artificer"];
@@ -28,17 +28,10 @@ let CLASSES = [];
 // Populated at startup by loadRuleData() from the site's own backgrounds.json (+ prerelease/brew).
 let BACKGROUNDS = [];
 
-const ALL_SKILLS = [
-	{name:"Acrobatics", ability:"dex"}, {name:"Animal Handling", ability:"wis"},
-	{name:"Arcana", ability:"int"}, {name:"Athletics", ability:"str"},
-	{name:"Deception", ability:"cha"}, {name:"History", ability:"int"},
-	{name:"Insight", ability:"wis"}, {name:"Intimidation", ability:"cha"},
-	{name:"Investigation", ability:"int"}, {name:"Medicine", ability:"wis"},
-	{name:"Nature", ability:"int"}, {name:"Perception", ability:"wis"},
-	{name:"Performance", ability:"cha"}, {name:"Persuasion", ability:"cha"},
-	{name:"Religion", ability:"int"}, {name:"Sleight of Hand", ability:"dex"},
-	{name:"Stealth", ability:"dex"}, {name:"Survival", ability:"wis"},
-];
+// Derived from Parser.SKILL_TO_ATB_ABV (parser.js) rather than a separately hardcoded name/ability list.
+const ALL_SKILLS = Object.entries(Parser.SKILL_TO_ATB_ABV)
+	.map(([name, ability]) => ({name: name.toTitleCase(), ability}))
+	.sort((a, b) => a.name.localeCompare(b.name));
 
 // Populated at startup by loadRuleData() from the site's own feats.json (+ prerelease/brew).
 let FEATS = [];
@@ -121,18 +114,52 @@ function namedSubEntries(entries) {
 }
 
 /**
- * Races tagged lineage:"VRGR" (Aasimar MPMM, Aarakocra MPMM, etc.) carry NO race.ability array
- * at all — the "flexible ability scores" rule (+2/+1 to two different abilities, or +1/+1/+1 to
- * three) is a global rule implied by the tag, not per-race data, so it's hardcoded here.
+ * Races tagged lineage:"VRGR" (Aasimar MPMM, Aarakocra MPMM, etc.) or lineage:"UA1" carry no
+ * `ability` field of their own in the raw data — but the site's own loading pipeline
+ * (Renderer.race.mergeSubraces, run automatically by DataUtil.race.loadJSON for every race we
+ * load) injects the real "flexible ability scores" rule onto `race.ability` for these lineages:
+ * a `choose.weighted` entry with weights [2,1] (+2/+1 to two different abilities) and a second
+ * with weights [1,1,1] (+1 to three different abilities). So by the time we see these races,
+ * `race.ability` IS populated — just with a `choose.weighted` block rather than a plain
+ * `choose.from` one, which is why raceAbilityChoice below explicitly ignores it.
  */
-function isVrgrLineage(race) { return race?.lineage === "VRGR"; }
+function isFlexibleLineageRace(race) { return race?.lineage === "VRGR" || race?.lineage === "UA1"; }
 
-/** A race's player-choice ability bonus, e.g. {from: ["str","dex",...], count: 1, amount: 1}, or null if fixed-only. */
+/**
+ * A race's plain player-choice ability bonus, e.g. {from: ["str","dex",...], count: 1, amount: 1},
+ * or null if there isn't one. Explicitly skips `choose.weighted` entries — those are the flexible
+ * lineage rule (see isFlexibleLineageRace above), handled separately by its own UI, not this
+ * simple "pick N abilities for +amount each" picker.
+ */
 function raceAbilityChoice(race) {
-	const entry = (race?.ability || []).find(e => e && e.choose);
+	const entry = (race?.ability || []).find(e => e?.choose && !e.choose.weighted);
 	if (!entry) return null;
 	const {from, count = 1, amount = 1} = entry.choose;
 	return {from: from && from.length ? from : ABILITIES, count, amount};
+}
+
+/**
+ * True if the race itself grants an ability score bonus (fixed values and/or a `choose` block,
+ * and/or the flexible-lineage rule). True for every classic (PHB'14-style) race. 2024/XPHB
+ * races carry no `ability` field at all — that edition moved ability score increases onto the
+ * background instead — so this is false for them, which is what gates whether a background's own
+ * ability bonus (see bgAbilityChoice below) is actually usable.
+ */
+function raceGrantsAbilityBonus(race) { return !!(race?.ability?.length) || isFlexibleLineageRace(race); }
+
+/**
+ * Real 2024/XPHB background data grants an "Origin" ability score bonus via two alternative
+ * `choose.weighted` blocks over the same restricted trio of abilities: a 2-weight entry (+2 to one
+ * ability, +1 to a different one) and a 3-weight entry (+1 to three different abilities) — same
+ * shape as the flexible-lineage rule above, just scoped to a background-specific ability trio
+ * instead of any of the six. Classic (PHB'14) backgrounds have no `ability` field at all. Only ONE
+ * of a race's or a background's ability bonus is meant to apply on a given character — see
+ * raceGrantsAbilityBonus, which callers should check before using this.
+ */
+function bgAbilityChoice(bg) {
+	const entries = (bg?.ability || []).filter(e => e?.choose?.weighted?.from?.length);
+	if (!entries.length) return null;
+	return {from: entries[0].choose.weighted.from};
 }
 
 function raceWalkSpeed(r) {
@@ -144,11 +171,7 @@ function raceWalkSpeed(r) {
 function raceSpeedSizeSummary(r) {
 	if (!r) return "";
 	const bits = [];
-	const walk = typeof r.speed === "number" ? r.speed : r.speed?.walk;
-	if (walk != null) bits.push(`Speed ${walk}ft`);
-	if (r.speed?.fly) bits.push(`Fly ${r.speed.fly === true ? "(=walk)" : r.speed.fly + "ft"}`);
-	if (r.speed?.swim) bits.push(`Swim ${r.speed.swim === true ? "(=walk)" : r.speed.swim + "ft"}`);
-	if (r.speed?.climb) bits.push(`Climb ${r.speed.climb === true ? "(=walk)" : r.speed.climb + "ft"}`);
+	if (r.speed != null) bits.push(`Speed ${Parser.getSpeedString(r).trim()}`);
 	const sizes = (r.size || []).map(s => { try { return Parser.sizeAbvToFull(s); } catch (err) { return s; } });
 	if (sizes.length) bits.push(sizes.join("/"));
 	return bits.join(" · ");
@@ -160,8 +183,8 @@ function raceAbilityPills(r) {
 	(r?.ability || []).forEach(entry => {
 		if (!entry) return;
 		if (entry.choose) {
-			const from = (entry.choose.from || []).map(a => ABILITY_LABELS[a] || a.toUpperCase()).join("/");
-			out.push(`<span class="cb__asi">Choose ${entry.choose.count || 1} of ${from || "any"} <strong>+${entry.choose.amount || 1}</strong></span>`);
+			const text = Renderer.getAbilityData([entry]).asText;
+			out.push(`<span class="cb__asi">${esc(text)}</span>`);
 			return;
 		}
 		Object.entries(entry).forEach(([k, v]) => {
@@ -187,11 +210,17 @@ function backgroundSkillNames(bg) {
 }
 
 /**
- * Real class data has no explicit "primary ability" field — we approximate it from the
- * multiclassing prerequisite abilities (e.g. Fighter's str-or-dex requirement doubles as its
- * two primary abilities), falling back to spellcastingAbility, then nothing.
+ * 2024/XPHB classes carry a real `primaryAbility` field (e.g. Fighter XPHB: [{str:true},{dex:true}]);
+ * classic (PHB'14) classes don't, so for those we approximate it from the multiclassing prerequisite
+ * abilities (e.g. Fighter PHB's str-or-dex requirement doubles as its two primary abilities), falling
+ * back to spellcastingAbility, then nothing.
  */
 function classPrimaryAbilities(cls) {
+	if (cls?.primaryAbility?.length) {
+		const keys = new Set();
+		cls.primaryAbility.forEach(group => Object.entries(group || {}).forEach(([k, v]) => v && ABILITIES.includes(k) && keys.add(k)));
+		if (keys.size) return [...keys];
+	}
 	const req = cls?.multiclassing?.requirements;
 	if (req) {
 		const groups = req.or || [req];
@@ -343,6 +372,7 @@ const EMPTY_CHAR = () => ({
 	manual: {str:10,dex:10,con:10,int:10,wis:10,cha:10},
 	skills: [], equipment: [], feats: [], spells: [], racialAsiChoice: [],
 	racialAsiVrgr: {mode: "2-1", high: null, low: null, triple: []},
+	bgAsi: {mode: "2-1", high: null, low: null, triple: []},
 });
 
 // ─── REAL DATA LOADING ─────────────────────────────────────────────────────
@@ -469,7 +499,7 @@ const CB = {
 				if (choice.from.includes(a)) r[a] = (r[a] || 0) + choice.amount;
 			});
 		}
-		if (isVrgrLineage(this.char.race)) {
+		if (isFlexibleLineageRace(this.char.race)) {
 			const v = this.char.racialAsiVrgr || {};
 			if (v.mode === "1-1-1") {
 				new Set((v.triple || []).slice(0, 3)).forEach(a => { r[a] = (r[a] || 0) + 1; });
@@ -480,8 +510,24 @@ const CB = {
 		}
 		return r;
 	},
+	/** True only when this background actually has an ability bonus AND the current race doesn't
+	 * already grant one — a race's bonus always wins if both are present. */
+	canUseBackgroundASI() { return !!bgAbilityChoice(this.char.background) && !raceGrantsAbilityBonus(this.char.race); },
+	backgroundASI() {
+		const r = {};
+		if (!this.canUseBackgroundASI()) return r;
+		const v = this.char.bgAsi || {};
+		if (v.mode === "1-1-1") {
+			new Set((v.triple || []).slice(0, 3)).forEach(a => { r[a] = (r[a] || 0) + 1; });
+		} else {
+			if (v.high) r[v.high] = (r[v.high] || 0) + 2;
+			if (v.low && v.low !== v.high) r[v.low] = (r[v.low] || 0) + 1;
+		}
+		return r;
+	},
 	finalScores() {
 		const racial = this.racialASI();
+		const bgAsi = this.backgroundASI();
 		let b;
 		if (this.char.abilityMode === "standard") {
 			b = {str:10,dex:10,con:10,int:10,wis:10,cha:10};
@@ -491,7 +537,7 @@ const CB = {
 		} else {
 			b = {...this.char.manual};
 		}
-		ABILITIES.forEach(a => { b[a] = (b[a] || 10) + (racial[a] || 0); });
+		ABILITIES.forEach(a => { b[a] = (b[a] || 10) + (racial[a] || 0) + (bgAsi[a] || 0); });
 		return b;
 	},
 	pb() { return profBonus(this.char.level); },
@@ -818,10 +864,12 @@ const CB = {
 				const match = resolveModalSelection(selected[0], BACKGROUNDS);
 				if (!match) return;
 				this.char.background = match;
+				this.char.bgAsi = {mode: "2-1", high: null, low: null, triple: []};
 				this.render();
 			});
 			document.querySelectorAll("[data-bg]").forEach(el => el.addEventListener("click", () => {
 				this.char.background = BACKGROUNDS.find(x => x.name === el.dataset.bg && x.source === el.dataset.bgSource);
+				this.char.bgAsi = {mode: "2-1", high: null, low: null, triple: []};
 				this.render();
 			}));
 		}, 0);
@@ -854,7 +902,7 @@ const CB = {
 			</div>
 		` : "";
 		const vrgr = this.char.racialAsiVrgr || {mode: "2-1", high: null, low: null, triple: []};
-		const vrgrUi = isVrgrLineage(this.char.race) ? `
+		const vrgrUi = isFlexibleLineageRace(this.char.race) ? `
 			<div class="cb__detail-card cb__block">
 				<p class="cb__section-header">${esc(this.char.race?.name || "Race")} Ability Score Increase</p>
 				<div style="margin-bottom:8px;">
@@ -873,6 +921,35 @@ const CB = {
 					<div>${ABILITIES.map(a => `<span class="cb__pill cb__pill--blue" style="cursor:pointer;" data-vrgr-high="${a}">${vrgr.high === a ? "✓ " : ""}${ABILITY_LABELS[a]}</span>`).join("")}</div>
 					<p class="cb__detail-meta" style="margin-top:6px;">+1 to a different ability:</p>
 					<div>${ABILITIES.filter(a => a !== vrgr.high).map(a => `<span class="cb__pill cb__pill--blue" style="cursor:pointer;" data-vrgr-low="${a}">${vrgr.low === a ? "✓ " : ""}${ABILITY_LABELS[a]}</span>`).join("")}</div>
+				`}
+			</div>
+		` : "";
+		const bgChoice = bgAbilityChoice(this.char.background);
+		const bgAsi = this.char.bgAsi || {mode: "2-1", high: null, low: null, triple: []};
+		const bgAsiBlocked = bgChoice && !this.canUseBackgroundASI();
+		const bgAsiUi = bgChoice ? `
+			<div class="cb__detail-card cb__block">
+				<p class="cb__section-header">${esc(this.char.background?.name || "Background")} Ability Bonus</p>
+				${bgAsiBlocked ? `
+					<p class="cb__hint">Not applied — ${esc(this.char.race?.name || "your race")} already grants a racial ability bonus above. A 2014-style race bonus and a 2024-style background bonus don't stack; only the racial one is being used.</p>
+				` : `
+					<div style="margin-bottom:8px;">
+						<button class="cb__mode-btn ${bgAsi.mode !== "1-1-1" ? "cb__mode-btn--active" : ""}" data-bgasi-mode="2-1">+2 / +1</button>
+						<button class="cb__mode-btn ${bgAsi.mode === "1-1-1" ? "cb__mode-btn--active" : ""}" data-bgasi-mode="1-1-1">+1 / +1 / +1</button>
+					</div>
+					${bgAsi.mode === "1-1-1" ? `
+						<p class="cb__detail-meta">Choose 3 different abilities for +1 each:</p>
+						<div>${bgChoice.from.map(a => {
+							const picked = (bgAsi.triple || []).includes(a);
+							const atLimit = !picked && (bgAsi.triple || []).length >= 3;
+							return `<span class="cb__pill cb__pill--blue" style="cursor:${atLimit ? "not-allowed" : "pointer"};${picked ? "" : atLimit ? "opacity:0.4;" : ""}" data-bgasi-triple="${a}">${picked ? "✓ " : ""}${ABILITY_LABELS[a]}</span>`;
+						}).join("")}</div>
+					` : `
+						<p class="cb__detail-meta">+2 to:</p>
+						<div>${bgChoice.from.map(a => `<span class="cb__pill cb__pill--blue" style="cursor:pointer;" data-bgasi-high="${a}">${bgAsi.high === a ? "✓ " : ""}${ABILITY_LABELS[a]}</span>`).join("")}</div>
+						<p class="cb__detail-meta" style="margin-top:6px;">+1 to a different ability:</p>
+						<div>${bgChoice.from.filter(a => a !== bgAsi.high).map(a => `<span class="cb__pill cb__pill--blue" style="cursor:pointer;" data-bgasi-low="${a}">${bgAsi.low === a ? "✓ " : ""}${ABILITY_LABELS[a]}</span>`).join("")}</div>
+					`}
 				`}
 			</div>
 		` : "";
@@ -1002,9 +1079,39 @@ const CB = {
 				this.char.racialAsiVrgr = {...cur, mode: "1-1-1", triple: next};
 				this.render();
 			}));
+			document.querySelectorAll("[data-bgasi-mode]").forEach(el => el.addEventListener("click", () => {
+				const mode = el.dataset.bgasiMode;
+				const cur = this.char.bgAsi || {};
+				this.char.bgAsi = mode === "1-1-1"
+					? {mode, high: null, low: null, triple: cur.triple || []}
+					: {mode, high: cur.high || null, low: cur.low || null, triple: []};
+				this.render();
+			}));
+			document.querySelectorAll("[data-bgasi-high]").forEach(el => el.addEventListener("click", () => {
+				const a = el.dataset.bgasiHigh;
+				const cur = this.char.bgAsi || {};
+				const high = cur.high === a ? null : a;
+				const low = cur.low === high ? null : cur.low;
+				this.char.bgAsi = {...cur, mode: "2-1", high, low};
+				this.render();
+			}));
+			document.querySelectorAll("[data-bgasi-low]").forEach(el => el.addEventListener("click", () => {
+				const a = el.dataset.bgasiLow;
+				const cur = this.char.bgAsi || {};
+				this.char.bgAsi = {...cur, mode: "2-1", low: cur.low === a ? null : a};
+				this.render();
+			}));
+			document.querySelectorAll("[data-bgasi-triple]").forEach(el => el.addEventListener("click", () => {
+				const a = el.dataset.bgasiTriple;
+				const cur = this.char.bgAsi || {};
+				const triple = cur.triple || [];
+				const next = triple.includes(a) ? triple.filter(x => x !== a) : (triple.length < 3 ? [...triple, a] : triple);
+				this.char.bgAsi = {...cur, mode: "1-1-1", triple: next};
+				this.render();
+			}));
 		}, 0);
 
-		return `<div>${asiChoiceUi}${vrgrUi}${modeBtns}${body}</div>`;
+		return `<div>${asiChoiceUi}${vrgrUi}${bgAsiUi}${modeBtns}${body}</div>`;
 	},
 
 	// ─── STEP 6: SKILLS ────────────────────────────────────────────────────

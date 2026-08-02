@@ -8,6 +8,45 @@
 	<link rel="stylesheet" href="css/main.css">
 	<link rel="stylesheet" href="css/charactercreator.css">
 
+	<!-- Favicons -->
+	<link rel="icon" type="image/svg+xml" href="favicon.svg">
+	<link rel="icon" type="image/png" sizes="256x256" href="favicon-256x256.png">
+	<link rel="icon" type="image/png" sizes="144x144" href="favicon-144x144.png">
+	<link rel="icon" type="image/png" sizes="128x128" href="favicon-128x128.png">
+	<link rel="icon" type="image/png" sizes="64x64" href="favicon-64x64.png">
+	<link rel="icon" type="image/png" sizes="48x48" href="favicon-48x48.png">
+	<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+	<link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+
+	<!-- Chrome Web App Icons -->
+	<link rel="manifest" href="manifest.webmanifest">
+	<meta name="application-name" content="5etools">
+	<meta name="theme-color" content="#006bc4">
+
+	<!-- Windows Start Menu tiles -->
+	<meta name="msapplication-config" content="browserconfig.xml"/>
+	<meta name="msapplication-TileColor" content="#006bc4">
+
+	<!-- Apple Touch Icons -->
+	<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon-180x180.png">
+	<link rel="apple-touch-icon" sizes="360x360" href="apple-touch-icon-360x360.png">
+	<link rel="apple-touch-icon" sizes="167x167" href="apple-touch-icon-167x167.png">
+	<link rel="apple-touch-icon" sizes="152x152" href="apple-touch-icon-152x152.png">
+	<link rel="apple-touch-icon" sizes="120x120" href="apple-touch-icon-120x120.png">
+	<meta name="apple-mobile-web-app-title" content="5etools">
+
+	<!-- macOS Safari Pinned Tab and Touch Bar -->
+	<link rel="mask-icon" href="safari-pinned-tab.svg" color="#006bc4">
+
+	<!-- OpenSearch -->
+	<link rel="search" href="open-search.xml" title="Search 5etools" type="application/opensearchdescription+xml">
+
+	<script type="text/javascript" src="sw-injector.js"></script>
+
+	<script blocking="render" type="module" src="js/styleswitch.js"></script>
+	<script type="text/javascript" src="js/navigation.js"></script>
+	<script type="module" src="js/browsercheck.js"></script>
+
 	<!--
 		5etools framework, loaded in the same order as statgen.html so that the plain
 		(non-module) scripts can rely on globals attached by the module scripts that
@@ -45,6 +84,21 @@
 	<script type="module" defer src="js/list2.js"></script>
 </head>
 <body>
+	<div class="overlay-noise no-print"></div>
+
+	<div class="ve-flex-col" data-cancer-id="cancer-header">
+		<header class="ve-mobile-sm__hidden page__header">
+			<div class="container ve-flex-v-baseline">
+				<h1 class="page__title ve-no-wrap ve-my-0" id="page__title">Character Creator</h1>
+				<p class="page__subtitle ve-no-wrap ve-my-0" id="page__subtitle">Build a personalised character. Under development and incredibly scuffed. Credit to Claude for the implementation</p>
+			</div>
+		</header>
+
+		<nav class="container page__nav" id="navigation">
+			<ul class="nav nav-pills page__nav-inner" id="navbar"></ul>
+		</nav>
+	</div>
+
 	<div class="container">
 		<div class="cb__wrap ve-mt-3 ve-mb-5">
 			<div class="cb__title-row">
