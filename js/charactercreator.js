@@ -236,6 +236,25 @@ function classSkillChoice(cls) {
 	return {count: 0, names: []};
 }
 
+/**
+ * Open ModalFilterClasses restricted to picking a class only. isSubclassDisabled prevents
+ * *selecting* a subclass row, but the modal always renders subclass rows in its list (there's
+ * no constructor/call option to omit them) — so we also hide them via the same list.setFnSearch()
+ * hook the modal uses internally when scoping to one class. That has to happen *after*
+ * pGetUserSelection()'s own setup finishes (it unconditionally resets fnSearch to null when no
+ * selectedClass is given), hence the deferred call.
+ */
+function pGetClassOnlySelection() {
+	const promise = modalFilterClasses.pGetUserSelection({isSubclassDisabled: true});
+	setTimeout(() => {
+		const list = modalFilterClasses._filterCache?.list;
+		if (!list) return;
+		list.setFnSearch((li, searchTerm) => li.data.ixSubclass == null && List.isVisibleDefaultSearch(li, searchTerm));
+		list.update();
+	}, 0);
+	return promise;
+}
+
 const EQUIPMENT_TYPE_LABELS = {
 	instrumentMusical: "a musical instrument (your choice)",
 	setGaming: "a gaming set (your choice)",
@@ -358,7 +377,7 @@ async function loadRuleData() {
 	// Left out for now to keep this pass focused on the ModalFilter wiring itself — races/
 	// backgrounds will show their as-published data regardless of the site's style switcher.
 	const [rawClasses, rawSubclasses] = await Promise.all([
-		pLoadAllFiltered(UrlUtil.PG_CLASSES, "class"),
+		pLoadAllFiltered("class", "class"),
 		pLoadAllFiltered("subclass", "subclass"),
 	]);
 
@@ -386,7 +405,7 @@ async function loadRuleData() {
 		modalFilterRaces.pPopulateHiddenWrapper(),
 		modalFilterBackgrounds.pPopulateHiddenWrapper(),
 		modalFilterFeats.pPopulateHiddenWrapper(),
-		modalFilterClasses.pPopulateHiddenWrapper(),
+		modalFilterClasses.pPreloadHidden(),
 	]);
 }
 
@@ -701,7 +720,7 @@ const CB = {
 		setTimeout(() => {
 			document.getElementById("cb-cls-browse")?.addEventListener("click", async () => {
 				if (!modalFilterClasses) return;
-				const selected = await modalFilterClasses.pGetUserSelection({isSubclassDisabled: true});
+				const selected = await pGetClassOnlySelection();
 				if (!selected?.class) return;
 				this.char.cls = selected.class;
 				this.char.subclass = null;
