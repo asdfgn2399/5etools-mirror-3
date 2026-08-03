@@ -1469,10 +1469,23 @@ const CB = {
 			document.getElementById("cb-spell-hide-toggle")?.addEventListener("click", () => { this.hideUnselectedSpells = !this.hideUnselectedSpells; this.render(); });
 			document.getElementById("cb-spell-browse")?.addEventListener("click", async () => {
 				if (!modalFilterSpells) return;
-				const selected = await modalFilterSpells.pGetUserSelection();
+				// Force the modal's own "Class" filter to this character's class, so the browse list
+				// is pre-scoped instead of showing the full compendium.
+				const selected = await modalFilterSpells.pGetUserSelection({filterExpression: `class=${this.char.cls.name}`});
 				if (!selected?.length) return;
 				const match = resolveModalSelection(selected[0], SPELLS);
 				if (!match) return;
+				// Belt-and-suspenders: the filter above is a default, not a lock — the user can still
+				// clear/change it inside the modal before confirming. Re-validate against the real
+				// class/subclass spell list and reject+flag anything that slips through.
+				const isOnList = available.some(sp => sp.name === match.name && sp.source === match.source);
+				if (!isOnList) {
+					JqueryUtil.doToast({
+						type: "danger",
+						content: `"${match.name}" isn't on ${this.char.cls.name}'s spell list${this.char.subclass && src === this.char.subclass ? ` (or ${this.char.subclass.name}'s)` : ""} — selection ignored.`,
+					});
+					return;
+				}
 				toggleSpell(match);
 				this.render();
 			});
