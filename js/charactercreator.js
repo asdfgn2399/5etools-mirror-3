@@ -1469,20 +1469,29 @@ const CB = {
 			document.getElementById("cb-spell-hide-toggle")?.addEventListener("click", () => { this.hideUnselectedSpells = !this.hideUnselectedSpells; this.render(); });
 			document.getElementById("cb-spell-browse")?.addEventListener("click", async () => {
 				if (!modalFilterSpells) return;
-				// Force the modal's own "Class" filter to this character's class, so the browse list
-				// is pre-scoped instead of showing the full compendium.
-				const selected = await modalFilterSpells.pGetUserSelection({filterExpression: `class=${this.char.cls.name}`});
+				// Force the modal's own "Class" and "Level" filters to this character's class and
+				// castable range, so the browse list is pre-scoped instead of showing the full
+				// compendium (or spells above what this character can actually cast).
+				const selected = await modalFilterSpells.pGetUserSelection({filterExpression: `class=${this.char.cls.name}|level=[0;${maxLvl}]`});
 				if (!selected?.length) return;
 				const match = resolveModalSelection(selected[0], SPELLS);
 				if (!match) return;
-				// Belt-and-suspenders: the filter above is a default, not a lock — the user can still
-				// clear/change it inside the modal before confirming. Re-validate against the real
-				// class/subclass spell list and reject+flag anything that slips through.
+				// Belt-and-suspenders: the filters above are a default, not a lock — the user can still
+				// clear/change them inside the modal before confirming. Re-validate against the real
+				// class/subclass spell list and castable level range, and reject+flag anything that
+				// slips through.
 				const isOnList = available.some(sp => sp.name === match.name && sp.source === match.source);
 				if (!isOnList) {
 					JqueryUtil.doToast({
 						type: "danger",
 						content: `"${match.name}" isn't on ${this.char.cls.name}'s spell list${this.char.subclass && src === this.char.subclass ? ` (or ${this.char.subclass.name}'s)` : ""} — selection ignored.`,
+					});
+					return;
+				}
+				if (match.level > maxLvl) {
+					JqueryUtil.doToast({
+						type: "danger",
+						content: `"${match.name}" is a ${Parser.spLevelToFull(match.level)} spell, but ${this.char.cls.name} can only cast up to ${maxLvl ? Parser.spLevelToFull(maxLvl) : "cantrips"} at level ${level} — selection ignored.`,
 					});
 					return;
 				}
