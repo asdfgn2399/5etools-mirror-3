@@ -1472,7 +1472,7 @@ const CB = {
 				// Force the modal's own "Class" and "Level" filters to this character's class and
 				// castable range, so the browse list is pre-scoped instead of showing the full
 				// compendium (or spells above what this character can actually cast).
-				const selected = await modalFilterSpells.pGetUserSelection({filterExpression: `class=${this.char.cls.name}|level=[0;${maxLvl}]`});
+				const selected = await modalFilterSpells.pGetUserSelection({filterExpression: `class=${this.char.cls.name}|level=0;${Array.from({ length: maxLvl }, (_, i) => i + 1).join(';')}`});
 				if (!selected?.length) return;
 				const match = resolveModalSelection(selected[0], SPELLS);
 				if (!match) return;
