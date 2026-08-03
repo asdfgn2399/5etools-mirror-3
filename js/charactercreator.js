@@ -14,7 +14,6 @@ const ABILITY_LABELS = Parser.ATB_ABV_TO_FULL; // {str:"Strength", dex:"Dexterit
 const ABILITIES = Parser.ABIL_ABVS; // ["str","dex","con","int","wis","cha"] — from parser.js
 const STANDARD_ARRAY = [15,14,13,12,10,8];
 const STEPS = ["Name","Race","Class","Subclass","Background","Abilities","Skills","Equipment","Feats","Spells","Sheet"];
-const CASTER_CLASSES = ["Bard","Cleric","Druid","Paladin","Ranger","Sorcerer","Warlock","Wizard","Artificer"];
 
 // Populated at startup by loadRuleData() from the site's own races.json (+ prerelease/brew),
 // via DataLoader.pCacheAndGetAllSite/pCacheAndGetAllPrerelease/pCacheAndGetAllBrew — see below.
@@ -36,27 +35,12 @@ const ALL_SKILLS = Object.entries(Parser.SKILL_TO_ATB_ABV)
 // Populated at startup by loadRuleData() from the site's own feats.json (+ prerelease/brew).
 let FEATS = [];
 
-const SPELLS = {
-	Bard: {cantrips:["Blade Ward","Dancing Lights","Friends","Light","Mage Hand","Mending","Message","Minor Illusion","Prestidigitation","Thunderclap","True Strike","Vicious Mockery"],
-		level1:["Animal Friendship","Bane","Charm Person","Color Spray","Command","Comprehend Languages","Cure Wounds","Detect Magic","Disguise Self","Dissonant Whispers","Earth Tremor","Faerie Fire","Feather Fall","Healing Word","Heroism","Hideous Laughter","Identify","Illusory Script","Longstrider","Silent Image","Sleep","Speak with Animals","Thunderwave","Unseen Servant","Wild Cunning","Zephyr Strike"]},
-	Cleric: {cantrips:["Guidance","Light","Mending","Resistance","Sacred Flame","Spare the Dying","Thaumaturgy","Toll the Dead","Word of Radiance"],
-		level1:["Bane","Bless","Ceremony","Command","Create or Destroy Water","Cure Wounds","Detect Evil and Good","Detect Magic","Detect Poison and Disease","Guiding Bolt","Healing Word","Inflict Wounds","Protection from Evil and Good","Purify Food and Drink","Sanctuary","Shield of Faith"]},
-	Druid: {cantrips:["Control Flames","Create Bonfire","Druidcraft","Frostbite","Guidance","Gust","Infestation","Mending","Poison Spray","Produce Flame","Resistance","Shape Water","Shillelagh","Thunderclap"],
-		level1:["Absorb Elements","Animal Friendship","Beast Bond","Charm Person","Create or Destroy Water","Cure Wounds","Detect Magic","Detect Poison and Disease","Earth Tremor","Entangle","Faerie Fire","Fog Cloud","Goodberry","Healing Word","Ice Knife","Jump","Longstrider","Protection from Evil and Good","Purify Food and Drink","Speak with Animals","Thunderwave","Wild Cunning"]},
-	Paladin: {cantrips:[], level1:["Bless","Command","Ceremony","Compelled Duel","Cure Wounds","Detect Evil and Good","Detect Magic","Detect Poison and Disease","Divine Favor","Heroism","Protection from Evil and Good","Purify Food and Drink","Sanctuary","Shield of Faith","Wrathful Smite","Zephyr Strike"]},
-	Ranger: {cantrips:[], level1:["Absorb Elements","Animal Friendship","Beast Bond","Cure Wounds","Detect Magic","Detect Poison and Disease","Ensnaring Strike","Fog Cloud","Goodberry","Hail of Thorns","Hunter's Mark","Jump","Longstrider","Speak with Animals","Wild Cunning","Zephyr Strike"]},
-	Sorcerer: {cantrips:["Acid Splash","Blade Ward","Booming Blade","Chill Touch","Control Flames","Create Bonfire","Dancing Lights","Fire Bolt","Friends","Frostbite","Green-Flame Blade","Gust","Infestation","Light","Lightning Lure","Mage Hand","Mending","Message","Minor Illusion","Poison Spray","Prestidigitation","Ray of Frost","Shape Water","Shocking Grasp","Sword Burst","Thunderclap","True Strike"],
-		level1:["Burning Hands","Catapult","Charm Person","Chromatic Orb","Color Spray","Comprehend Languages","Detect Magic","Disguise Self","Earth Tremor","Expeditious Retreat","False Life","Feather Fall","Fog Cloud","Ice Knife","Jump","Mage Armor","Magic Missile","Ray of Sickness","Shield","Silent Image","Sleep","Thunderwave","Witch Bolt"]},
-	Warlock: {cantrips:["Blade Ward","Booming Blade","Chill Touch","Create Bonfire","Eldritch Blast","Friends","Green-Flame Blade","Infestation","Lightning Lure","Mage Hand","Minor Illusion","Poison Spray","Prestidigitation","Sword Burst","Thunderclap","True Strike"],
-		level1:["Armor of Agathys","Arms of Hadar","Cause Fear","Charm Person","Comprehend Languages","Expeditious Retreat","Hellish Rebuke","Hex","Hunger of Hadar","Illusory Script","Protection from Evil and Good","Unseen Servant","Witch Bolt"]},
-	Wizard: {cantrips:["Acid Splash","Blade Ward","Booming Blade","Chill Touch","Control Flames","Create Bonfire","Dancing Lights","Fire Bolt","Friends","Frostbite","Green-Flame Blade","Gust","Infestation","Light","Lightning Lure","Mage Hand","Mending","Message","Minor Illusion","Poison Spray","Prestidigitation","Ray of Frost","Shape Water","Shocking Grasp","Sword Burst","Thunderclap","Toll the Dead","True Strike"],
-		level1:["Absorb Elements","Alarm","Burning Hands","Catapult","Cause Fear","Charm Person","Chromatic Orb","Color Spray","Comprehend Languages","Detect Magic","Disguise Self","Earth Tremor","Expeditious Retreat","False Life","Feather Fall","Find Familiar","Fog Cloud","Grease","Ice Knife","Identify","Illusory Script","Jump","Longstrider","Mage Armor","Magic Missile","Protection from Evil and Good","Ray of Sickness","Shield","Silent Image","Sleep","Tasha's Hideous Laughter","Tenser's Floating Disk","Thunderwave","Unseen Servant","Witch Bolt"]},
-	Artificer: {cantrips:["Acid Splash","Booming Blade","Create Bonfire","Dancing Lights","Fire Bolt","Frostbite","Green-Flame Blade","Guidance","Light","Mage Hand","Magic Stone","Mending","Message","Poison Spray","Prestidigitation","Ray of Frost","Resistance","Shocking Grasp","Spare the Dying","Sword Burst","Thorn Whip","Thunderclap"],
-		level1:["Absorb Elements","Alarm","Catapult","Cure Wounds","Detect Magic","Disguise Self","Expeditious Retreat","Faerie Fire","False Life","Feather Fall","Grease","Identify","Jump","Longstrider","Purify Food and Drink","Sanctuary","Snare","Tasha's Caustic Brew"]},
-};
-
-const CANTRIP_MAX = {Bard:2, Cleric:3, Druid:2, Sorcerer:4, Warlock:2, Wizard:3, Artificer:2};
-const L1_MAX = {Bard:2, Cleric:2, Druid:2, Paladin:2, Ranger:2, Sorcerer:2, Warlock:2, Wizard:6, Artificer:2};
+// Populated at startup by loadRuleData() from the site's own spells.json (+ prerelease/brew).
+// Each spell is mutated by the framework's own DataUtil.spell loading pipeline (js/utils.js,
+// backed by data/generated/gendata-spell-source-lookup.json) to carry `sp.classes.fromClassList`
+// (spells on a class's own list) and `sp.classes.fromSubclass` (subclass-granted spells, e.g.
+// Cleric domain spells or Eldritch Knight's borrowed Wizard list) — see spellsAvailable() below.
+let SPELLS = [];
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 function scoreMod(s) { return Math.floor((s - 10) / 2); }
@@ -71,7 +55,7 @@ function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"
 // instead, since we have full `entries` for them.
 function featureDesc(_name) { return "Full description coming soon."; }
 function equipmentDesc(_name) { return "Full item description coming soon."; }
-function spellDesc(_name) { return "Full spell description coming soon."; }
+function spellDesc(sp) { return sp ? entriesToPlainText(sp.entries) : ""; }
 
 // ─── REAL-DATA RENDERING HELPERS ──────────────────────────────────────────────
 // These lean on the site's own Renderer/Parser (loaded via the <script> chain in
@@ -266,6 +250,110 @@ function classSkillChoice(cls) {
 }
 
 /**
+ * The entity that actually grants spellcasting for the current build: the class itself if it has
+ * its own `spellcastingAbility` (Bard/Cleric/.../Wizard), otherwise the chosen subclass if *it*
+ * grants spellcasting to an otherwise non-caster class (Fighter's Eldritch Knight, Rogue's Arcane
+ * Trickster, etc. — these carry their own spellcastingAbility/casterProgression/cantripProgression/
+ * spellsKnownProgression fields, same shape as a class). Multiclassing isn't modeled — a subclass
+ * only ever contributes spellcasting on top of its own already-non-caster parent class.
+ */
+function spellcastingSource(cls, subclass) {
+	if (cls?.spellcastingAbility) return cls;
+	if (subclass?.spellcastingAbility) return subclass;
+	return null;
+}
+
+/** Cantrips known at a given character level, from the real per-level cantripProgression array. */
+function cantripsKnownCount(src, level) {
+	if (!src?.cantripProgression?.length) return 0;
+	return src.cantripProgression[Math.min(level, src.cantripProgression.length) - 1] || 0;
+}
+
+/**
+ * Evaluates a 5etools prepared-spells formula string (e.g. "<$level$> + <$int_mod$>") against a
+ * character level + spellcasting ability modifier. Used by PHB'14-style prepared casters
+ * (Cleric/Druid/Paladin/Wizard); 2024 (XPHB) classes give this as a flat preparedSpellsProgression
+ * array instead (handled directly in spellsKnownOrPreparedCount below).
+ */
+function evalPreparedFormula(formula, level, mod) {
+	if (!formula) return null;
+	const expr = formula.replace(/<\$level\$>/g, level).replace(/<\$[a-z]+_mod\$>/g, mod);
+	try {
+		// eslint-disable-next-line no-new-func
+		return Math.max(1, Math.floor(Function(`"use strict";return (${expr});`)()));
+	} catch (err) {
+		return null;
+	}
+}
+
+/** How many non-cantrip spells this character can know/prepare at once, from real class data. */
+function spellsKnownOrPreparedCount(src, level, mod) {
+	if (!src) return 0;
+	if (src.preparedSpellsProgression?.length) return src.preparedSpellsProgression[Math.min(level, src.preparedSpellsProgression.length) - 1] || 0;
+	if (src.spellsKnownProgression?.length) return src.spellsKnownProgression[Math.min(level, src.spellsKnownProgression.length) - 1] || 0;
+	if (src.preparedSpells) {
+		const val = evalPreparedFormula(src.preparedSpells, level, mod);
+		if (val != null) return val;
+	}
+	if (src.spellsKnownProgressionFixed?.length) return src.spellsKnownProgressionFixed[Math.min(level, src.spellsKnownProgressionFixed.length) - 1] || 0;
+	return 0;
+}
+
+/**
+ * Highest spell level castable at a given character level, read from the real "Spell Slots per
+ * Spell Level" table (classTableGroups/subclassTableGroups → rowsSpellProgression). Warlock's
+ * Pact Magic uses a different table shape (a single "Slot Level" column instead of a per-level
+ * array) — handled as a fallback by parsing the `level=N` filter tag out of that column's cell.
+ */
+function maxSpellLevel(src, level) {
+	const groups = src?.classTableGroups || src?.subclassTableGroups || [];
+	const progGroup = groups.find(g => g.rowsSpellProgression?.length);
+	if (progGroup) {
+		const row = progGroup.rowsSpellProgression[Math.min(level, progGroup.rowsSpellProgression.length) - 1] || [];
+		for (let i = row.length - 1; i >= 0; i--) if (row[i] > 0) return i + 1;
+		return 0;
+	}
+	const slotLevelGroup = groups.find(g => (g.colLabels || []).some(l => /slot level/i.test(l)));
+	if (slotLevelGroup) {
+		const colIdx = slotLevelGroup.colLabels.findIndex(l => /slot level/i.test(l));
+		const row = slotLevelGroup.rows[Math.min(level, slotLevelGroup.rows.length) - 1];
+		const m = typeof row?.[colIdx] === "string" && row[colIdx].match(/level=(\d+)/);
+		if (m) return Number(m[1]);
+	}
+	return src?.spellcastingAbility ? 1 : 0;
+}
+
+/**
+ * Spells available to pick from for this class/subclass combo — the class's own list
+ * (`sp.classes.fromClassList`) plus, if a subclass is chosen, anything it grants
+ * (`sp.classes.fromSubclass`, which covers both "always prepared" domain/circle/oath-style bonus
+ * spells and full borrowed-list access like Eldritch Knight/Arcane Trickster). Domain-style spells
+ * are surfaced as pickable rather than auto-granted-and-free, matching this builder's existing
+ * simplified pick-from-a-list approach elsewhere (e.g. class features are listed, not mechanically
+ * enforced).
+ */
+function spellsAvailable(cls, subclass) {
+	if (!cls) return [];
+	return SPELLS.filter(sp => {
+		if ((sp.classes?.fromClassList || []).some(c => c.name === cls.name && c.source === cls.source)) return true;
+		if (!subclass) return false;
+		return (sp.classes?.fromSubclass || []).some(fs => fs.class.name === cls.name && fs.class.source === cls.source && fs.subclass.name === subclass.name && fs.subclass.source === subclass.source);
+	});
+}
+
+function findSpell(name, source) { return SPELLS.find(sp => sp.name === name && sp.source === source); }
+
+/** Groups a character's chosen spells (stored as {name, source}) into cantrips vs. leveled spells,
+ * resolving each back to its real spell object via findSpell() for display (name, level, entries). */
+function chosenSpellsByTier(char) {
+	const resolved = char.spells.map(cs => findSpell(cs.name, cs.source)).filter(Boolean);
+	return {
+		cantrips: resolved.filter(sp => sp.level === 0),
+		leveled: resolved.filter(sp => sp.level >= 1).sort((a, b) => a.level - b.level || a.name.localeCompare(b.name)),
+	};
+}
+
+/**
  * Open ModalFilterClasses restricted to picking a class only. isSubclassDisabled prevents
  * *selecting* a subclass row, but the modal always renders subclass rows in its list (there's
  * no constructor/call option to omit them) — so we also hide them via the same list.setFnSearch()
@@ -382,6 +470,7 @@ let modalFilterRaces = null;
 let modalFilterBackgrounds = null;
 let modalFilterFeats = null;
 let modalFilterClasses = null;
+let modalFilterSpells = null;
 
 async function pLoadAllFiltered(page, entityType) {
 	const all = [
@@ -411,10 +500,11 @@ async function loadRuleData() {
 		pLoadAllFiltered("subclass", "subclass"),
 	]);
 
-	[RACES, BACKGROUNDS, FEATS] = await Promise.all([
+	[RACES, BACKGROUNDS, FEATS, SPELLS] = await Promise.all([
 		pLoadAllFiltered(UrlUtil.PG_RACES, "race"),
 		pLoadAllFiltered(UrlUtil.PG_BACKGROUNDS, "background"),
 		pLoadAllFiltered(UrlUtil.PG_FEATS, "feat"),
+		pLoadAllFiltered(UrlUtil.PG_SPELLS, "spell"),
 	]);
 
 	// Merge subclasses onto their parent classes (cls.subclasses[]) using the framework's own
@@ -430,12 +520,17 @@ async function loadRuleData() {
 	// and we call pGetUserSelection() with isClassDisabled/isSubclassDisabled per step (see
 	// renderClass()/renderSubclass()) rather than a blanket radio mode.
 	modalFilterClasses = new ModalFilterClasses({namespace: "charactercreator.classes", allData: CLASSES});
+	// isRadio here too — same one-at-a-time browse-then-toggle pattern as Feats (see
+	// renderSpells()'s cb-spell-browse handler), rather than letting the modal's own
+	// multi-select checkboxes bypass our cantrips/spells-known cap tracking.
+	modalFilterSpells = new ModalFilterSpells({namespace: "charactercreator.spells", isRadio: true, allData: SPELLS});
 
 	await Promise.all([
 		modalFilterRaces.pPopulateHiddenWrapper(),
 		modalFilterBackgrounds.pPopulateHiddenWrapper(),
 		modalFilterFeats.pPopulateHiddenWrapper(),
 		modalFilterClasses.pPreloadHidden(),
+		modalFilterSpells.pPopulateHiddenWrapper(),
 	]);
 }
 
@@ -444,7 +539,9 @@ const CB = {
 	char: EMPTY_CHAR(),
 	search: "",
 	expandedFeat: null,
+	expandedSpell: null,
 	spellTab: "cantrips",
+	hideUnselectedSpells: false,
 
 	isRuleDataReady: false,
 
@@ -546,7 +643,7 @@ const CB = {
 	clsSkillOpts() {
 		return classSkillChoice(this.char.cls).names;
 	},
-	isCaster() { return CASTER_CLASSES.includes(this.char.cls?.name); },
+	isCaster() { return !!spellcastingSource(this.char.cls, this.char.subclass); },
 
 	canProceed() {
 		const {step, char} = this;
@@ -1297,7 +1394,8 @@ const CB = {
 
 	// ─── STEP 9: SPELLS ────────────────────────────────────────────────────
 	renderSpells() {
-		if (!this.isCaster()) {
+		const src = spellcastingSource(this.char.cls, this.char.subclass);
+		if (!src) {
 			return `
 				<div class="cb__no-caster">
 					<p class="cb__no-caster-icon">⚔️</p>
@@ -1306,46 +1404,97 @@ const CB = {
 				</div>
 			`;
 		}
-		const spellData = SPELLS[this.char.cls.name];
-		const tab = this.spellTab;
-		const maxCantrips = tab === "cantrips" ? (CANTRIP_MAX[this.char.cls.name] || 2) : 0;
-		const maxL1 = tab === "level1" ? (L1_MAX[this.char.cls.name] || 2) : 0;
-		const currentList = tab === "cantrips" ? spellData.cantrips : spellData.level1;
-		const maxPick = tab === "cantrips" ? maxCantrips : maxL1;
-		const chosenInTab = this.char.spells.filter(s => currentList.includes(s));
+
+		const level = this.char.level;
+		const mod = scoreMod(this.finalScores()[src.spellcastingAbility] ?? 10);
+		const maxCantrips = cantripsKnownCount(src, level);
+		const maxKnown = spellsKnownOrPreparedCount(src, level, mod);
+		const maxLvl = maxSpellLevel(src, level);
+
+		const available = spellsAvailable(this.char.cls, this.char.subclass);
+		const cantripPool = available.filter(sp => sp.level === 0);
+		const leveledPool = available.filter(sp => sp.level >= 1 && sp.level <= maxLvl);
+
+		const isChosen = sp => this.char.spells.some(cs => cs.name === sp.name && cs.source === sp.source);
+		const chosenSpellLevel = cs => findSpell(cs.name, cs.source)?.level;
+		const chosenCantripCount = this.char.spells.filter(cs => chosenSpellLevel(cs) === 0).length;
+		const chosenKnownCount = this.char.spells.filter(cs => { const lvl = chosenSpellLevel(cs); return lvl != null && lvl >= 1; }).length;
 
 		const tabs = [];
-		if (spellData.cantrips.length) tabs.push(["cantrips", "Cantrips"]);
-		if (spellData.level1.length) tabs.push(["level1", "1st Level"]);
+		if (cantripPool.length) tabs.push(["cantrips", "Cantrips", cantripPool, maxCantrips, chosenCantripCount]);
+		for (let n = 1; n <= maxLvl; n++) {
+			const pool = leveledPool.filter(sp => sp.level === n);
+			if (pool.length) tabs.push([`L${n}`, Parser.spLevelToFull(n), pool, maxKnown, chosenKnownCount]);
+		}
+		if (!tabs.length) {
+			return `
+				<div class="cb__no-caster">
+					<p class="cb__no-caster-icon">📖</p>
+					<p class="cb__no-caster-title">${esc(this.char.cls.name)} hasn't gained any spells yet at level ${level}</p>
+					<p class="cb__hint">Skip ahead to the character sheet, or raise your level.</p>
+				</div>
+			`;
+		}
+		const tab = tabs.some(([k]) => k === this.spellTab) ? this.spellTab : tabs[0][0];
+		const [, , pool, maxPick, chosenInTab] = tabs.find(([k]) => k === tab);
+
+		const filtered = pool
+			.filter(sp => sp.name.toLowerCase().includes(this.search.toLowerCase()))
+			.filter(sp => !this.hideUnselectedSpells || isChosen(sp));
 
 		const tabBtns = tabs.map(([k, l]) => `<button class="cb__mode-btn ${tab === k ? "cb__mode-btn--active" : ""}" data-spell-tab="${k}">${l}</button>`).join("");
 
-		const grid = currentList.map(spell => {
-			const chosen = this.char.spells.includes(spell);
-			const canPick = chosen || chosenInTab.length < maxPick;
+		const grid = filtered.map(sp => {
+			const chosen = isChosen(sp);
+			const canPick = chosen || chosenInTab < maxPick;
 			return `
-				<div class="cb__spell-row ${chosen ? "cb__spell-row--chosen" : ""}" style="cursor:${canPick ? "pointer" : "not-allowed"};opacity:${canPick ? 1 : 0.45}" data-spell="${esc(spell)}" data-can-pick="${canPick}" title="${esc(spellDesc(spell))}">
+				<div class="cb__spell-row ${chosen ? "cb__spell-row--chosen" : ""}" style="cursor:${canPick ? "pointer" : "not-allowed"};opacity:${canPick ? 1 : 0.45}" data-spell="${esc(sp.name)}" data-spell-source="${esc(sp.source)}" data-can-pick="${canPick}" title="${esc(spellDesc(sp))}">
 					<div class="cb__skill-dot ${chosen ? "cb__skill-dot--on-blue" : ""}"></div>
-					<span class="cb__skill-name">${esc(spell)}</span>
+					<span class="cb__skill-name">${esc(sp.name)}</span>
+					${srcBadge(sp.source)}
 				</div>
 			`;
 		}).join("");
 
+		const toggleSpell = sp => {
+			const chosen = isChosen(sp);
+			const canPick = chosen || chosenInTab < maxPick;
+			if (!canPick && !chosen) return;
+			if (chosen) this.char.spells = this.char.spells.filter(cs => !(cs.name === sp.name && cs.source === sp.source));
+			else this.char.spells = [...this.char.spells, {name: sp.name, source: sp.source}];
+		};
+
 		setTimeout(() => {
 			document.querySelectorAll("[data-spell-tab]").forEach(el => el.addEventListener("click", () => { this.spellTab = el.dataset.spellTab; this.render(); }));
+			document.getElementById("cb-spell-hide-toggle")?.addEventListener("click", () => { this.hideUnselectedSpells = !this.hideUnselectedSpells; this.render(); });
+			document.getElementById("cb-spell-browse")?.addEventListener("click", async () => {
+				if (!modalFilterSpells) return;
+				const selected = await modalFilterSpells.pGetUserSelection();
+				if (!selected?.length) return;
+				const match = resolveModalSelection(selected[0], SPELLS);
+				if (!match) return;
+				toggleSpell(match);
+				this.render();
+			});
 			document.querySelectorAll("[data-spell]").forEach(el => el.addEventListener("click", () => {
 				if (el.dataset.canPick !== "true") return;
-				const spell = el.dataset.spell;
-				if (this.char.spells.includes(spell)) this.char.spells = this.char.spells.filter(s => s !== spell);
-				else this.char.spells = [...this.char.spells, spell];
+				const sp = SPELLS.find(s => s.name === el.dataset.spell && s.source === el.dataset.spellSource);
+				if (!sp) return;
+				toggleSpell(sp);
 				this.render();
 			}));
 		}, 0);
 
 		return `
-			<p class="cb__hint">Choose your starting spells for <strong>${esc(this.char.cls.name)}</strong>.</p>
-			<div class="cb__spell-tabs">${tabBtns}<span class="cb__spell-count">(${chosenInTab.length}/${maxPick} chosen)</span></div>
-			<div class="cb__spell-grid">${grid}</div>
+			<p class="cb__hint">Choose your starting spells for <strong>${esc(this.char.cls.name)}</strong>${this.char.subclass && src === this.char.subclass ? ` (${esc(this.char.subclass.name)})` : ""}.</p>
+			<button id="cb-spell-browse" type="button" class="ve-btn ve-btn-default cb__search" title="Open the site's full spell filter/search">🔍 Browse &amp; Filter Spells</button>
+			<input class="ve-form-control cb__search" data-search value="${esc(this.search)}" placeholder="...or quick-filter this list by name">
+			<div class="cb__spell-tabs">
+				${tabBtns}
+				<span class="cb__spell-count">(${chosenInTab}/${maxPick} chosen)</span>
+				<button id="cb-spell-hide-toggle" type="button" class="ve-btn ve-btn-default ve-btn-xs" style="margin-left:auto;">${this.hideUnselectedSpells ? "Show All" : "Hide Unselected"}</button>
+			</div>
+			<div class="cb__spell-grid">${grid || `<p class="cb__placeholder">No spells match.</p>`}</div>
 		`;
 	},
 
@@ -1358,8 +1507,7 @@ const CB = {
 		const hp = char.cls ? getHP(char.cls, finalScores.con, char.level) : 0;
 		const ac = 10 + scoreMod(finalScores.dex), ini = scoreMod(finalScores.dex);
 		const raceName = char.race?.name || "—";
-		const cantrips = char.spells.filter(s => SPELLS[char.cls?.name]?.cantrips?.includes(s));
-		const level1 = char.spells.filter(s => SPELLS[char.cls?.name]?.level1?.includes(s));
+		const {cantrips, leveled} = chosenSpellsByTier(char);
 
 		return `
 			<div class="cb__sheet-header">
@@ -1422,8 +1570,8 @@ const CB = {
 			${char.equipment.length ? `<div class="cb__detail-card"><p class="cb__section-header">Equipment</p><div>${char.equipment.map(e => `<span class="cb__pill cb__pill--yellow" title="${esc(equipmentDesc(e))}">${esc(safeEquipTag(e))}</span>`).join("")}</div></div>` : ""}
 			${char.spells.length ? `<div class="cb__detail-card">
 				<p class="cb__section-header">Spells</p>
-				${cantrips.length ? `<p class="cb__detail-meta">Cantrips</p><div class="cb__block">${cantrips.map(s => `<span class="cb__pill cb__pill--blue" title="${esc(spellDesc(s))}">${esc(s)}</span>`).join("")}</div>` : ""}
-				${level1.length ? `<p class="cb__detail-meta">1st Level</p><div>${level1.map(s => `<span class="cb__pill cb__pill--blue" title="${esc(spellDesc(s))}">${esc(s)}</span>`).join("")}</div>` : ""}
+				${cantrips.length ? `<p class="cb__detail-meta">Cantrips</p><div class="cb__block">${cantrips.map(sp => `<span class="cb__pill cb__pill--blue" title="${esc(spellDesc(sp))}">${esc(sp.name)}</span>`).join("")}</div>` : ""}
+				${[...new Set(leveled.map(sp => sp.level))].map(lvl => `<p class="cb__detail-meta">${esc(Parser.spLevelToFull(lvl))}</p><div class="cb__block">${leveled.filter(sp => sp.level === lvl).map(sp => `<span class="cb__pill cb__pill--blue" title="${esc(spellDesc(sp))}">${esc(sp.name)}</span>`).join("")}</div>`).join("")}
 			</div>` : ""}
 		`;
 	},
@@ -1472,8 +1620,7 @@ const CB = {
 		const char = this.char;
 		const s = this.finalScores(), pb_ = this.pb(), raceName = char.race?.name || "—";
 		const allProf = this.allProfSkills();
-		const cantrips = char.spells.filter(sp => SPELLS[char.cls?.name]?.cantrips?.includes(sp));
-		const level1 = char.spells.filter(sp => SPELLS[char.cls?.name]?.level1?.includes(sp));
+		const {cantrips, leveled} = chosenSpellsByTier(char);
 		const hp = char.cls ? getHP(char.cls, s.con, char.level) : 0;
 		const ac = 10 + scoreMod(s.dex);
 		const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>${esc(char.name || "Character")}</title>
@@ -1505,7 +1652,7 @@ ${char.feats.length ? `<h3>Feats</h3><div>${char.feats.map(cf => `<span class="t
 <div><h3>Skills</h3><table>${ALL_SKILLS.map(sk => { const p = allProf.has(sk.name), b = scoreMod(s[sk.ability]) + (p ? pb_ : 0); return `<tr><td>${p ? "●" : "○"}</td><td>${esc(sk.name)}</td><td style="color:#888;font-size:10px;">${ABILITY_LABELS[sk.ability].slice(0,3)}</td><td style="text-align:right;font-weight:600;">${fmtMod(b)}</td></tr>`; }).join("")}</table></div>
 </div>
 ${char.equipment.length ? `<div class="section"><h3>Equipment</h3><div>${char.equipment.map(e => `<span class="tag">${esc(safeEquipTag(e))}</span>`).join("")}</div></div>` : ""}
-${char.spells.length ? `<div class="section"><h3>Spells</h3>${cantrips.length ? `<p style="font-size:10px;color:#666;margin-bottom:3px;">Cantrips</p><div>${cantrips.map(sp => `<span class="tag">${esc(sp)}</span>`).join("")}</div>` : ""}${level1.length ? `<p style="font-size:10px;color:#666;margin:6px 0 3px;">1st Level</p><div>${level1.map(sp => `<span class="tag">${esc(sp)}</span>`).join("")}</div>` : ""}</div>` : ""}
+${char.spells.length ? `<div class="section"><h3>Spells</h3>${cantrips.length ? `<p style="font-size:10px;color:#666;margin-bottom:3px;">Cantrips</p><div>${cantrips.map(sp => `<span class="tag">${esc(sp.name)}</span>`).join("")}</div>` : ""}${[...new Set(leveled.map(sp => sp.level))].map(lvl => `<p style="font-size:10px;color:#666;margin:6px 0 3px;">${esc(Parser.spLevelToFull(lvl))}</p><div>${leveled.filter(sp => sp.level === lvl).map(sp => `<span class="tag">${esc(sp.name)}</span>`).join("")}</div>`).join("")}</div>` : ""}
 <div class="footer">D&D 5e Character Builder · ${new Date().toLocaleDateString()}</div>
 </body></html>`;
 		const blob = new Blob([html], {type: "text/html"});
