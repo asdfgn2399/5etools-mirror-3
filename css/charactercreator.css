@@ -127,6 +127,7 @@
 	padding-bottom: 4px;
 }
 .ve-night-mode .cb__section-header { color: #999; border-bottom-color: #555; }
+.cb__hint-inline { text-transform: none; font-weight: 400; letter-spacing: normal; opacity: 0.75; }
 .cb__block { margin-top: 10px; }
 
 /* Pills */

@@ -151,7 +151,7 @@ function featureListHtml(entries, {idPrefix, showLevel = true, colorClass = "cb_
 		const body = feature ? entriesToHtml(feature.entries) : `<p class="cb__placeholder">No description available.</p>`;
 		return `
 			<div class="cb__feature">
-				<button type="button" class="cb__pill ${colorClass} cb__feature-toggle" data-feature-toggle="${key}">${label}</button>
+				<button type="button" class="cb__pill ${colorClass} cb__feature-toggle" data-feature-toggle="${key}" title="Click to view full description">${label}</button>
 				<div class="cb__feature-body" id="cb-feature-body-${key}" hidden>${body}</div>
 			</div>
 		`;
@@ -963,7 +963,7 @@ const CB = {
 
 		const cls = this.char.cls;
 		const skillChoice = classSkillChoice(cls);
-		const lvl1Features = classFeatureRefs(cls).filter(f => f.ref.level === 1);
+		const allFeatures = classFeatureRefs(cls);
 		const detail = cls ? `
 			<div class="cb__detail-card">
 				<p class="cb__detail-title">${esc(cls.name)}</p>
@@ -972,8 +972,8 @@ const CB = {
 						<div class="cb__stat-box"><p class="cb__stat-label">${esc(l)}</p><p class="cb__stat-value">${esc(v)}</p></div>
 					`).join("")}
 				</div>
-				<p class="cb__section-header">1st Level Features</p>
-				<div>${featureListHtml(lvl1Features, {idPrefix: "cls", showLevel: false})}</div>
+				<p class="cb__section-header">Class Features <span class="cb__hint-inline">(click to expand)</span></p>
+				<div>${featureListHtml(allFeatures, {idPrefix: "cls"})}</div>
 				${cls.spellcastingAbility ? `<p class="cb__caster-note">✦ Spellcaster — you'll pick spells later</p>` : ""}
 			</div>
 		` : `<p class="cb__placeholder">Select a class to see details</p>`;
@@ -1022,7 +1022,7 @@ const CB = {
 		const detail = subclass ? `
 			<div class="cb__detail-card">
 				<p class="cb__detail-title">${esc(subclass.name)}</p>
-				<p class="cb__section-header">Subclass Features</p>
+				<p class="cb__section-header">Subclass Features <span class="cb__hint-inline">(click to expand)</span></p>
 				<div>${featureListHtml(scFeatures, {idPrefix: "sc"})}</div>
 			</div>
 		` : `<p class="cb__placeholder">Select a subclass to see details</p>`;
