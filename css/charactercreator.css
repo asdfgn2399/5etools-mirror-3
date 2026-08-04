@@ -148,6 +148,28 @@
 .cb__pill--blue { background: rgba(51,122,183,0.1); color: #2a6496; border-color: rgba(51,122,183,0.35); }
 .ve-night-mode .cb__pill { filter: brightness(1.5); }
 
+/* Class/subclass feature click-to-expand (see featureListHtml() in charactercreator.js) — each
+   feature is its own row (rather than flowing inline like race-trait pills) so its expanded body
+   has room to lay out full-width without fighting adjacent pills for space. */
+.cb__feature { display: block; }
+.cb__feature-toggle {
+	font: inherit;
+	background: none;
+	appearance: none;
+	cursor: pointer;
+}
+.cb__feature-toggle::after { content: "  ▸"; font-size: 9px; opacity: 0.6; }
+.cb__feature-toggle--open::after { content: "  ▾"; }
+.cb__feature-body {
+	background: #fff;
+	border: 1px solid #ddd;
+	border-radius: 4px;
+	padding: 8px 10px;
+	margin: 2px 0 8px;
+	font-size: 12.5px;
+}
+.ve-night-mode .cb__feature-body { background: #222; border-color: #555; }
+
 /* Stat boxes */
 .cb__stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
 .cb__stat-box {

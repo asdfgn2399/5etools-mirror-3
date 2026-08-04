@@ -24,6 +24,17 @@ let RACES = [];
 // its subclasses embedded as cls.subclasses[] — see loadRuleData() below.
 let CLASSES = [];
 
+// Populated at startup by loadRuleData() from the site's own class/subclass *feature* data
+// (data/class/class-*.json's classFeature[]/subclassFeature[] arrays, + prerelease/brew) — the
+// full feature entities (name/level/entries), as opposed to the uid refs embedded in
+// cls.classFeatures/sc.subclassFeatures. Indexed into classFeatureLookup/subclassFeatureLookup
+// (keyed by a normalized name|class|level|source string) so a ref from classFeatureRefs()/
+// subclassFeatureRefs() can be resolved to its full entries — see resolveClassFeature() below.
+let CLASS_FEATURES = [];
+let SUBCLASS_FEATURES = [];
+let classFeatureLookup = new Map();
+let subclassFeatureLookup = new Map();
+
 // Populated at startup by loadRuleData() from the site's own backgrounds.json (+ prerelease/brew).
 let BACKGROUNDS = [];
 
@@ -49,11 +60,36 @@ function profBonus(lvl) { return Math.ceil(lvl / 4) + 1; }
 function getHP(cls, conScore, lvl) { const faces = cls.hd?.faces || 8; return faces + scoreMod(conScore) + (lvl - 1) * (Math.floor(faces / 2) + 1 + scoreMod(conScore)); }
 function pbCost(s) { return s <= 13 ? s - 8 : (s - 8) + (s - 13); }
 function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
-// Class/subclass feature *names and levels* are real data (see classFeatureRefs/subclassFeatureRefs
-// below), but the feature *entries* (description text) aren't loaded/dereferenced this pass, so this
-// stays a placeholder. Races and feats use the real-data helpers below (entriesToHtml/entriesToPlainText)
-// instead, since we have full `entries` for them.
-function featureDesc(_name) { return "Full description coming soon."; }
+/** Normalized lookup key shared by classFeatureLookup's keys and resolveClassFeature()'s queries —
+ * name/className/level identify a feature, source disambiguates same-named features across books
+ * (e.g. a feature reprinted/errata'd in a later source keeps the same name+level). */
+function classFeatureKey(name, className, level, source) {
+	return `${name}|${className}|${level}|${source}`.toLowerCase();
+}
+function subclassFeatureKey(name, className, subclassShortName, level, source) {
+	return `${name}|${className}|${subclassShortName}|${level}|${source}`.toLowerCase();
+}
+
+/** Rebuilds classFeatureLookup/subclassFeatureLookup from CLASS_FEATURES/SUBCLASS_FEATURES —
+ * called once after loadRuleData() populates those arrays. */
+function buildFeatureLookups() {
+	classFeatureLookup = new Map();
+	CLASS_FEATURES.forEach(f => classFeatureLookup.set(classFeatureKey(f.name, f.className, f.level, f.source || f.classSource), f));
+	subclassFeatureLookup = new Map();
+	SUBCLASS_FEATURES.forEach(f => subclassFeatureLookup.set(subclassFeatureKey(f.name, f.className, f.subclassShortName, f.level, f.source || f.subclassSource), f));
+}
+
+/** ref is an unpacked classFeatureRefs() entry: {name, className, classSource, level, source}. */
+function resolveClassFeature(ref) {
+	if (!ref) return null;
+	return classFeatureLookup.get(classFeatureKey(ref.name, ref.className, ref.level, ref.source || ref.classSource)) || null;
+}
+/** ref is an unpacked subclassFeatureRefs() entry: {name, className, subclassShortName, level, source, ...}. */
+function resolveSubclassFeature(ref) {
+	if (!ref) return null;
+	return subclassFeatureLookup.get(subclassFeatureKey(ref.name, ref.className, ref.subclassShortName, ref.level, ref.source || ref.subclassSource)) || null;
+}
+
 function equipmentDesc(_name) { return "Full item description coming soon."; }
 function spellDesc(sp) { return sp ? entriesToPlainText(sp.entries) : ""; }
 
@@ -95,6 +131,45 @@ function entriesToPlainText(entries) {
 /** Named sub-entries of a race/feat/background's `entries` array (i.e. the individual traits/benefits). */
 function namedSubEntries(entries) {
 	return (entries || []).filter(e => e && typeof e === "object" && e.name);
+}
+
+/**
+ * Click-to-expand list of class/subclass features. Unlike races/feats (short traits, fine as a
+ * hover tooltip) a class can have dozens of features across 20 levels, so each renders collapsed
+ * as a pill and expands its full native-rendered entries (Renderer.get().render(), same engine as
+ * entriesToHtml()) inline underneath on click, rather than dumping everything in the DOM at once.
+ * `entries` is an array of {ref, feature} — `ref` from classFeatureRefs()/subclassFeatureRefs(),
+ * `feature` the resolved full entity (or null if not found in CLASS_FEATURES/SUBCLASS_FEATURES).
+ * `idPrefix` must be unique per call site (e.g. "cls", "sc", "sheet-cls") so toggle ids don't
+ * collide when this is rendered more than once on the same page (e.g. Class + Sheet steps).
+ */
+function featureListHtml(entries, {idPrefix, showLevel = true, colorClass = "cb__pill--purple", noneLabel = "None"} = {}) {
+	if (!entries.length) return `<span class="cb__placeholder">${esc(noneLabel)}</span>`;
+	return entries.map(({ref, feature}, i) => {
+		const key = `${idPrefix}-${i}`;
+		const label = `${esc(ref.name)}${showLevel ? ` <em>(Lv ${ref.level})</em>` : ""}`;
+		const body = feature ? entriesToHtml(feature.entries) : `<p class="cb__placeholder">No description available.</p>`;
+		return `
+			<div class="cb__feature">
+				<button type="button" class="cb__pill ${colorClass} cb__feature-toggle" data-feature-toggle="${key}">${label}</button>
+				<div class="cb__feature-body" id="cb-feature-body-${key}" hidden>${body}</div>
+			</div>
+		`;
+	}).join("");
+}
+
+/** Wires click-to-expand for every featureListHtml() pill currently in the DOM. Safe to call
+ * after every render() — addEventListener on freshly-created elements only, no duplicate binding. */
+function wireFeatureToggles() {
+	document.querySelectorAll("[data-feature-toggle]").forEach(btn => {
+		btn.addEventListener("click", () => {
+			const body = document.getElementById(`cb-feature-body-${btn.dataset.featureToggle}`);
+			if (!body) return;
+			const isHidden = body.hasAttribute("hidden");
+			if (isHidden) body.removeAttribute("hidden"); else body.setAttribute("hidden", "");
+			btn.classList.toggle("cb__feature-toggle--open", isHidden);
+		});
+	});
 }
 
 /**
@@ -216,13 +291,14 @@ function classPrimaryAbilities(cls) {
 }
 
 /** Real classFeatures entries are uid refs ("Name|Class||Level|Source") or {classFeature: uid, ...} —
- * unpack down to {name, level} pairs. No feature *text* is loaded this pass, just names/levels. */
+ * unpack down to full ref objects {name, className, classSource, level, source}. The feature's
+ * *entries* (description text) live separately in CLASS_FEATURES — see resolveClassFeature(). */
 function classFeatureRefs(cls) {
 	return (cls?.classFeatures || []).map(ref => {
 		const uid = typeof ref === "string" ? ref : ref?.classFeature;
 		if (!uid) return null;
-		const {name, level} = DataUtil.class.unpackUidClassFeature(uid);
-		return name ? {name, level} : null;
+		const unpacked = DataUtil.class.unpackUidClassFeature(uid);
+		return unpacked.name ? unpacked : null;
 	}).filter(Boolean);
 }
 
@@ -231,8 +307,8 @@ function subclassFeatureRefs(sc) {
 	return (sc?.subclassFeatures || []).map(ref => {
 		const uid = typeof ref === "string" ? ref : ref?.subclassFeature;
 		if (!uid) return null;
-		const {name, level} = DataUtil.class.unpackUidSubclassFeature(uid);
-		return name ? {name, level} : null;
+		const unpacked = DataUtil.class.unpackUidSubclassFeature(uid);
+		return unpacked.name ? unpacked : null;
 	}).filter(Boolean);
 }
 
@@ -500,12 +576,21 @@ async function loadRuleData() {
 		pLoadAllFiltered("subclass", "subclass"),
 	]);
 
-	[RACES, BACKGROUNDS, FEATS, SPELLS] = await Promise.all([
+	// classFeature/subclassFeature are their own registered DataLoader page/prop (see
+	// DataTypeLoaderCustomClassSubclassFeature in js/utils-dataloader/utils-dataloader-dataloader.js)
+	// separate from "class"/"subclass" — these carry the full feature entities (entries included),
+	// vs. the uid refs embedded in cls.classFeatures/sc.subclassFeatures. Loaded in parallel with
+	// everything else below; resolveClassFeature()/resolveSubclassFeature() do the name/level/source
+	// lookup from a ref back to one of these once buildFeatureLookups() indexes them.
+	[RACES, BACKGROUNDS, FEATS, SPELLS, CLASS_FEATURES, SUBCLASS_FEATURES] = await Promise.all([
 		pLoadAllFiltered(UrlUtil.PG_RACES, "race"),
 		pLoadAllFiltered(UrlUtil.PG_BACKGROUNDS, "background"),
 		pLoadAllFiltered(UrlUtil.PG_FEATS, "feat"),
 		pLoadAllFiltered(UrlUtil.PG_SPELLS, "spell"),
+		pLoadAllFiltered("classFeature", "classFeature"),
+		pLoadAllFiltered("subclassFeature", "subclassFeature"),
 	]);
+	buildFeatureLookups();
 
 	// Merge subclasses onto their parent classes (cls.subclasses[]) using the framework's own
 	// logic — the same static helper ModalFilterClasses uses internally when it loads its own
@@ -736,6 +821,10 @@ const CB = {
 		body.querySelectorAll("[data-search]").forEach(inp => {
 			inp.addEventListener("input", e => { this.search = e.target.value; this._replaceStepBody(); });
 		});
+		// Class/Subclass/Sheet steps all render featureListHtml() pills — wire click-to-expand here
+		// once, generically, rather than per-step, so the Sheet step (which has no setTimeout wiring
+		// block of its own) gets it too.
+		wireFeatureToggles();
 	},
 
 	// ─── STEP 0: NAME ──────────────────────────────────────────────────────
@@ -845,7 +934,7 @@ const CB = {
 
 		const cls = this.char.cls;
 		const skillChoice = classSkillChoice(cls);
-		const lvl1Features = classFeatureRefs(cls).filter(f => f.level === 1);
+		const lvl1Features = classFeatureRefs(cls).filter(f => f.level === 1).map(ref => ({ref, feature: resolveClassFeature(ref)}));
 		const detail = cls ? `
 			<div class="cb__detail-card">
 				<p class="cb__detail-title">${esc(cls.name)}</p>
@@ -855,7 +944,7 @@ const CB = {
 					`).join("")}
 				</div>
 				<p class="cb__section-header">1st Level Features</p>
-				<div>${lvl1Features.map(f => `<span class="cb__pill cb__pill--purple" title="${esc(featureDesc(f.name))}">${esc(f.name)}</span>`).join("") || `<span class="cb__placeholder">None</span>`}</div>
+				<div>${featureListHtml(lvl1Features, {idPrefix: "cls", showLevel: false})}</div>
 				${cls.spellcastingAbility ? `<p class="cb__caster-note">✦ Spellcaster — you'll pick spells later</p>` : ""}
 			</div>
 		` : `<p class="cb__placeholder">Select a class to see details</p>`;
@@ -900,12 +989,12 @@ const CB = {
 			</div>
 		`).join("");
 		const subclass = this.char.subclass;
-		const scFeatures = subclassFeatureRefs(subclass);
+		const scFeatures = subclassFeatureRefs(subclass).map(ref => ({ref, feature: resolveSubclassFeature(ref)}));
 		const detail = subclass ? `
 			<div class="cb__detail-card">
 				<p class="cb__detail-title">${esc(subclass.name)}</p>
 				<p class="cb__section-header">Subclass Features</p>
-				<div>${scFeatures.map(f => `<span class="cb__pill cb__pill--purple" title="Level ${f.level} — ${esc(featureDesc(f.name))}">${esc(f.name)} <em>(Lv ${f.level})</em></span>`).join("") || `<span class="cb__placeholder">None</span>`}</div>
+				<div>${featureListHtml(scFeatures, {idPrefix: "sc"})}</div>
 			</div>
 		` : `<p class="cb__placeholder">Select a subclass to see details</p>`;
 
@@ -1569,8 +1658,8 @@ const CB = {
 							<span class="cb__save-bonus">${fmtMod(bonus)}</span>
 						</div>`;
 					}).join("")}
-					${char.cls ? `<div class="cb__block"><p class="cb__section-header">Class Features</p><div>${classFeatureRefs(char.cls).filter(f => f.level <= char.level).map(f => `<span class="cb__pill cb__pill--purple" title="Level ${f.level} — ${esc(featureDesc(f.name))}">${esc(f.name)}</span>`).join("") || `<span class="cb__placeholder">None yet</span>`}</div></div>` : ""}
-					${char.subclass ? `<div class="cb__block"><p class="cb__section-header">Subclass Features</p><div>${subclassFeatureRefs(char.subclass).filter(f => f.level <= char.level).map(f => `<span class="cb__pill cb__pill--indigo" title="Level ${f.level} — ${esc(featureDesc(f.name))}">${esc(f.name)}</span>`).join("") || `<span class="cb__placeholder">None yet</span>`}</div></div>` : ""}
+					${char.cls ? `<div class="cb__block"><p class="cb__section-header">Class Features</p><div>${featureListHtml(classFeatureRefs(char.cls).filter(f => f.level <= char.level).map(ref => ({ref, feature: resolveClassFeature(ref)})), {idPrefix: "sheet-cls", colorClass: "cb__pill--purple", noneLabel: "None yet"})}</div></div>` : ""}
+					${char.subclass ? `<div class="cb__block"><p class="cb__section-header">Subclass Features</p><div>${featureListHtml(subclassFeatureRefs(char.subclass).filter(f => f.level <= char.level).map(ref => ({ref, feature: resolveSubclassFeature(ref)})), {idPrefix: "sheet-sc", colorClass: "cb__pill--indigo", noneLabel: "None yet"})}</div></div>` : ""}
 					${char.race ? `<div class="cb__block"><p class="cb__section-header">Racial Traits</p><div>${namedSubEntries(char.race.entries).map(t => `<span class="cb__pill cb__pill--teal" title="${esc(entriesToPlainText(t.entries))}">${esc(t.name)}</span>`).join("")}</div></div>` : ""}
 					${char.background && backgroundFeature(char.background) ? `<div class="cb__block"><p class="cb__section-header">Background Feature</p><div>${entriesToHtml([backgroundFeature(char.background)])}</div></div>` : ""}
 					${char.feats.length ? `<div class="cb__block"><p class="cb__section-header">Feats</p><div>${char.feats.map(cf => `<span class="cb__pill cb__pill--orange" title="${esc(entriesToPlainText(findFeat(cf.name, cf.source)?.entries))}">${esc(cf.name)}</span>`).join("")}</div></div>` : ""}
