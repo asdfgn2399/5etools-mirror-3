@@ -158,8 +158,32 @@ function featureListHtml(entries, {idPrefix, showLevel = true, colorClass = "cb_
 	}).join("");
 }
 
-/** Wires click-to-expand for every featureListHtml() pill currently in the DOM. Safe to call
- * after every render() — addEventListener on freshly-created elements only, no duplicate binding. */
+/**
+ * Click-to-expand pill list for simple name+description items (racial traits, feats, equipment,
+ * spells) — same markup/mechanism as featureListHtml() above, just for plain {name, body} pairs
+ * instead of the {ref, feature, level} shape class/subclass features use. `items` is an array of
+ * {name, body}, where `body` is already-rendered HTML (entriesToHtml() output, typically) or
+ * null/empty if nothing to show. `idPrefix` must be unique per call site so toggle ids don't
+ * collide when the same kind of list renders on more than one step (e.g. Racial Traits shows on
+ * both the Race step and the Sheet step).
+ */
+function pillListHtml(items, {idPrefix, colorClass = "cb__pill--teal", noneLabel = "None"} = {}) {
+	if (!items.length) return `<span class="cb__placeholder">${esc(noneLabel)}</span>`;
+	return items.map((item, i) => {
+		const key = `${idPrefix}-${i}`;
+		const body = item.body || `<p class="cb__placeholder">No description available.</p>`;
+		return `
+			<div class="cb__feature">
+				<button type="button" class="cb__pill ${colorClass} cb__feature-toggle" data-feature-toggle="${key}" title="Click to expand">${esc(item.name)}</button>
+				<div class="cb__feature-body" id="cb-feature-body-${key}" hidden>${body}</div>
+			</div>
+		`;
+	}).join("");
+}
+
+/** Wires click-to-expand for every featureListHtml()/pillListHtml() pill currently in the DOM.
+ * Safe to call after every render() — addEventListener on freshly-created elements only, no
+ * duplicate binding. */
 function wireFeatureToggles() {
 	document.querySelectorAll("[data-feature-toggle]").forEach(btn => {
 		btn.addEventListener("click", () => {
@@ -913,7 +937,7 @@ const CB = {
 				<div class="cb__asi-row">${raceAbilityPills(this.char.race)}</div>
 				<p class="cb__detail-meta">${esc(raceSpeedSizeSummary(this.char.race))}</p>
 				<p class="cb__section-header">Racial Traits</p>
-				<div>${namedSubEntries(this.char.race.entries).map(t => `<span class="cb__pill cb__pill--teal" title="${esc(entriesToPlainText(t.entries))}">${esc(t.name)}</span>`).join("")}</div>
+				<div>${pillListHtml(namedSubEntries(this.char.race.entries).map(t => ({name: t.name, body: entriesToHtml(t.entries)})), {idPrefix: "race-traits", colorClass: "cb__pill--teal"})}</div>
 			</div>
 		` : `<p class="cb__placeholder">Select a race to see details</p>`;
 
@@ -1689,9 +1713,9 @@ const CB = {
 					}).join("")}
 					${char.cls ? `<div class="cb__block"><p class="cb__section-header">Class Features</p><div>${featureListHtml(classFeatureRefs(char.cls).filter(f => f.ref.level <= char.level), {idPrefix: "sheet-cls", colorClass: "cb__pill--purple", noneLabel: "None yet"})}</div></div>` : ""}
 					${char.subclass ? `<div class="cb__block"><p class="cb__section-header">Subclass Features</p><div>${featureListHtml(subclassFeatureRefs(char.subclass).filter(f => f.ref.level <= char.level), {idPrefix: "sheet-sc", colorClass: "cb__pill--indigo", noneLabel: "None yet"})}</div></div>` : ""}
-					${char.race ? `<div class="cb__block"><p class="cb__section-header">Racial Traits</p><div>${namedSubEntries(char.race.entries).map(t => `<span class="cb__pill cb__pill--teal" title="${esc(entriesToPlainText(t.entries))}">${esc(t.name)}</span>`).join("")}</div></div>` : ""}
+					${char.race ? `<div class="cb__block"><p class="cb__section-header">Racial Traits</p><div>${pillListHtml(namedSubEntries(char.race.entries).map(t => ({name: t.name, body: entriesToHtml(t.entries)})), {idPrefix: "sheet-race-traits", colorClass: "cb__pill--teal"})}</div></div>` : ""}
 					${char.background && backgroundFeature(char.background) ? `<div class="cb__block"><p class="cb__section-header">Background Feature</p><div>${entriesToHtml([backgroundFeature(char.background)])}</div></div>` : ""}
-					${char.feats.length ? `<div class="cb__block"><p class="cb__section-header">Feats</p><div>${char.feats.map(cf => `<span class="cb__pill cb__pill--orange" title="${esc(entriesToPlainText(findFeat(cf.name, cf.source)?.entries))}">${esc(cf.name)}</span>`).join("")}</div></div>` : ""}
+					${char.feats.length ? `<div class="cb__block"><p class="cb__section-header">Feats</p><div>${pillListHtml(char.feats.map(cf => ({name: cf.name, body: entriesToHtml(findFeat(cf.name, cf.source)?.entries)})), {idPrefix: "sheet-feats", colorClass: "cb__pill--orange"})}</div></div>` : ""}
 				</div>
 				<div>
 					<p class="cb__section-header">Skills</p>
@@ -1707,11 +1731,11 @@ const CB = {
 					}).join("")}
 				</div>
 			</div>
-			${char.equipment.length ? `<div class="cb__detail-card"><p class="cb__section-header">Equipment</p><div>${char.equipment.map(e => `<span class="cb__pill cb__pill--yellow" title="${esc(equipmentDesc(e))}">${esc(safeEquipTag(e))}</span>`).join("")}</div></div>` : ""}
+			${char.equipment.length ? `<div class="cb__detail-card"><p class="cb__section-header">Equipment</p><div>${pillListHtml(char.equipment.map(e => ({name: safeEquipTag(e), body: `<p>${esc(equipmentDesc(e))}</p>`})), {idPrefix: "sheet-equip", colorClass: "cb__pill--yellow"})}</div></div>` : ""}
 			${char.spells.length ? `<div class="cb__detail-card">
 				<p class="cb__section-header">Spells</p>
-				${cantrips.length ? `<p class="cb__detail-meta">Cantrips</p><div class="cb__block">${cantrips.map(sp => `<span class="cb__pill cb__pill--blue" title="${esc(spellDesc(sp))}">${esc(sp.name)}</span>`).join("")}</div>` : ""}
-				${[...new Set(leveled.map(sp => sp.level))].map(lvl => `<p class="cb__detail-meta">${esc(Parser.spLevelToFull(lvl))}</p><div class="cb__block">${leveled.filter(sp => sp.level === lvl).map(sp => `<span class="cb__pill cb__pill--blue" title="${esc(spellDesc(sp))}">${esc(sp.name)}</span>`).join("")}</div>`).join("")}
+				${cantrips.length ? `<p class="cb__detail-meta">Cantrips</p><div class="cb__block">${pillListHtml(cantrips.map(sp => ({name: sp.name, body: entriesToHtml(sp.entries)})), {idPrefix: "sheet-cantrips", colorClass: "cb__pill--blue"})}</div>` : ""}
+				${[...new Set(leveled.map(sp => sp.level))].map(lvl => `<p class="cb__detail-meta">${esc(Parser.spLevelToFull(lvl))}</p><div class="cb__block">${pillListHtml(leveled.filter(sp => sp.level === lvl).map(sp => ({name: sp.name, body: entriesToHtml(sp.entries)})), {idPrefix: `sheet-spells-lvl${lvl}`, colorClass: "cb__pill--blue"})}</div>`).join("")}
 			</div>` : ""}
 		`;
 	},
