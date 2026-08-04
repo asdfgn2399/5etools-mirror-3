@@ -148,6 +148,10 @@
 .cb__pill--yellow { background: rgba(255,193,7,0.12); color: #8a6d00; border-color: rgba(255,193,7,0.4); }
 .cb__pill--blue { background: rgba(51,122,183,0.1); color: #2a6496; border-color: rgba(51,122,183,0.35); }
 .ve-night-mode .cb__pill { filter: brightness(1.5); }
+/* Equipment pill for a generic choice/gold/flavor-only entry that doesn't map to one real catalog
+   item (see equipItemRef() in charactercreator.js) — deliberately non-interactive (no expand, no
+   "click to..." tooltip) rather than a pill that looks clickable but has nothing to show. */
+.cb__pill--static { cursor: default; opacity: 0.75; }
 
 /* Class/subclass feature click-to-expand (see featureListHtml() in charactercreator.js) — each
    feature is its own row (rather than flowing inline like race-trait pills) so its expanded body

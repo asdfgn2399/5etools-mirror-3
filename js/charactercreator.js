@@ -53,6 +53,16 @@ let FEATS = [];
 // Cleric domain spells or Eldritch Knight's borrowed Wizard list) — see spellsAvailable() below.
 let SPELLS = [];
 
+// Populated at startup by loadRuleData() from the site's own items.json/items-base.json/
+// magicvariants.json (+ prerelease/brew) via DataLoader's registered item page loader, which
+// handles base-item/generic-variant merging and _fullEntries population the same way the site's
+// own Items browse page does — see pLoadAllItems(). Indexed by buildItemLookup() into
+// itemLookupExact/itemLookupByName so an equipment entry's {name, source} ref (see equipItemRef())
+// can be resolved back to a real item — see resolveItemRef().
+let ITEMS = [];
+let itemLookupExact = new Map();
+let itemLookupByName = new Map();
+
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 function scoreMod(s) { return Math.floor((s - 10) / 2); }
 function fmtMod(m) { return (m >= 0 ? "+" : "") + m; }
@@ -90,7 +100,32 @@ function resolveSubclassFeature(ref) {
 	return subclassFeatureLookup.get(subclassFeatureKey(ref.name, ref.className, ref.subclassShortName, ref.level, ref.source || ref.subclassSource)) || null;
 }
 
-function equipmentDesc(_name) { return "Full item description coming soon."; }
+/**
+ * Plain-text hover description for one equipment entry ({label, parts} — see
+ * equipmentChoiceSets()), used by the Equipment step's chip/skill-row `title` attributes, which
+ * can only show plain text (unlike the Sheet step's expandable pills, which get real rendered
+ * HTML via equipItemBodyHtml()). A bundle describes each of its parts on its own line; a part
+ * with no matching catalog item (a generic type choice, gold, flavor-only `special` text) says so
+ * plainly rather than a "coming soon" stub.
+ */
+function equipmentDesc(entry) {
+	if (!entry?.parts?.length) return "";
+	return entry.parts.map(part => {
+		const item = part.ref ? resolveItemRef(part.ref) : null;
+		if (!item) return `${part.label}: not a single catalog item — no description available.`;
+		return `${part.label}: ${entriesToPlainText(item._fullEntries || item.entries) || "No description available."}`;
+	}).join("\n\n");
+}
+
+/** Rendered HTML description for one real item, used by the Sheet step's expandable equipment
+ * pills (see pillListHtml() call in renderSheet()) — Renderer.item.getRenderedEntries() handles
+ * items' own entry templating (e.g. `{{item.dmgType}}`) and merged generic-variant entries, which
+ * a plain entriesToHtml(item.entries) call wouldn't. */
+function equipItemBodyHtml(item) {
+	if (!item) return null;
+	try { return Renderer.item.getRenderedEntries(item, {isCompact: true}) || null; } catch (err) { return null; }
+}
+
 function spellDesc(sp) { return sp ? entriesToPlainText(sp.entries) : ""; }
 
 // ─── REAL-DATA RENDERING HELPERS ──────────────────────────────────────────────
@@ -162,14 +197,18 @@ function featureListHtml(entries, {idPrefix, showLevel = true, colorClass = "cb_
  * Click-to-expand pill list for simple name+description items (racial traits, feats, equipment,
  * spells) — same markup/mechanism as featureListHtml() above, just for plain {name, body} pairs
  * instead of the {ref, feature, level} shape class/subclass features use. `items` is an array of
- * {name, body}, where `body` is already-rendered HTML (entriesToHtml() output, typically) or
- * null/empty if nothing to show. `idPrefix` must be unique per call site so toggle ids don't
- * collide when the same kind of list renders on more than one step (e.g. Racial Traits shows on
- * both the Race step and the Sheet step).
+ * {name, body, isStatic}: `body` is already-rendered HTML (entriesToHtml() output, typically) or
+ * null/empty if nothing to show; `isStatic` (equipment pills only, so far — see renderSheet())
+ * renders a plain non-interactive pill instead, for entries with no real single description to
+ * expand at all (a generic equipment-type choice, a gold value, flavor-only text) rather than a
+ * pill that looks clickable but opens onto "No description available." `idPrefix` must be unique
+ * per call site so toggle ids don't collide when the same kind of list renders on more than one
+ * step (e.g. Racial Traits shows on both the Race step and the Sheet step).
  */
 function pillListHtml(items, {idPrefix, colorClass = "cb__pill--teal", noneLabel = "None"} = {}) {
 	if (!items.length) return `<span class="cb__placeholder">${esc(noneLabel)}</span>`;
 	return items.map((item, i) => {
+		if (item.isStatic) return `<span class="cb__pill ${colorClass} cb__pill--static">${esc(item.name)}</span>`;
 		const key = `${idPrefix}-${i}`;
 		const body = item.body || `<p class="cb__placeholder">No description available.</p>`;
 		return `
@@ -514,7 +553,9 @@ const EQUIPMENT_TYPE_LABELS = {
 	focusSpellcastingHoly: "a holy symbol (your choice)",
 };
 
-/** Best-effort human-readable label for one real startingEquipment item entry. */
+/** Best-effort human-readable label for one real startingEquipment item entry (or a whole bundled
+ * array of them, joined with " + " — see equipItemParts() for the unjoined, one-part-per-item
+ * version used to build individually-describable pills). */
 function equipItemLabel(it) {
 	if (typeof it === "string") return it.split("|")[0];
 	if (Array.isArray(it)) return it.map(equipItemLabel).join(" + ");
@@ -532,28 +573,82 @@ function equipItemLabel(it) {
 	return String(it);
 }
 
-/** Renders one char.equipment entry safely — it's normally already a resolved string, but this
- * guards against anything non-string that might end up there (e.g. an older save/import made
- * before equipItemLabel handled a given shape), so the sheet never shows a raw [object Object]. */
-function safeEquipTag(e) { return typeof e === "string" ? e : equipItemLabel(e); }
+/** Pulls a {name, source} ref out of one real (non-array) startingEquipment item entry — the
+ * `item` field (or the bare string itself) is a "Name|SOURCE" uid pointing at a real catalog
+ * item; anything else (an equipmentType choice, gold, flavor-only `special` text) has no single
+ * real item behind it, so this returns null. Feeds resolveItemRef() — see equipItemParts(). */
+function equipItemRef(it) {
+	const uid = typeof it === "string" ? it : (it && typeof it === "object" ? it.item : null);
+	if (typeof uid !== "string" || !uid) return null;
+	const [name, source] = uid.split("|");
+	if (!name) return null;
+	return {name, source: source || undefined};
+}
 
 /**
- * Splits a real "startingEquipment" sets array into unconditional items (an "_" set) and
- * choice rows (sets with lettered options like {a: [...], b: [...]}), each option bundled
- * into one display string so it can reuse the same single-toggle chip UI everywhere.
- * Used for both a background's `startingEquipment` and a class's `startingEquipment.defaultData`
- * — both use the same {_, a, b, ...} set-array schema.
+ * Splits one raw startingEquipment entry into its individually-describable parts: a plain entry
+ * is one part, but an array entry (multiple items bundled into a single choice-row option, e.g.
+ * "a martial weapon (your choice) + a shield") becomes one part per array element, each carrying
+ * its own {label, ref} — so a bundle picked as a single option can still show one expandable pill
+ * per real item inside it, rather than one pill for the whole bundle. See equipmentChoiceSets()
+ * (builds these into char.equipment entries) and the Sheet step's equipment pill list (flattens
+ * every entry's parts into the final pill row).
+ */
+function equipItemParts(it) {
+	if (Array.isArray(it)) return it.flatMap(equipItemParts);
+	return [{label: equipItemLabel(it), ref: equipItemRef(it)}];
+}
+
+/** Renders one char.equipment entry's label safely — normally already a plain string (entry.label),
+ * but this guards against anything else ending up there (e.g. a pre-refactor save's bare
+ * string/object entries not yet run through migrateEquipment()), so the sheet never shows a raw
+ * [object Object]. */
+function safeEquipTag(e) {
+	if (typeof e === "string") return e;
+	if (e && typeof e === "object" && typeof e.label === "string") return e.label;
+	return equipItemLabel(e);
+}
+
+/**
+ * Splits a real "startingEquipment" sets array into unconditional items (an "_" set) and choice
+ * rows (sets with lettered options like {a: [...], b: [...]}). Each item — fixed or one option in
+ * a choice row — becomes a {label, parts} entry: `label` is the composed display string (also the
+ * identity used for selection equality throughout the Equipment step, same role the bare string
+ * played before this was refactored to carry real item refs), `parts` is its equipItemParts()
+ * breakdown for the Sheet step's per-item expandable pills. Used for both a background's
+ * `startingEquipment` and a class's `startingEquipment.defaultData` — both use the same
+ * {_, a, b, ...} set-array schema.
  */
 function equipmentChoiceSets(sets) {
 	const fixed = [];
 	const choiceRows = [];
 	(sets || []).forEach(set => {
 		if (!set || typeof set !== "object") return;
-		if (Array.isArray(set._)) fixed.push(...set._.map(equipItemLabel));
+		if (Array.isArray(set._)) fixed.push(...set._.map(it => ({label: equipItemLabel(it), parts: equipItemParts(it)})));
 		const optionKeys = Object.keys(set).filter(k => k !== "_");
-		if (optionKeys.length) choiceRows.push(optionKeys.map(k => (set[k] || []).map(equipItemLabel).join(" + ")));
+		if (optionKeys.length) {
+			choiceRows.push(optionKeys.map(k => {
+				const arr = set[k] || [];
+				return {label: arr.map(equipItemLabel).join(" + "), parts: arr.flatMap(equipItemParts)};
+			}));
+		}
 	});
 	return {fixed, choiceRows};
+}
+
+/**
+ * Migrates a loaded save's char.equipment to the current {label, parts} entry shape (see
+ * equipmentChoiceSets()) — older saves (pre item-description refactor) stored plain display
+ * strings with no recoverable item ref, so those become a single static (ref: null) part; entries
+ * already in the new shape pass through unchanged. Called from importJSON().
+ */
+function migrateEquipment(equipment) {
+	if (!Array.isArray(equipment)) return [];
+	return equipment.map(e => {
+		if (e && typeof e === "object" && typeof e.label === "string" && Array.isArray(e.parts)) return e;
+		const label = typeof e === "string" ? e : equipItemLabel(e);
+		return {label, parts: [{label, ref: null}]};
+	});
 }
 
 function findFeat(name, source) { return FEATS.find(f => f.name === name && f.source === source); }
@@ -613,6 +708,59 @@ async function pLoadAllFiltered(page, entityType) {
 	});
 }
 
+/**
+ * Same shape as pLoadAllFiltered(), but for items specifically: uses Renderer.item.isExcluded()
+ * rather than a plain ExcludeUtil.isExcluded(hash, "item", source) check, since items need the
+ * extra base-item/generic-variant/specific-variant exclusion handling that helper already
+ * encapsulates (the same one the site's own Items browse page uses) — see js/render.js.
+ */
+async function pLoadAllItems() {
+	const all = [
+		...(await DataLoader.pCacheAndGetAllSite(UrlUtil.PG_ITEMS)),
+		...(await DataLoader.pCacheAndGetAllPrerelease(UrlUtil.PG_ITEMS)),
+		...(await DataLoader.pCacheAndGetAllBrew(UrlUtil.PG_ITEMS)),
+	];
+	return all.filter(it => !Renderer.item.isExcluded(it));
+}
+
+/**
+ * Indexes ITEMS for resolveItemRef(): itemLookupExact is keyed "name|source" (both lowercased)
+ * for an exact match; itemLookupByName is keyed by name alone, holding every source that item
+ * name appears under, for refs with no source (see equipItemRef()) or whose exact source didn't
+ * load (e.g. an older save file's entries migrated without one — see migrateEquipment()).
+ */
+function buildItemLookup() {
+	itemLookupExact = new Map();
+	itemLookupByName = new Map();
+	ITEMS.forEach(it => {
+		if (!it?.name) return;
+		const nameKey = it.name.toLowerCase();
+		itemLookupExact.set(`${nameKey}|${(it.source || "").toLowerCase()}`, it);
+		if (!itemLookupByName.has(nameKey)) itemLookupByName.set(nameKey, []);
+		itemLookupByName.get(nameKey).push(it);
+	});
+}
+
+/**
+ * Resolves a {name, source} ref (see equipItemRef()) to a real loaded item: an exact name+source
+ * match if we have one, otherwise the name's loaded sources sorted alphabetically and the first
+ * taken — a deterministic but fairly arbitrary tie-break, since we don't have a real "preferred
+ * source" ranking here. Only matters for refs with no source or whose source isn't loaded (mainly
+ * legacy-format equipment migrated by migrateEquipment(), which can't recover a source at all).
+ * Returns null if nothing matches.
+ */
+function resolveItemRef(ref) {
+	if (!ref?.name) return null;
+	const nameKey = ref.name.toLowerCase();
+	if (ref.source) {
+		const exact = itemLookupExact.get(`${nameKey}|${ref.source.toLowerCase()}`);
+		if (exact) return exact;
+	}
+	const candidates = itemLookupByName.get(nameKey);
+	if (!candidates?.length) return null;
+	return candidates.slice().sort((a, b) => (a.source || "").localeCompare(b.source || ""))[0];
+}
+
 async function loadRuleData() {
 	await Promise.all([
 		PrereleaseUtil.pInit(),
@@ -635,15 +783,17 @@ async function loadRuleData() {
 	// vs. the uid refs embedded in cls.classFeatures/sc.subclassFeatures. Loaded in parallel with
 	// everything else below; resolveClassFeature()/resolveSubclassFeature() do the name/level/source
 	// lookup from a ref back to one of these once buildFeatureLookups() indexes them.
-	[RACES, BACKGROUNDS, FEATS, SPELLS, CLASS_FEATURES, SUBCLASS_FEATURES] = await Promise.all([
+	[RACES, BACKGROUNDS, FEATS, SPELLS, CLASS_FEATURES, SUBCLASS_FEATURES, ITEMS] = await Promise.all([
 		pLoadAllFiltered(UrlUtil.PG_RACES, "race"),
 		pLoadAllFiltered(UrlUtil.PG_BACKGROUNDS, "background"),
 		pLoadAllFiltered(UrlUtil.PG_FEATS, "feat"),
 		pLoadAllFiltered(UrlUtil.PG_SPELLS, "spell"),
 		pLoadAllFiltered("classFeature", "classFeature"),
 		pLoadAllFiltered("subclassFeature", "subclassFeature"),
+		pLoadAllItems(),
 	]);
 	buildFeatureLookups();
+	buildItemLookup();
 
 	// Merge subclasses onto their parent classes (cls.subclasses[]) using the framework's own
 	// logic — the same static helper ModalFilterClasses uses internally when it loads its own
@@ -696,7 +846,7 @@ const CB = {
 		document.getElementById("cb-import-json").addEventListener("click", () => document.getElementById("cb-import-json-file").click());
 		document.getElementById("cb-import-json-file").addEventListener("change", e => this.importJSON(e));
 
-		document.getElementById("cb-step-body").innerHTML = `<p class="cb__placeholder">Loading races, backgrounds, and feats from the site's data files…</p>`;
+		document.getElementById("cb-step-body").innerHTML = `<p class="cb__placeholder">Loading races, backgrounds, feats, and items from the site's data files…</p>`;
 		try {
 			await loadRuleData();
 			this.isRuleDataReady = true;
@@ -1400,52 +1550,60 @@ const CB = {
 		const {fixed: clsEquip, choiceRows: clsChoiceRows} = equipmentChoiceSets(this.char.cls?.startingEquipment?.defaultData);
 		const {fixed: bgEquip, choiceRows: bgChoiceRows} = equipmentChoiceSets(this.char.background?.startingEquipment);
 
+		// Equipment entries are {label, parts} objects (see equipmentChoiceSets()) freshly rebuilt
+		// on every render, so "is this chosen" / toggle identity has to compare by .label rather
+		// than by reference — same role the bare string played before this carried real item refs.
+		const isChosen = label => this.char.equipment.some(e => e.label === label);
+
 		const choiceRows = clsChoiceRows.map((choices, i) => `
 			<div class="cb__eq-choice-row" data-row="${i}">
-				${choices.map(opt => `<div class="cb__eq-chip ${this.char.equipment.includes(opt) ? "cb__eq-chip--active" : ""}" data-eq-choice="${esc(opt)}" data-row-i="${i}" title="${esc(equipmentDesc(opt))}">${esc(opt)}</div>`).join("")}
+				${choices.map(opt => `<div class="cb__eq-chip ${isChosen(opt.label) ? "cb__eq-chip--active" : ""}" data-eq-choice="${esc(opt.label)}" data-row-i="${i}" title="${esc(equipmentDesc(opt))}">${esc(opt.label)}</div>`).join("")}
 			</div>
 		`).join("");
 
 		const bgChoiceRowsHtml = bgChoiceRows.map((choices, i) => `
 			<div class="cb__eq-choice-row" data-row="${i}">
-				${choices.map(opt => `<div class="cb__eq-chip ${this.char.equipment.includes(opt) ? "cb__eq-chip--active" : ""}" data-bg-eq-choice="${esc(opt)}" data-bg-row-i="${i}" title="${esc(equipmentDesc(opt))}">${esc(opt)}</div>`).join("")}
+				${choices.map(opt => `<div class="cb__eq-chip ${isChosen(opt.label) ? "cb__eq-chip--active" : ""}" data-bg-eq-choice="${esc(opt.label)}" data-bg-row-i="${i}" title="${esc(equipmentDesc(opt))}">${esc(opt.label)}</div>`).join("")}
 			</div>
 		`).join("");
 
-		const simpleRow = item => `
-			<div class="cb__skill-row ${this.char.equipment.includes(item) ? "cb__skill-row--prof" : ""}" data-eq-toggle="${esc(item)}" title="${esc(equipmentDesc(item))}">
-				<div class="cb__skill-dot ${this.char.equipment.includes(item) ? "cb__skill-dot--on" : ""}" style="border-radius:3px;"></div>
-				<span class="cb__skill-name">${esc(item)}</span>
+		const simpleRow = entry => `
+			<div class="cb__skill-row ${isChosen(entry.label) ? "cb__skill-row--prof" : ""}" data-eq-toggle="${esc(entry.label)}" title="${esc(equipmentDesc(entry))}">
+				<div class="cb__skill-dot ${isChosen(entry.label) ? "cb__skill-dot--on" : ""}" style="border-radius:3px;"></div>
+				<span class="cb__skill-name">${esc(entry.label)}</span>
 			</div>
 		`;
 
 		setTimeout(() => {
 			document.querySelectorAll("[data-eq-choice]").forEach(el => el.addEventListener("click", () => {
-				const opt = el.dataset.eqChoice, rowI = +el.dataset.rowI;
+				const label = el.dataset.eqChoice, rowI = +el.dataset.rowI;
 				const choices = clsChoiceRows[rowI];
-				const active = this.char.equipment.includes(opt);
-				const others = choices.filter(o => o !== opt);
-				let next = this.char.equipment.filter(e => !others.includes(e));
-				if (active) next = next.filter(e => e !== opt);
-				else next = [...next.filter(e => e !== opt), opt];
+				const opt = choices.find(c => c.label === label);
+				const active = isChosen(label);
+				const otherLabels = choices.filter(c => c.label !== label).map(c => c.label);
+				let next = this.char.equipment.filter(e => !otherLabels.includes(e.label));
+				if (active) next = next.filter(e => e.label !== label);
+				else next = [...next.filter(e => e.label !== label), opt];
 				this.char.equipment = next;
 				this.render();
 			}));
 			document.querySelectorAll("[data-bg-eq-choice]").forEach(el => el.addEventListener("click", () => {
-				const opt = el.dataset.bgEqChoice, rowI = +el.dataset.bgRowI;
+				const label = el.dataset.bgEqChoice, rowI = +el.dataset.bgRowI;
 				const choices = bgChoiceRows[rowI];
-				const active = this.char.equipment.includes(opt);
-				const others = choices.filter(o => o !== opt);
-				let next = this.char.equipment.filter(e => !others.includes(e));
-				if (active) next = next.filter(e => e !== opt);
-				else next = [...next.filter(e => e !== opt), opt];
+				const opt = choices.find(c => c.label === label);
+				const active = isChosen(label);
+				const otherLabels = choices.filter(c => c.label !== label).map(c => c.label);
+				let next = this.char.equipment.filter(e => !otherLabels.includes(e.label));
+				if (active) next = next.filter(e => e.label !== label);
+				else next = [...next.filter(e => e.label !== label), opt];
 				this.char.equipment = next;
 				this.render();
 			}));
 			document.querySelectorAll("[data-eq-toggle]").forEach(el => el.addEventListener("click", () => {
-				const item = el.dataset.eqToggle;
-				if (this.char.equipment.includes(item)) this.char.equipment = this.char.equipment.filter(e => e !== item);
-				else this.char.equipment = [...this.char.equipment, item];
+				const label = el.dataset.eqToggle;
+				const entry = [...clsEquip, ...bgEquip].find(e => e.label === label);
+				if (isChosen(label)) this.char.equipment = this.char.equipment.filter(e => e.label !== label);
+				else this.char.equipment = [...this.char.equipment, entry];
 				this.render();
 			}));
 		}, 0);
@@ -1731,7 +1889,10 @@ const CB = {
 					}).join("")}
 				</div>
 			</div>
-			${char.equipment.length ? `<div class="cb__detail-card"><p class="cb__section-header">Equipment</p><div>${pillListHtml(char.equipment.map(e => ({name: safeEquipTag(e), body: `<p>${esc(equipmentDesc(e))}</p>`})), {idPrefix: "sheet-equip", colorClass: "cb__pill--yellow"})}</div></div>` : ""}
+			${char.equipment.length ? `<div class="cb__detail-card"><p class="cb__section-header">Equipment</p><div>${pillListHtml(char.equipment.flatMap(entry => entry.parts.map(part => {
+				const item = part.ref ? resolveItemRef(part.ref) : null;
+				return item ? {name: part.label, body: equipItemBodyHtml(item)} : {name: part.label, isStatic: true};
+			})), {idPrefix: "sheet-equip", colorClass: "cb__pill--yellow"})}</div></div>` : ""}
 			${char.spells.length ? `<div class="cb__detail-card">
 				<p class="cb__section-header">Spells</p>
 				${cantrips.length ? `<p class="cb__detail-meta">Cantrips</p><div class="cb__block">${pillListHtml(cantrips.map(sp => ({name: sp.name, body: entriesToHtml(sp.entries)})), {idPrefix: "sheet-cantrips", colorClass: "cb__pill--blue"})}</div>` : ""}
@@ -1746,7 +1907,10 @@ const CB = {
 	exportJSON() {
 		const data = {
 			_type: "5etools-charactercreator-save",
-			_version: 1,
+			// v2: char.equipment entries became {label, parts} objects carrying real item refs
+			// (see equipmentChoiceSets()) instead of plain display strings — see migrateEquipment(),
+			// called from importJSON() below, for how a v1 (or unversioned) save gets upgraded.
+			_version: 2,
 			step: this.step,
 			char: this.char,
 		};
@@ -1766,6 +1930,7 @@ const CB = {
 				const data = JSON.parse(reader.result);
 				const loadedChar = data && data.char ? data.char : data; // tolerate a bare character object too
 				if (!loadedChar || typeof loadedChar !== "object") throw new Error("File does not contain character data.");
+				loadedChar.equipment = migrateEquipment(loadedChar.equipment);
 				this.char = {...EMPTY_CHAR(), ...loadedChar};
 				this.step = Number.isInteger(data?.step) ? data.step : 0;
 				this.search = "";
