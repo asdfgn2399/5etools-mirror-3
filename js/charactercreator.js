@@ -290,25 +290,54 @@ function classPrimaryAbilities(cls) {
 	return cls?.spellcastingAbility ? [cls.spellcastingAbility] : [];
 }
 
-/** Real classFeatures entries are uid refs ("Name|Class||Level|Source") or {classFeature: uid, ...} —
- * unpack down to full ref objects {name, className, classSource, level, source}. The feature's
- * *entries* (description text) live separately in CLASS_FEATURES — see resolveClassFeature(). */
+/** Real classFeatures entries come in two shapes depending on whether the framework's own
+ * class-loading pipeline (_pGetDereferencedClassData in utils-dataloader-dataloader.js) managed
+ * to dereference them in place:
+ *  (a) flat array of uid ref strings ("Name|Class||Level|Source") or {classFeature: uid, ...} —
+ *      not dereferenced (e.g. brew/prerelease that skips the framework's own postCache step, or
+ *      any case where a referenced classFeature entity couldn't be found).
+ *  (b) array grouped by level, each element itself an array of already-dereferenced feature
+ *      objects (cls.classFeatures[0] = level-1 features, [1] = level-2, etc.) — this is what the
+ *      framework produces once classFeature data is actually loadable (see the classFeature/
+ *      subclassFeature cases added to MultiSourceUtil.getIndexKey()). These objects already carry
+ *      `entries`, so no CLASS_FEATURES lookup is needed for them.
+ * Returns a flat list of {ref, feature} — feature is null only for shape (a) refs that don't
+ * resolve against CLASS_FEATURES (see resolveClassFeature()).
+ */
 function classFeatureRefs(cls) {
-	return (cls?.classFeatures || []).map(ref => {
+	const raw = cls?.classFeatures || [];
+	if (raw.some(it => Array.isArray(it))) {
+		return raw.flat().filter(Boolean).map(feature => ({
+			ref: {name: feature.name, className: feature.className, classSource: feature.classSource, level: feature.level, source: feature.source},
+			feature,
+		}));
+	}
+	return raw.map(ref => {
 		const uid = typeof ref === "string" ? ref : ref?.classFeature;
 		if (!uid) return null;
 		const unpacked = DataUtil.class.unpackUidClassFeature(uid);
-		return unpacked.name ? unpacked : null;
+		if (!unpacked.name) return null;
+		return {ref: unpacked, feature: resolveClassFeature(unpacked)};
 	}).filter(Boolean);
 }
 
-/** Same idea as classFeatureRefs, for a subclass's subclassFeatures array. */
+/** Same idea as classFeatureRefs, for a subclass's subclassFeatures array. Shape (b) here is a
+ * compact list (only levels with features present, ascending) rather than a level-indexed slot
+ * array, but is still "elements are arrays of feature objects" — same detection applies. */
 function subclassFeatureRefs(sc) {
-	return (sc?.subclassFeatures || []).map(ref => {
+	const raw = sc?.subclassFeatures || [];
+	if (raw.some(it => Array.isArray(it))) {
+		return raw.flat().filter(Boolean).map(feature => ({
+			ref: {name: feature.name, className: feature.className, classSource: feature.classSource, subclassShortName: feature.subclassShortName, subclassSource: feature.subclassSource, level: feature.level, source: feature.source},
+			feature,
+		}));
+	}
+	return raw.map(ref => {
 		const uid = typeof ref === "string" ? ref : ref?.subclassFeature;
 		if (!uid) return null;
 		const unpacked = DataUtil.class.unpackUidSubclassFeature(uid);
-		return unpacked.name ? unpacked : null;
+		if (!unpacked.name) return null;
+		return {ref: unpacked, feature: resolveSubclassFeature(unpacked)};
 	}).filter(Boolean);
 }
 
@@ -934,7 +963,7 @@ const CB = {
 
 		const cls = this.char.cls;
 		const skillChoice = classSkillChoice(cls);
-		const lvl1Features = classFeatureRefs(cls).filter(f => f.level === 1).map(ref => ({ref, feature: resolveClassFeature(ref)}));
+		const lvl1Features = classFeatureRefs(cls).filter(f => f.ref.level === 1);
 		const detail = cls ? `
 			<div class="cb__detail-card">
 				<p class="cb__detail-title">${esc(cls.name)}</p>
@@ -989,7 +1018,7 @@ const CB = {
 			</div>
 		`).join("");
 		const subclass = this.char.subclass;
-		const scFeatures = subclassFeatureRefs(subclass).map(ref => ({ref, feature: resolveSubclassFeature(ref)}));
+		const scFeatures = subclassFeatureRefs(subclass);
 		const detail = subclass ? `
 			<div class="cb__detail-card">
 				<p class="cb__detail-title">${esc(subclass.name)}</p>
@@ -1658,8 +1687,8 @@ const CB = {
 							<span class="cb__save-bonus">${fmtMod(bonus)}</span>
 						</div>`;
 					}).join("")}
-					${char.cls ? `<div class="cb__block"><p class="cb__section-header">Class Features</p><div>${featureListHtml(classFeatureRefs(char.cls).filter(f => f.level <= char.level).map(ref => ({ref, feature: resolveClassFeature(ref)})), {idPrefix: "sheet-cls", colorClass: "cb__pill--purple", noneLabel: "None yet"})}</div></div>` : ""}
-					${char.subclass ? `<div class="cb__block"><p class="cb__section-header">Subclass Features</p><div>${featureListHtml(subclassFeatureRefs(char.subclass).filter(f => f.level <= char.level).map(ref => ({ref, feature: resolveSubclassFeature(ref)})), {idPrefix: "sheet-sc", colorClass: "cb__pill--indigo", noneLabel: "None yet"})}</div></div>` : ""}
+					${char.cls ? `<div class="cb__block"><p class="cb__section-header">Class Features</p><div>${featureListHtml(classFeatureRefs(char.cls).filter(f => f.ref.level <= char.level), {idPrefix: "sheet-cls", colorClass: "cb__pill--purple", noneLabel: "None yet"})}</div></div>` : ""}
+					${char.subclass ? `<div class="cb__block"><p class="cb__section-header">Subclass Features</p><div>${featureListHtml(subclassFeatureRefs(char.subclass).filter(f => f.ref.level <= char.level), {idPrefix: "sheet-sc", colorClass: "cb__pill--indigo", noneLabel: "None yet"})}</div></div>` : ""}
 					${char.race ? `<div class="cb__block"><p class="cb__section-header">Racial Traits</p><div>${namedSubEntries(char.race.entries).map(t => `<span class="cb__pill cb__pill--teal" title="${esc(entriesToPlainText(t.entries))}">${esc(t.name)}</span>`).join("")}</div></div>` : ""}
 					${char.background && backgroundFeature(char.background) ? `<div class="cb__block"><p class="cb__section-header">Background Feature</p><div>${entriesToHtml([backgroundFeature(char.background)])}</div></div>` : ""}
 					${char.feats.length ? `<div class="cb__block"><p class="cb__section-header">Feats</p><div>${char.feats.map(cf => `<span class="cb__pill cb__pill--orange" title="${esc(entriesToPlainText(findFeat(cf.name, cf.source)?.entries))}">${esc(cf.name)}</span>`).join("")}</div></div>` : ""}
@@ -1754,8 +1783,8 @@ table{width:100%;border-collapse:collapse;}td{padding:2px 6px;font-size:11px;}
 <div class="grid">
 <div>${ABILITIES.map(a => `<div class="ab"><div class="an">${ABILITY_LABELS[a].slice(0,3)}</div><div class="av">${s[a]}</div><div class="am">${fmtMod(scoreMod(s[a]))}</div>${char.cls?.proficiency?.includes(a) ? '<div style="font-size:8px;color:green;">save</div>' : ""}</div>`).join("")}</div>
 <div><h3>Saving Throws</h3><table>${ABILITIES.map(a => { const p = char.cls?.proficiency?.includes(a), b = scoreMod(s[a]) + (p ? pb_ : 0); return `<tr><td>${p ? "●" : "○"}</td><td>${ABILITY_LABELS[a]}</td><td style="text-align:right;font-weight:600;">${fmtMod(b)}</td></tr>`; }).join("")}</table>
-${char.cls ? `<h3>Class Features</h3><div>${classFeatureRefs(char.cls).filter(f => f.level <= char.level).map(f => `<span class="tag">${esc(f.name)}</span>`).join("")}</div>` : ""}
-${char.subclass ? `<h3>Subclass: ${esc(char.subclass.name)}</h3><div>${subclassFeatureRefs(char.subclass).filter(f => f.level <= char.level).map(f => `<span class="tag">${esc(f.name)}</span>`).join("")}</div>` : ""}
+${char.cls ? `<h3>Class Features</h3><div>${classFeatureRefs(char.cls).filter(f => f.ref.level <= char.level).map(f => `<span class="tag">${esc(f.ref.name)}</span>`).join("")}</div>` : ""}
+${char.subclass ? `<h3>Subclass: ${esc(char.subclass.name)}</h3><div>${subclassFeatureRefs(char.subclass).filter(f => f.ref.level <= char.level).map(f => `<span class="tag">${esc(f.ref.name)}</span>`).join("")}</div>` : ""}
 ${char.race ? `<h3>Racial Traits</h3><div>${namedSubEntries(char.race.entries).map(t => `<span class="tag">${esc(t.name)}</span>`).join("")}</div>` : ""}
 ${char.background && backgroundFeature(char.background) ? `<h3>Background Feature</h3><div>${entriesToHtml([backgroundFeature(char.background)])}</div>` : ""}
 ${char.feats.length ? `<h3>Feats</h3><div>${char.feats.map(cf => `<span class="tag">${esc(cf.name)}</span>`).join("")}</div>` : ""}
