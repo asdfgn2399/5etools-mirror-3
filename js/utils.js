@@ -4503,6 +4503,8 @@ globalThis.MultiSourceUtil = class {
 				return (ent.name || "").toLowerCase().split(" ").at(-1);
 			case "subclass":
 			case "subclassFluff":
+			case "classFeature":
+			case "subclassFeature":
 				return (ent.className || "").toLowerCase().split(" ").at(-1);
 			default:
 				return ent.source;
