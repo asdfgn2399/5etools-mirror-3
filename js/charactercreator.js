@@ -384,6 +384,47 @@ function classFeatureRefs(cls) {
 	}).filter(Boolean);
 }
 
+/** Levels at which a class grants an Ability Score Improvement (or feat, at the player's choice) —
+ * derived from the real classFeature data instead of the standard-array assumption of 4/8/12/16/19,
+ * so a class with bonus ASIs (Fighter: extra at 6 and 14; Rogue: extra at 10) picks those up for
+ * free. Sorted ascending, deduped. */
+function classAsiLevels(cls) {
+	if (!cls) return [];
+	const levels = classFeatureRefs(cls)
+		.filter(({ref}) => ref?.name && /^ability score improvement/i.test(ref.name))
+		.map(({ref}) => ref.level)
+		.filter(lvl => typeof lvl === "number");
+	return [...new Set(levels)].sort((a, b) => a - b);
+}
+
+/** The feats actually granted so far, derived from char.levelAsi slots set to type "feat" —
+ * levelAsi (keyed by class level) is the single source of truth; nothing else stores feats
+ * separately anymore. */
+function chosenFeats(char) {
+	return Object.values(char.levelAsi || {})
+		.filter(slot => slot && slot.type === "feat" && slot.feat)
+		.map(slot => slot.feat);
+}
+
+/** Sums the ability bonuses from every levelAsi slot set to type "asi" (same +2/+1 or +1/+1/+1
+ * shape as racial/background ASI choices). Pass excludeLevel to omit one slot's own contribution —
+ * used to figure out whether picking +2/+1 for that slot would push an ability past 20. */
+function levelAsiBonus(char, excludeLevel = null) {
+	const r = {};
+	Object.entries(char.levelAsi || {}).forEach(([lvl, slot]) => {
+		if (excludeLevel != null && String(lvl) === String(excludeLevel)) return;
+		if (!slot || slot.type !== "asi" || !slot.asi) return;
+		const v = slot.asi;
+		if (v.mode === "1-1-1") {
+			new Set((v.triple || []).slice(0, 3)).forEach(a => { r[a] = (r[a] || 0) + 1; });
+		} else {
+			if (v.high) r[v.high] = (r[v.high] || 0) + 2;
+			if (v.low && v.low !== v.high) r[v.low] = (r[v.low] || 0) + 1;
+		}
+	});
+	return r;
+}
+
 /** Same idea as classFeatureRefs, for a subclass's subclassFeatures array. Shape (b) here is a
  * compact list (only levels with features present, ascending) rather than a level-indexed slot
  * array, but is still "elements are arrays of feature objects" — same detection applies. */
@@ -651,6 +692,23 @@ function migrateEquipment(equipment) {
 	});
 }
 
+/** Upgrades a pre-ASI-slot save (flat char.feats array, no char.levelAsi) to the new per-level-slot
+ * shape: assigns each old feat to the earliest empty class ASI slot, in order. Needs the character's
+ * class already resolved (loadedChar.cls) to know the slot levels — if that's missing (or there
+ * simply aren't enough slots for every old feat), leftover feats are dropped rather than guessed at,
+ * since there's no level info in the old save to place them correctly. No-ops if levelAsi is
+ * already present (current-format save). */
+function migrateLevelAsi(loadedChar) {
+	if (loadedChar.levelAsi && typeof loadedChar.levelAsi === "object") return loadedChar.levelAsi;
+	const oldFeats = Array.isArray(loadedChar.feats) ? loadedChar.feats : [];
+	const slots = classAsiLevels(loadedChar.cls).filter(lvl => lvl <= (loadedChar.level || 1));
+	const levelAsi = {};
+	oldFeats.slice(0, slots.length).forEach((feat, i) => {
+		levelAsi[slots[i]] = {type: "feat", feat: {name: feat.name, source: feat.source}, asi: null};
+	});
+	return levelAsi;
+}
+
 function findFeat(name, source) { return FEATS.find(f => f.name === name && f.source === source); }
 
 /** The background's "Feature: X" entry, e.g. {name: "Feature: Shelter of the Faithful", entries: [...]}. */
@@ -682,9 +740,13 @@ const EMPTY_CHAR = () => ({
 	standardAssign: {str:null,dex:null,con:null,int:null,wis:null,cha:null},
 	pointBuy: {str:8,dex:8,con:8,int:8,wis:8,cha:8},
 	manual: {str:10,dex:10,con:10,int:10,wis:10,cha:10},
-	skills: [], equipment: [], feats: [], spells: [], racialAsiChoice: [],
+	skills: [], equipment: [], spells: [], racialAsiChoice: [],
 	racialAsiVrgr: {mode: "2-1", high: null, low: null, triple: []},
 	bgAsi: {mode: "2-1", high: null, low: null, triple: []},
+	// Per-level-4/8/12/16/19(+class extras, e.g. Fighter 6/14, Rogue 10) ASI slots — see
+	// classAsiLevels(). Keyed by level (string, since object keys are always strings):
+	// {type: "feat"|"asi"|null, feat: {name,source}|null, asi: {mode,high,low,triple}|null}.
+	levelAsi: {},
 });
 
 // ─── REAL DATA LOADING ─────────────────────────────────────────────────────
@@ -827,6 +889,7 @@ const CB = {
 	char: EMPTY_CHAR(),
 	search: "",
 	expandedFeat: null,
+	activeAsiSlot: null, // which levelAsi slot's inline feat-picker is currently expanded (Feats step)
 	expandedSpell: null,
 	spellTab: "cantrips",
 	hideUnselectedSpells: false,
@@ -910,9 +973,12 @@ const CB = {
 		}
 		return r;
 	},
-	finalScores() {
+	// Pass excludeAsiLevel to leave one levelAsi slot's own bonus out of the total — used by the
+	// Feats step to check "would this ability already be at/above 20 without this slot's pick".
+	finalScores(excludeAsiLevel = null) {
 		const racial = this.racialASI();
 		const bgAsi = this.backgroundASI();
+		const lvlAsi = levelAsiBonus(this.char, excludeAsiLevel);
 		let b;
 		if (this.char.abilityMode === "standard") {
 			b = {str:10,dex:10,con:10,int:10,wis:10,cha:10};
@@ -922,8 +988,12 @@ const CB = {
 		} else {
 			b = {...this.char.manual};
 		}
-		ABILITIES.forEach(a => { b[a] = (b[a] || 10) + (racial[a] || 0) + (bgAsi[a] || 0); });
+		ABILITIES.forEach(a => { b[a] = (b[a] || 10) + (racial[a] || 0) + (bgAsi[a] || 0) + (lvlAsi[a] || 0); });
 		return b;
+	},
+	getAsiSlot(level) { return (this.char.levelAsi || {})[level] || {type: null, feat: null, asi: null}; },
+	setAsiSlot(level, patch) {
+		this.char.levelAsi = {...(this.char.levelAsi || {}), [level]: {...this.getAsiSlot(level), ...patch}};
 	},
 	pb() { return profBonus(this.char.level); },
 	bgSkills() { return backgroundSkillNames(this.char.background); },
@@ -1619,76 +1689,197 @@ const CB = {
 		`;
 	},
 
-	// ─── STEP 8: FEATS ─────────────────────────────────────────────────────
+	// ─── STEP 8: FEATS / ASI ───────────────────────────────────────────────
 	renderFeats() {
-		// Some races (e.g. a "Variant Human"-style option) grant a bonus 1st-level feat in the
-		// standalone dataset this used to run on; the real race data here doesn't include that
-		// as a separate selectable entry, so feat slots are level-based only for now.
-		const MAX_FEATS = this.char.level >= 4 ? Math.floor(this.char.level / 4) : 0;
-		const filtered = FEATS.filter(f => f.name.toLowerCase().includes(this.search.toLowerCase()));
-		const isChosen = feat => this.char.feats.some(cf => cf.name === feat.name && cf.source === feat.source);
-		const toggleFeat = feat => {
-			const chosen = isChosen(feat);
-			const canSelect = chosen || this.char.feats.length < MAX_FEATS;
-			if (!canSelect && !chosen) return;
-			if (chosen) this.char.feats = this.char.feats.filter(cf => !(cf.name === feat.name && cf.source === feat.source));
-			else this.char.feats = [...this.char.feats, {name: feat.name, source: feat.source}];
-		};
+		if (!this.char.cls) return `<p class="cb__hint">Select a class first to see its Ability Score Improvement slots.</p>`;
+
+		// Real per-level slots (not a hardcoded floor(level/4)) — see classAsiLevels(): this
+		// naturally picks up class-specific extras (Fighter 6 & 14, Rogue 10, etc.) straight
+		// from the classFeature data instead of needing them special-cased here.
+		const slotLevels = classAsiLevels(this.char.cls).filter(lvl => lvl <= this.char.level);
+		const takenFeatKeys = new Set(chosenFeats(this.char).map(f => `${f.name}|${f.source}`));
 
 		const prereqHtml = feat => {
 			if (!feat.prerequisite) return "";
 			try { return Renderer.utils.prerequisite.getHtml(feat.prerequisite); } catch (err) { return ""; }
 		};
 
-		const rows = filtered.map(feat => {
-			const chosen = isChosen(feat);
-			const canSelect = chosen || this.char.feats.length < MAX_FEATS;
-			const open = this.expandedFeat === `${feat.name}|${feat.source}`;
-			const prereq = prereqHtml(feat);
-			return `
-				<div class="cb__feat-card ${chosen ? "cb__feat-card--chosen" : ""}" style="opacity:${canSelect ? 1 : 0.5}">
-					<div class="cb__feat-head" data-feat-expand="${esc(feat.name)}" data-feat-expand-source="${esc(feat.source)}">
-						<div class="cb__feat-cb ${chosen ? "cb__feat-cb--on" : ""}" data-feat-toggle="${esc(feat.name)}" data-feat-toggle-source="${esc(feat.source)}"></div>
-						<span class="cb__feat-name">${esc(feat.name)}</span>
-						${srcBadge(feat.source)}
-						${prereq ? `<span class="cb__feat-req">Req: ${prereq}</span>` : ""}
-						<span class="cb__feat-caret">${open ? "▲" : "▼"}</span>
+		const featPickerHtml = level => {
+			const slot = this.getAsiSlot(level);
+			const filtered = FEATS.filter(f => f.name.toLowerCase().includes(this.search.toLowerCase()));
+			const rows = filtered.map(feat => {
+				const key = `${feat.name}|${feat.source}`;
+				const isThisSlot = slot.feat && slot.feat.name === feat.name && slot.feat.source === feat.source;
+				const takenElsewhere = !feat.repeatable && !isThisSlot && takenFeatKeys.has(key);
+				const open = this.expandedFeat === key;
+				const prereq = prereqHtml(feat);
+				return `
+					<div class="cb__feat-card ${isThisSlot ? "cb__feat-card--chosen" : ""}" style="opacity:${takenElsewhere ? 0.5 : 1}">
+						<div class="cb__feat-head" data-feat-expand="${esc(feat.name)}" data-feat-expand-source="${esc(feat.source)}">
+							<div class="cb__feat-cb ${isThisSlot ? "cb__feat-cb--on" : ""}" data-feat-pick="${esc(feat.name)}" data-feat-pick-source="${esc(feat.source)}" data-feat-pick-level="${level}" data-feat-pick-disabled="${takenElsewhere}"></div>
+							<span class="cb__feat-name">${esc(feat.name)}</span>
+							${srcBadge(feat.source)}
+							${takenElsewhere ? `<span class="cb__feat-req">Already taken at another level</span>` : prereq ? `<span class="cb__feat-req">Req: ${prereq}</span>` : ""}
+							<span class="cb__feat-caret">${open ? "▲" : "▼"}</span>
+						</div>
+						${open ? `<div class="cb__feat-desc">${entriesToHtml(feat.entries)}</div>` : ""}
 					</div>
-					${open ? `<div class="cb__feat-desc">${entriesToHtml(feat.entries)}</div>` : ""}
+				`;
+			}).join("");
+			return `
+				<button type="button" class="ve-btn ve-btn-default cb__search" data-feat-browse-level="${level}" title="Open the site's full feat filter/search">🔍 Browse &amp; Filter Feats</button>
+				<input class="ve-form-control cb__search" data-search value="${esc(this.search)}" placeholder="...or quick-filter this list by name">
+				<div class="cb__scroll-list">${rows}</div>
+			`;
+		};
+
+		const asiPickerHtml = level => {
+			const slot = this.getAsiSlot(level);
+			const asi = slot.asi || {mode: "2-1", high: null, low: null, triple: []};
+			// Ability totals with THIS slot's own bonus excluded, so the cap check below reflects
+			// "would picking this push the ability past 20" rather than double-counting.
+			const scoreExcl = this.finalScores(level);
+			const canPlus2 = a => scoreExcl[a] + 2 <= 20;
+			const canPlus1 = a => scoreExcl[a] + 1 <= 20;
+			return `
+				<div style="margin-bottom:8px;">
+					<button class="cb__mode-btn ${asi.mode !== "1-1-1" ? "cb__mode-btn--active" : ""}" data-asi-mode-level="${level}" data-asi-mode="2-1">+2 / +1</button>
+					<button class="cb__mode-btn ${asi.mode === "1-1-1" ? "cb__mode-btn--active" : ""}" data-asi-mode-level="${level}" data-asi-mode="1-1-1">+1 / +1 / +1</button>
+				</div>
+				${asi.mode === "1-1-1" ? `
+					<p class="cb__detail-meta">Choose 3 different abilities for +1 each:</p>
+					<div>${ABILITIES.map(a => {
+						const picked = (asi.triple || []).includes(a);
+						const atLimit = !picked && (asi.triple || []).length >= 3;
+						const capped = !picked && !canPlus1(a);
+						const disabled = atLimit || capped;
+						return `<span class="cb__pill cb__pill--blue" style="cursor:${disabled ? "not-allowed" : "pointer"};${picked ? "" : disabled ? "opacity:0.4;" : ""}" data-asi-triple-level="${level}" data-asi-triple="${a}" data-asi-triple-disabled="${disabled}" title="${capped ? "Would exceed the ability score cap of 20" : ""}">${picked ? "✓ " : ""}${ABILITY_LABELS[a]}</span>`;
+					}).join("")}</div>
+				` : `
+					<p class="cb__detail-meta">+2 to:</p>
+					<div>${ABILITIES.map(a => {
+						const capped = asi.high !== a && !canPlus2(a);
+						return `<span class="cb__pill cb__pill--blue" style="cursor:${capped ? "not-allowed" : "pointer"};${asi.high === a ? "" : capped ? "opacity:0.4;" : ""}" data-asi-high-level="${level}" data-asi-high="${a}" data-asi-high-disabled="${capped}" title="${capped ? "Would exceed the ability score cap of 20" : ""}">${asi.high === a ? "✓ " : ""}${ABILITY_LABELS[a]}</span>`;
+					}).join("")}</div>
+					<p class="cb__detail-meta" style="margin-top:6px;">+1 to a different ability:</p>
+					<div>${ABILITIES.filter(a => a !== asi.high).map(a => {
+						const capped = asi.low !== a && !canPlus1(a);
+						return `<span class="cb__pill cb__pill--blue" style="cursor:${capped ? "not-allowed" : "pointer"};${asi.low === a ? "" : capped ? "opacity:0.4;" : ""}" data-asi-low-level="${level}" data-asi-low="${a}" data-asi-low-disabled="${capped}" title="${capped ? "Would exceed the ability score cap of 20" : ""}">${asi.low === a ? "✓ " : ""}${ABILITY_LABELS[a]}</span>`;
+					}).join("")}</div>
+				`}
+			`;
+		};
+
+		const slotsHtml = slotLevels.map(level => {
+			const slot = this.getAsiSlot(level);
+			// this.activeAsiSlot comes from a click handler's el.dataset (always a string); level
+			// here is the numeric value from classAsiLevels() — coerce both sides to compare.
+			const isActivePicker = String(this.activeAsiSlot) === String(level);
+			return `
+				<div class="cb__detail-card cb__block">
+					<p class="cb__section-header">Level ${level} — Ability Score Improvement</p>
+					<div style="margin-bottom:8px;">
+						<button class="cb__mode-btn ${slot.type === "feat" ? "cb__mode-btn--active" : ""}" data-slot-type-level="${level}" data-slot-type="feat">Feat</button>
+						<button class="cb__mode-btn ${slot.type === "asi" ? "cb__mode-btn--active" : ""}" data-slot-type-level="${level}" data-slot-type="asi">Ability Score Improvement</button>
+					</div>
+					${slot.type === "feat" ? `
+						${slot.feat
+							? `<p class="cb__detail-meta">Chosen: <strong>${esc(slot.feat.name)}</strong> ${srcBadge(slot.feat.source)} <button type="button" class="ve-btn ve-btn-default ve-btn-xs" data-slot-toggle-picker-level="${level}" style="margin-left:6px;">${isActivePicker ? "Close" : "Change"}</button></p>`
+							: `<p class="cb__hint">No feat chosen yet. <button type="button" class="ve-btn ve-btn-default ve-btn-xs" data-slot-toggle-picker-level="${level}">${isActivePicker ? "Close" : "Choose Feat"}</button></p>`}
+						${isActivePicker ? featPickerHtml(level) : ""}
+					` : slot.type === "asi" ? asiPickerHtml(level) : `
+						<p class="cb__hint">Choose Feat or Ability Score Improvement above.</p>
+					`}
 				</div>
 			`;
 		}).join("");
 
 		setTimeout(() => {
-			document.getElementById("cb-feat-browse")?.addEventListener("click", async () => {
+			document.querySelectorAll("[data-slot-type-level]").forEach(el => el.addEventListener("click", () => {
+				const level = el.dataset.slotTypeLevel, type = el.dataset.slotType;
+				const cur = this.getAsiSlot(level);
+				if (type === "feat") this.setAsiSlot(level, {type: "feat", asi: null});
+				else this.setAsiSlot(level, {type: "asi", feat: null, asi: cur.asi || {mode: "2-1", high: null, low: null, triple: []}});
+				this.activeAsiSlot = null;
+				this.render();
+			}));
+			document.querySelectorAll("[data-slot-toggle-picker-level]").forEach(el => el.addEventListener("click", () => {
+				const level = el.dataset.slotTogglePickerLevel;
+				this.activeAsiSlot = this.activeAsiSlot === level ? null : level;
+				this.render();
+			}));
+			document.querySelectorAll("[data-feat-browse-level]").forEach(el => el.addEventListener("click", async () => {
 				if (!modalFilterFeats) return;
+				const level = el.dataset.featBrowseLevel;
 				const selected = await modalFilterFeats.pGetUserSelection();
 				if (!selected?.length) return;
 				const match = resolveModalSelection(selected[0], FEATS);
 				if (!match) return;
-				toggleFeat(match);
+				const key = `${match.name}|${match.source}`;
+				const curFeat = this.getAsiSlot(level).feat;
+				const isSameAsCurrent = curFeat && curFeat.name === match.name && curFeat.source === match.source;
+				if (!match.repeatable && !isSameAsCurrent && takenFeatKeys.has(key)) return;
+				this.setAsiSlot(level, {type: "feat", feat: {name: match.name, source: match.source}, asi: null});
+				this.activeAsiSlot = null;
 				this.render();
-			});
+			}));
 			document.querySelectorAll("[data-feat-expand]").forEach(el => el.addEventListener("click", e => {
-				if (e.target.closest("[data-feat-toggle]")) return;
+				if (e.target.closest("[data-feat-pick]")) return;
 				const key = `${el.dataset.featExpand}|${el.dataset.featExpandSource}`;
 				this.expandedFeat = this.expandedFeat === key ? null : key;
 				this.render();
 			}));
-			document.querySelectorAll("[data-feat-toggle]").forEach(el => el.addEventListener("click", e => {
+			document.querySelectorAll("[data-feat-pick]").forEach(el => el.addEventListener("click", e => {
 				e.stopPropagation();
-				const feat = FEATS.find(f => f.name === el.dataset.featToggle && f.source === el.dataset.featToggleSource);
+				if (el.dataset.featPickDisabled === "true") return;
+				const level = el.dataset.featPickLevel;
+				const feat = FEATS.find(f => f.name === el.dataset.featPick && f.source === el.dataset.featPickSource);
 				if (!feat) return;
-				toggleFeat(feat);
+				this.setAsiSlot(level, {type: "feat", feat: {name: feat.name, source: feat.source}, asi: null});
+				this.activeAsiSlot = null;
+				this.render();
+			}));
+			document.querySelectorAll("[data-asi-mode-level]").forEach(el => el.addEventListener("click", () => {
+				const level = el.dataset.asiModeLevel, mode = el.dataset.asiMode;
+				const cur = this.getAsiSlot(level).asi || {};
+				const asi = mode === "1-1-1"
+					? {mode, high: null, low: null, triple: cur.triple || []}
+					: {mode, high: cur.high || null, low: cur.low || null, triple: []};
+				this.setAsiSlot(level, {asi});
+				this.render();
+			}));
+			document.querySelectorAll("[data-asi-high-level]").forEach(el => el.addEventListener("click", () => {
+				if (el.dataset.asiHighDisabled === "true") return;
+				const level = el.dataset.asiHighLevel, a = el.dataset.asiHigh;
+				const cur = this.getAsiSlot(level).asi || {mode: "2-1", high: null, low: null, triple: []};
+				const high = cur.high === a ? null : a;
+				const low = cur.low === high ? null : cur.low;
+				this.setAsiSlot(level, {asi: {...cur, mode: "2-1", high, low}});
+				this.render();
+			}));
+			document.querySelectorAll("[data-asi-low-level]").forEach(el => el.addEventListener("click", () => {
+				if (el.dataset.asiLowDisabled === "true") return;
+				const level = el.dataset.asiLowLevel, a = el.dataset.asiLow;
+				const cur = this.getAsiSlot(level).asi || {mode: "2-1", high: null, low: null, triple: []};
+				this.setAsiSlot(level, {asi: {...cur, mode: "2-1", low: cur.low === a ? null : a}});
+				this.render();
+			}));
+			document.querySelectorAll("[data-asi-triple-level]").forEach(el => el.addEventListener("click", () => {
+				if (el.dataset.asiTripleDisabled === "true") return;
+				const level = el.dataset.asiTripleLevel, a = el.dataset.asiTriple;
+				const cur = this.getAsiSlot(level).asi || {mode: "1-1-1", high: null, low: null, triple: []};
+				const triple = cur.triple || [];
+				const next = triple.includes(a) ? triple.filter(x => x !== a) : [...triple, a];
+				this.setAsiSlot(level, {asi: {...cur, mode: "1-1-1", triple: next}});
 				this.render();
 			}));
 		}, 0);
 
 		return `
-			<p class="cb__hint">${MAX_FEATS === 0 ? "No feat slots at this level (feats replace ASI at levels 4, 8, 12, 16, 19)." : `Select up to ${MAX_FEATS} feat${MAX_FEATS > 1 ? "s" : ""} (${this.char.feats.length}/${MAX_FEATS} chosen).`}</p>
-			<button id="cb-feat-browse" type="button" class="ve-btn ve-btn-default cb__search" title="Open the site's full feat filter/search">🔍 Browse &amp; Filter Feats</button>
-			<input class="ve-form-control cb__search" data-search value="${esc(this.search)}" placeholder="...or quick-filter this list by name">
-			<div class="cb__scroll-list">${rows}</div>
+			<p class="cb__hint">${slotLevels.length === 0
+				? "No Ability Score Improvement slots yet at this level."
+				: `${slotLevels.length} slot${slotLevels.length > 1 ? "s" : ""} available (level${slotLevels.length > 1 ? "s" : ""} ${slotLevels.join(", ")}) — each is either a feat or an ability score improvement.`}</p>
+			${slotsHtml}
 		`;
 	},
 
@@ -1873,7 +2064,13 @@ const CB = {
 					${char.subclass ? `<div class="cb__block"><p class="cb__section-header">Subclass Features</p><div>${featureListHtml(subclassFeatureRefs(char.subclass).filter(f => f.ref.level <= char.level), {idPrefix: "sheet-sc", colorClass: "cb__pill--indigo", noneLabel: "None yet"})}</div></div>` : ""}
 					${char.race ? `<div class="cb__block"><p class="cb__section-header">Racial Traits</p><div>${pillListHtml(namedSubEntries(char.race.entries).map(t => ({name: t.name, body: entriesToHtml(t.entries)})), {idPrefix: "sheet-race-traits", colorClass: "cb__pill--teal"})}</div></div>` : ""}
 					${char.background && backgroundFeature(char.background) ? `<div class="cb__block"><p class="cb__section-header">Background Feature</p><div>${entriesToHtml([backgroundFeature(char.background)])}</div></div>` : ""}
-					${char.feats.length ? `<div class="cb__block"><p class="cb__section-header">Feats</p><div>${pillListHtml(char.feats.map(cf => ({name: cf.name, body: entriesToHtml(findFeat(cf.name, cf.source)?.entries)})), {idPrefix: "sheet-feats", colorClass: "cb__pill--orange"})}</div></div>` : ""}
+					${chosenFeats(char).length ? `<div class="cb__block"><p class="cb__section-header">Feats</p><div>${pillListHtml(chosenFeats(char).map(cf => ({name: cf.name, body: entriesToHtml(findFeat(cf.name, cf.source)?.entries)})), {idPrefix: "sheet-feats", colorClass: "cb__pill--orange"})}</div></div>` : ""}
+					${Object.entries(char.levelAsi || {}).some(([, s]) => s?.type === "asi" && s.asi) ? `<div class="cb__block"><p class="cb__section-header">Ability Score Improvements</p><div>${Object.entries(char.levelAsi || {}).filter(([, s]) => s?.type === "asi" && s.asi).sort((a, b) => Number(a[0]) - Number(b[0])).map(([lvl, s]) => {
+						const parts = s.asi.mode === "1-1-1"
+							? (s.asi.triple || []).map(a => `+1 ${ABILITY_LABELS[a]}`)
+							: [s.asi.high ? `+2 ${ABILITY_LABELS[s.asi.high]}` : null, s.asi.low ? `+1 ${ABILITY_LABELS[s.asi.low]}` : null].filter(Boolean);
+						return `<span class="cb__pill cb__pill--static cb__pill--purple">Lvl ${esc(lvl)}: ${esc(parts.join(", ") || "—")}</span>`;
+					}).join("")}</div></div>` : ""}
 				</div>
 				<div>
 					<p class="cb__section-header">Skills</p>
@@ -1910,7 +2107,9 @@ const CB = {
 			// v2: char.equipment entries became {label, parts} objects carrying real item refs
 			// (see equipmentChoiceSets()) instead of plain display strings — see migrateEquipment(),
 			// called from importJSON() below, for how a v1 (or unversioned) save gets upgraded.
-			_version: 2,
+			// v3: flat char.feats array replaced by char.levelAsi (per-class-level feat-or-ASI
+			// slots) — see migrateLevelAsi(), also called from importJSON().
+			_version: 3,
 			step: this.step,
 			char: this.char,
 		};
@@ -1931,6 +2130,8 @@ const CB = {
 				const loadedChar = data && data.char ? data.char : data; // tolerate a bare character object too
 				if (!loadedChar || typeof loadedChar !== "object") throw new Error("File does not contain character data.");
 				loadedChar.equipment = migrateEquipment(loadedChar.equipment);
+				loadedChar.levelAsi = migrateLevelAsi(loadedChar);
+				delete loadedChar.feats;
 				this.char = {...EMPTY_CHAR(), ...loadedChar};
 				this.step = Number.isInteger(data?.step) ? data.step : 0;
 				this.search = "";
@@ -1976,7 +2177,13 @@ ${char.cls ? `<h3>Class Features</h3><div>${classFeatureRefs(char.cls).filter(f 
 ${char.subclass ? `<h3>Subclass: ${esc(char.subclass.name)}</h3><div>${subclassFeatureRefs(char.subclass).filter(f => f.ref.level <= char.level).map(f => `<span class="tag">${esc(f.ref.name)}</span>`).join("")}</div>` : ""}
 ${char.race ? `<h3>Racial Traits</h3><div>${namedSubEntries(char.race.entries).map(t => `<span class="tag">${esc(t.name)}</span>`).join("")}</div>` : ""}
 ${char.background && backgroundFeature(char.background) ? `<h3>Background Feature</h3><div>${entriesToHtml([backgroundFeature(char.background)])}</div>` : ""}
-${char.feats.length ? `<h3>Feats</h3><div>${char.feats.map(cf => `<span class="tag">${esc(cf.name)}</span>`).join("")}</div>` : ""}
+${chosenFeats(char).length ? `<h3>Feats</h3><div>${chosenFeats(char).map(cf => `<span class="tag">${esc(cf.name)}</span>`).join("")}</div>` : ""}
+${Object.entries(char.levelAsi || {}).some(([, sl]) => sl?.type === "asi" && sl.asi) ? `<h3>Ability Score Improvements</h3><div>${Object.entries(char.levelAsi || {}).filter(([, sl]) => sl?.type === "asi" && sl.asi).sort((a, b) => Number(a[0]) - Number(b[0])).map(([lvl, sl]) => {
+	const parts = sl.asi.mode === "1-1-1"
+		? (sl.asi.triple || []).map(a => `+1 ${ABILITY_LABELS[a]}`)
+		: [sl.asi.high ? `+2 ${ABILITY_LABELS[sl.asi.high]}` : null, sl.asi.low ? `+1 ${ABILITY_LABELS[sl.asi.low]}` : null].filter(Boolean);
+	return `<span class="tag">Lvl ${esc(lvl)}: ${esc(parts.join(", ") || "—")}</span>`;
+}).join("")}</div>` : ""}
 </div>
 <div><h3>Skills</h3><table>${ALL_SKILLS.map(sk => { const p = allProf.has(sk.name), b = scoreMod(s[sk.ability]) + (p ? pb_ : 0); return `<tr><td>${p ? "●" : "○"}</td><td>${esc(sk.name)}</td><td style="color:#888;font-size:10px;">${ABILITY_LABELS[sk.ability].slice(0,3)}</td><td style="text-align:right;font-weight:600;">${fmtMod(b)}</td></tr>`; }).join("")}</table></div>
 </div>
