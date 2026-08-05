@@ -406,20 +406,21 @@ function chosenFeats(char) {
 		.map(slot => slot.feat);
 }
 
-/** Sums the ability bonuses from every levelAsi slot set to type "asi" (same +2/+1 or +1/+1/+1
- * shape as racial/background ASI choices). Pass excludeLevel to omit one slot's own contribution —
- * used to figure out whether picking +2/+1 for that slot would push an ability past 20. */
+/** Sums the ability bonuses from every levelAsi slot set to type "asi". Per the actual level-up
+ * ASI rule (distinct from the species/background +2/+1-or-+1/+1/+1 shape): either +2 to one
+ * ability, or +1 each to two different abilities — never both a +2 and a +1 in the same slot.
+ * Pass excludeLevel to omit one slot's own contribution — used to figure out whether picking a
+ * bonus for that slot would push an ability past 20. */
 function levelAsiBonus(char, excludeLevel = null) {
 	const r = {};
 	Object.entries(char.levelAsi || {}).forEach(([lvl, slot]) => {
 		if (excludeLevel != null && String(lvl) === String(excludeLevel)) return;
 		if (!slot || slot.type !== "asi" || !slot.asi) return;
 		const v = slot.asi;
-		if (v.mode === "1-1-1") {
-			new Set((v.triple || []).slice(0, 3)).forEach(a => { r[a] = (r[a] || 0) + 1; });
-		} else {
-			if (v.high) r[v.high] = (r[v.high] || 0) + 2;
-			if (v.low && v.low !== v.high) r[v.low] = (r[v.low] || 0) + 1;
+		if (v.mode === "plus1x2") {
+			new Set((v.abilities || []).slice(0, 2)).forEach(a => { r[a] = (r[a] || 0) + 1; });
+		} else if (v.ability) {
+			r[v.ability] = (r[v.ability] || 0) + 2;
 		}
 	});
 	return r;
@@ -745,7 +746,7 @@ const EMPTY_CHAR = () => ({
 	bgAsi: {mode: "2-1", high: null, low: null, triple: []},
 	// Per-level-4/8/12/16/19(+class extras, e.g. Fighter 6/14, Rogue 10) ASI slots — see
 	// classAsiLevels(). Keyed by level (string, since object keys are always strings):
-	// {type: "feat"|"asi"|null, feat: {name,source}|null, asi: {mode,high,low,triple}|null}.
+	// {type: "feat"|"asi"|null, feat: {name,source}|null, asi: {mode: "plus2"|"plus1x2", ability, abilities}|null}.
 	levelAsi: {},
 });
 
@@ -1735,7 +1736,7 @@ const CB = {
 
 		const asiPickerHtml = level => {
 			const slot = this.getAsiSlot(level);
-			const asi = slot.asi || {mode: "2-1", high: null, low: null, triple: []};
+			const asi = slot.asi || {mode: "plus2", ability: null, abilities: []};
 			// Ability totals with THIS slot's own bonus excluded, so the cap check below reflects
 			// "would picking this push the ability past 20" rather than double-counting.
 			const scoreExcl = this.finalScores(level);
@@ -1743,28 +1744,23 @@ const CB = {
 			const canPlus1 = a => scoreExcl[a] + 1 <= 20;
 			return `
 				<div style="margin-bottom:8px;">
-					<button class="cb__mode-btn ${asi.mode !== "1-1-1" ? "cb__mode-btn--active" : ""}" data-asi-mode-level="${level}" data-asi-mode="2-1">+2 / +1</button>
-					<button class="cb__mode-btn ${asi.mode === "1-1-1" ? "cb__mode-btn--active" : ""}" data-asi-mode-level="${level}" data-asi-mode="1-1-1">+1 / +1 / +1</button>
+					<button class="cb__mode-btn ${asi.mode !== "plus1x2" ? "cb__mode-btn--active" : ""}" data-asi-mode-level="${level}" data-asi-mode="plus2">+2 to one ability</button>
+					<button class="cb__mode-btn ${asi.mode === "plus1x2" ? "cb__mode-btn--active" : ""}" data-asi-mode-level="${level}" data-asi-mode="plus1x2">+1 to two abilities</button>
 				</div>
-				${asi.mode === "1-1-1" ? `
-					<p class="cb__detail-meta">Choose 3 different abilities for +1 each:</p>
+				${asi.mode === "plus1x2" ? `
+					<p class="cb__detail-meta">Choose 2 different abilities for +1 each:</p>
 					<div>${ABILITIES.map(a => {
-						const picked = (asi.triple || []).includes(a);
-						const atLimit = !picked && (asi.triple || []).length >= 3;
+						const picked = (asi.abilities || []).includes(a);
+						const atLimit = !picked && (asi.abilities || []).length >= 2;
 						const capped = !picked && !canPlus1(a);
 						const disabled = atLimit || capped;
-						return `<span class="cb__pill cb__pill--blue" style="cursor:${disabled ? "not-allowed" : "pointer"};${picked ? "" : disabled ? "opacity:0.4;" : ""}" data-asi-triple-level="${level}" data-asi-triple="${a}" data-asi-triple-disabled="${disabled}" title="${capped ? "Would exceed the ability score cap of 20" : ""}">${picked ? "✓ " : ""}${ABILITY_LABELS[a]}</span>`;
+						return `<span class="cb__pill cb__pill--blue" style="cursor:${disabled ? "not-allowed" : "pointer"};${picked ? "" : disabled ? "opacity:0.4;" : ""}" data-asi-pair-level="${level}" data-asi-pair="${a}" data-asi-pair-disabled="${disabled}" title="${capped ? "Would exceed the ability score cap of 20" : ""}">${picked ? "✓ " : ""}${ABILITY_LABELS[a]}</span>`;
 					}).join("")}</div>
 				` : `
 					<p class="cb__detail-meta">+2 to:</p>
 					<div>${ABILITIES.map(a => {
-						const capped = asi.high !== a && !canPlus2(a);
-						return `<span class="cb__pill cb__pill--blue" style="cursor:${capped ? "not-allowed" : "pointer"};${asi.high === a ? "" : capped ? "opacity:0.4;" : ""}" data-asi-high-level="${level}" data-asi-high="${a}" data-asi-high-disabled="${capped}" title="${capped ? "Would exceed the ability score cap of 20" : ""}">${asi.high === a ? "✓ " : ""}${ABILITY_LABELS[a]}</span>`;
-					}).join("")}</div>
-					<p class="cb__detail-meta" style="margin-top:6px;">+1 to a different ability:</p>
-					<div>${ABILITIES.filter(a => a !== asi.high).map(a => {
-						const capped = asi.low !== a && !canPlus1(a);
-						return `<span class="cb__pill cb__pill--blue" style="cursor:${capped ? "not-allowed" : "pointer"};${asi.low === a ? "" : capped ? "opacity:0.4;" : ""}" data-asi-low-level="${level}" data-asi-low="${a}" data-asi-low-disabled="${capped}" title="${capped ? "Would exceed the ability score cap of 20" : ""}">${asi.low === a ? "✓ " : ""}${ABILITY_LABELS[a]}</span>`;
+						const capped = asi.ability !== a && !canPlus2(a);
+						return `<span class="cb__pill cb__pill--blue" style="cursor:${capped ? "not-allowed" : "pointer"};${asi.ability === a ? "" : capped ? "opacity:0.4;" : ""}" data-asi-single-level="${level}" data-asi-single="${a}" data-asi-single-disabled="${capped}" title="${capped ? "Would exceed the ability score cap of 20" : ""}">${asi.ability === a ? "✓ " : ""}${ABILITY_LABELS[a]}</span>`;
 					}).join("")}</div>
 				`}
 			`;
@@ -1799,7 +1795,7 @@ const CB = {
 				const level = el.dataset.slotTypeLevel, type = el.dataset.slotType;
 				const cur = this.getAsiSlot(level);
 				if (type === "feat") this.setAsiSlot(level, {type: "feat", asi: null});
-				else this.setAsiSlot(level, {type: "asi", feat: null, asi: cur.asi || {mode: "2-1", high: null, low: null, triple: []}});
+				else this.setAsiSlot(level, {type: "asi", feat: null, asi: cur.asi || {mode: "plus2", ability: null, abilities: []}});
 				this.activeAsiSlot = null;
 				this.render();
 			}));
@@ -1842,35 +1838,26 @@ const CB = {
 			document.querySelectorAll("[data-asi-mode-level]").forEach(el => el.addEventListener("click", () => {
 				const level = el.dataset.asiModeLevel, mode = el.dataset.asiMode;
 				const cur = this.getAsiSlot(level).asi || {};
-				const asi = mode === "1-1-1"
-					? {mode, high: null, low: null, triple: cur.triple || []}
-					: {mode, high: cur.high || null, low: cur.low || null, triple: []};
+				const asi = mode === "plus1x2"
+					? {mode, ability: null, abilities: cur.abilities || []}
+					: {mode, ability: cur.ability || null, abilities: []};
 				this.setAsiSlot(level, {asi});
 				this.render();
 			}));
-			document.querySelectorAll("[data-asi-high-level]").forEach(el => el.addEventListener("click", () => {
-				if (el.dataset.asiHighDisabled === "true") return;
-				const level = el.dataset.asiHighLevel, a = el.dataset.asiHigh;
-				const cur = this.getAsiSlot(level).asi || {mode: "2-1", high: null, low: null, triple: []};
-				const high = cur.high === a ? null : a;
-				const low = cur.low === high ? null : cur.low;
-				this.setAsiSlot(level, {asi: {...cur, mode: "2-1", high, low}});
+			document.querySelectorAll("[data-asi-single-level]").forEach(el => el.addEventListener("click", () => {
+				if (el.dataset.asiSingleDisabled === "true") return;
+				const level = el.dataset.asiSingleLevel, a = el.dataset.asiSingle;
+				const cur = this.getAsiSlot(level).asi || {mode: "plus2", ability: null, abilities: []};
+				this.setAsiSlot(level, {asi: {...cur, mode: "plus2", ability: cur.ability === a ? null : a}});
 				this.render();
 			}));
-			document.querySelectorAll("[data-asi-low-level]").forEach(el => el.addEventListener("click", () => {
-				if (el.dataset.asiLowDisabled === "true") return;
-				const level = el.dataset.asiLowLevel, a = el.dataset.asiLow;
-				const cur = this.getAsiSlot(level).asi || {mode: "2-1", high: null, low: null, triple: []};
-				this.setAsiSlot(level, {asi: {...cur, mode: "2-1", low: cur.low === a ? null : a}});
-				this.render();
-			}));
-			document.querySelectorAll("[data-asi-triple-level]").forEach(el => el.addEventListener("click", () => {
-				if (el.dataset.asiTripleDisabled === "true") return;
-				const level = el.dataset.asiTripleLevel, a = el.dataset.asiTriple;
-				const cur = this.getAsiSlot(level).asi || {mode: "1-1-1", high: null, low: null, triple: []};
-				const triple = cur.triple || [];
-				const next = triple.includes(a) ? triple.filter(x => x !== a) : [...triple, a];
-				this.setAsiSlot(level, {asi: {...cur, mode: "1-1-1", triple: next}});
+			document.querySelectorAll("[data-asi-pair-level]").forEach(el => el.addEventListener("click", () => {
+				if (el.dataset.asiPairDisabled === "true") return;
+				const level = el.dataset.asiPairLevel, a = el.dataset.asiPair;
+				const cur = this.getAsiSlot(level).asi || {mode: "plus1x2", ability: null, abilities: []};
+				const abilities = cur.abilities || [];
+				const next = abilities.includes(a) ? abilities.filter(x => x !== a) : [...abilities, a].slice(0, 2);
+				this.setAsiSlot(level, {asi: {...cur, mode: "plus1x2", abilities: next}});
 				this.render();
 			}));
 		}, 0);
@@ -2066,9 +2053,9 @@ const CB = {
 					${char.background && backgroundFeature(char.background) ? `<div class="cb__block"><p class="cb__section-header">Background Feature</p><div>${entriesToHtml([backgroundFeature(char.background)])}</div></div>` : ""}
 					${chosenFeats(char).length ? `<div class="cb__block"><p class="cb__section-header">Feats</p><div>${pillListHtml(chosenFeats(char).map(cf => ({name: cf.name, body: entriesToHtml(findFeat(cf.name, cf.source)?.entries)})), {idPrefix: "sheet-feats", colorClass: "cb__pill--orange"})}</div></div>` : ""}
 					${Object.entries(char.levelAsi || {}).some(([, s]) => s?.type === "asi" && s.asi) ? `<div class="cb__block"><p class="cb__section-header">Ability Score Improvements</p><div>${Object.entries(char.levelAsi || {}).filter(([, s]) => s?.type === "asi" && s.asi).sort((a, b) => Number(a[0]) - Number(b[0])).map(([lvl, s]) => {
-						const parts = s.asi.mode === "1-1-1"
-							? (s.asi.triple || []).map(a => `+1 ${ABILITY_LABELS[a]}`)
-							: [s.asi.high ? `+2 ${ABILITY_LABELS[s.asi.high]}` : null, s.asi.low ? `+1 ${ABILITY_LABELS[s.asi.low]}` : null].filter(Boolean);
+						const parts = s.asi.mode === "plus1x2"
+							? (s.asi.abilities || []).map(a => `+1 ${ABILITY_LABELS[a]}`)
+							: s.asi.ability ? [`+2 ${ABILITY_LABELS[s.asi.ability]}`] : [];
 						return `<span class="cb__pill cb__pill--static cb__pill--purple">Lvl ${esc(lvl)}: ${esc(parts.join(", ") || "—")}</span>`;
 					}).join("")}</div></div>` : ""}
 				</div>
@@ -2179,9 +2166,9 @@ ${char.race ? `<h3>Racial Traits</h3><div>${namedSubEntries(char.race.entries).m
 ${char.background && backgroundFeature(char.background) ? `<h3>Background Feature</h3><div>${entriesToHtml([backgroundFeature(char.background)])}</div>` : ""}
 ${chosenFeats(char).length ? `<h3>Feats</h3><div>${chosenFeats(char).map(cf => `<span class="tag">${esc(cf.name)}</span>`).join("")}</div>` : ""}
 ${Object.entries(char.levelAsi || {}).some(([, sl]) => sl?.type === "asi" && sl.asi) ? `<h3>Ability Score Improvements</h3><div>${Object.entries(char.levelAsi || {}).filter(([, sl]) => sl?.type === "asi" && sl.asi).sort((a, b) => Number(a[0]) - Number(b[0])).map(([lvl, sl]) => {
-	const parts = sl.asi.mode === "1-1-1"
-		? (sl.asi.triple || []).map(a => `+1 ${ABILITY_LABELS[a]}`)
-		: [sl.asi.high ? `+2 ${ABILITY_LABELS[sl.asi.high]}` : null, sl.asi.low ? `+1 ${ABILITY_LABELS[sl.asi.low]}` : null].filter(Boolean);
+	const parts = sl.asi.mode === "plus1x2"
+		? (sl.asi.abilities || []).map(a => `+1 ${ABILITY_LABELS[a]}`)
+		: sl.asi.ability ? [`+2 ${ABILITY_LABELS[sl.asi.ability]}`] : [];
 	return `<span class="tag">Lvl ${esc(lvl)}: ${esc(parts.join(", ") || "—")}</span>`;
 }).join("")}</div>` : ""}
 </div>
