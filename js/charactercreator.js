@@ -1814,7 +1814,13 @@ const CB = {
 				const key = `${match.name}|${match.source}`;
 				const curFeat = this.getAsiSlot(level).feat;
 				const isSameAsCurrent = curFeat && curFeat.name === match.name && curFeat.source === match.source;
-				if (!match.repeatable && !isSameAsCurrent && takenFeatKeys.has(key)) return;
+				if (!match.repeatable && !isSameAsCurrent && takenFeatKeys.has(key)) {
+					JqueryUtil.doToast({
+						type: "danger",
+						content: `"${match.name}" is already taken at another level — selection ignored.`,
+					});
+					return;
+				}
 				this.setAsiSlot(level, {type: "feat", feat: {name: match.name, source: match.source}, asi: null});
 				this.activeAsiSlot = null;
 				this.render();
