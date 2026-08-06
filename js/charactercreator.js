@@ -70,6 +70,108 @@ function profBonus(lvl) { return Math.ceil(lvl / 4) + 1; }
 function getHP(cls, conScore, lvl) { const faces = cls.hd?.faces || 8; return faces + scoreMod(conScore) + (lvl - 1) * (Math.floor(faces / 2) + 1 + scoreMod(conScore)); }
 function pbCost(s) { return s <= 13 ? s - 8 : (s - 8) + (s - 13); }
 function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+// ─── PLAY-MODE / SESSION TRACKING ──────────────────────────────────────────
+// Everything below supports the Sheet step's "Play" tracker (HP, spell slots, hit dice, rests,
+// class resources) — see renderPlayCard() further down. All of it reads real class/subclass data
+// rather than hardcoded tables, same policy as the rest of this file.
+
+/**
+ * Which ruleset (2014 "classic" vs 2024 "one") governs rest recovery for this character. Per-
+ * character override (char.play.rulesOverride) wins if set; otherwise this follows the site's own
+ * global Classic/Modern style switcher (the same settings menu that controls day/night mode —
+ * VetoolsConfig.get("styleSwitcher", "style"), values "classic"/"one", set in js/utils-config.js).
+ * Defaults to "one" (2024) if that global pref isn't available for some reason.
+ */
+function activeRulesEdition(char) {
+	if (char.play?.rulesOverride === "classic" || char.play?.rulesOverride === "one") return char.play.rulesOverride;
+	try {
+		const style = typeof VetoolsConfig !== "undefined" ? VetoolsConfig.get("styleSwitcher", "style") : null;
+		if (style === "classic" || style === "one") return style;
+	} catch (err) { /* VetoolsConfig not ready — fall through to default */ }
+	return "one";
+}
+
+/**
+ * Real per-character-level spell slot data for a caster, read directly from classTableGroups —
+ * the same tables maxSpellLevel() already parses — rather than a hardcoded slot table. Full/half/
+ * third casters carry a rowsSpellProgression array (one row per level, one column per spell level
+ * 1-9); Warlock's Pact Magic instead has plain "Spell Slots"/"Slot Level" columns. Returns null for
+ * non-casters.
+ */
+function spellSlotInfo(src, level) {
+	if (!src) return null;
+	const groups = src.classTableGroups || src.subclassTableGroups || [];
+	const progGroup = groups.find(g => g.rowsSpellProgression?.length);
+	if (progGroup) {
+		const row = progGroup.rowsSpellProgression[Math.min(level, progGroup.rowsSpellProgression.length) - 1] || [];
+		const slots = row.map(n => n || 0);
+		return slots.some(n => n > 0) ? {type: "slots", slots} : null;
+	}
+	const slotGroup = groups.find(g => (g.colLabels || []).some(l => /spell slots/i.test(l)) && (g.colLabels || []).some(l => /slot level/i.test(l)));
+	if (slotGroup) {
+		const slotsIdx = slotGroup.colLabels.findIndex(l => /spell slots/i.test(l));
+		const lvlIdx = slotGroup.colLabels.findIndex(l => /slot level/i.test(l));
+		const row = slotGroup.rows[Math.min(level, slotGroup.rows.length) - 1];
+		const count = Number(row?.[slotsIdx]) || 0;
+		// The "Slot Level" cell is a filter-tag string like "{@filter 3rd|spells|level=3|...}",
+		// not a plain number (same shape maxSpellLevel() already unpacks via this same regex) —
+		// a bare Number() on it silently fails to NaN/0, so extract the level= tag instead.
+		const lvlCell = row?.[lvlIdx];
+		const lvlMatch = typeof lvlCell === "string" && lvlCell.match(/level=(\d+)/);
+		const slotLevel = lvlMatch ? Number(lvlMatch[1]) : (Number(lvlCell) || 1);
+		if (count > 0) return {type: "pact", count, slotLevel};
+	}
+	return null;
+}
+
+// Curated allowlist of classTableGroups column labels that represent an actual per-day/per-rest
+// spendable resource (checked against real data — see the class-resource pass in project notes).
+// Deliberately narrower than "any numeric/dice column", since those same tables also carry
+// non-resource columns that look similar (Martial Arts/Sneak Attack damage dice, Rage Damage
+// bonus, Weapon Mastery count) — matching by label keeps those out.
+const RESOURCE_COL_LABELS = new Set(["rages", "channel divinity", "wild shape", "second wind", "focus points", "ki points", "sorcery points", "psi points", "superiority dice"]);
+// Of those, which recharge on a short rest (rather than only a long rest) — Ki/Focus Points,
+// Second Wind, Channel Divinity, Wild Shape, and Superiority Dice all do in both editions; Rages,
+// Sorcery Points, and Psi Points only recover on a long rest.
+const SHORT_REST_RESOURCE_LABELS = new Set(["channel divinity", "wild shape", "second wind", "focus points", "ki points", "superiority dice"]);
+
+/**
+ * Auto-detects trackable class resources for the current level from char.cls/char.subclass's
+ * classTableGroups. A cell can be a plain number, a numeric string, the literal "Unlimited"
+ * (Barbarian Rages at level 20 — tracked as max: Infinity, no pips), or a {type:"dice",
+ * toRoll:[...]} cell (e.g. Superiority Dice's "4d8" — the die *count* is the trackable max, faces
+ * kept only for display). Returns [] before a resource is actually available (cell is 0/blank).
+ */
+function classResourceDefs(char) {
+	const level = char.level;
+	const defs = [];
+	const scan = (entity, source) => {
+		(entity?.classTableGroups || []).forEach(tg => {
+			(tg.colLabels || []).forEach((rawLabel, i) => {
+				const label = String(rawLabel || "").replace(/\{@filter ([^|]+)\|.*?\}/, "$1").trim();
+				if (!RESOURCE_COL_LABELS.has(label.toLowerCase())) return;
+				const row = tg.rows?.[Math.min(level, tg.rows.length) - 1];
+				const cell = row?.[i];
+				let max = null, dieFaces = null;
+				if (cell && typeof cell === "object" && cell.type === "dice") {
+					max = cell.toRoll?.[0]?.number ?? null;
+					dieFaces = cell.toRoll?.[0]?.faces ?? null;
+				} else if (typeof cell === "string" && /unlimited/i.test(cell)) {
+					max = Infinity;
+				} else if (cell != null && cell !== "") {
+					const n = Number(cell);
+					if (!Number.isNaN(n)) max = n;
+				}
+				if (max === null || max === 0) return;
+				defs.push({key: `${source}:${label}`, label, max, dieFaces, shortRest: SHORT_REST_RESOURCE_LABELS.has(label.toLowerCase())});
+			});
+		});
+	};
+	scan(char.cls, "class");
+	scan(char.subclass, "subclass");
+	return defs;
+}
 /** Normalized lookup key shared by classFeatureLookup's keys and resolveClassFeature()'s queries —
  * name/className/level identify a feature, source disambiguates same-named features across books
  * (e.g. a feature reprinted/errata'd in a later source keeps the same name+level). */
@@ -233,6 +335,27 @@ function wireFeatureToggles() {
 			btn.classList.toggle("cb__feature-toggle--open", isHidden);
 		});
 	});
+}
+
+/**
+ * A row of clickable pips for a used/max resource (hit dice, spell slots, class resources, death
+ * saves) — used throughout renderPlayCard(). Click behavior mirrors the common spell-slot-tracker
+ * convention: clicking pip i sets the used-count boundary at that pip (fills it and everything
+ * before it if it was empty, empties it and everything after if it was already used), so both
+ * "spend one more" and "give one back" are a single click on the relevant pip. `max === Infinity`
+ * (Barbarian's unlimited Rages at level 20) renders as plain text instead of pips, since there's
+ * nothing to track. kind/key are stamped onto data attributes for the generic click handler in
+ * CB.wirePlayCard() to read.
+ */
+function pipRowHtml(kind, key, max, used) {
+	if (max === Infinity) return `<span class="cb__pip-unlimited">Unlimited</span>`;
+	if (!max || max <= 0) return "";
+	let pips = "";
+	for (let i = 0; i < max; i++) {
+		const isUsed = i < used;
+		pips += `<button type="button" class="cb__pip ${isUsed ? "cb__pip--used" : ""}" data-pip-kind="${esc(kind)}" data-pip-key="${esc(key)}" data-pip-idx="${i}" title="${isUsed ? "Click to restore" : "Click to spend"}"></button>`;
+	}
+	return `<div class="cb__pip-row">${pips}</div>`;
 }
 
 /**
@@ -710,6 +833,21 @@ function migrateLevelAsi(loadedChar) {
 	return levelAsi;
 }
 
+/** Upgrades a pre-play-tracker save (no char.play at all) to carry the current default session
+ * state — old saves simply have nothing to track yet, so this is a pure default-fill rather than
+ * a data transform. A save that already has a (possibly partial) char.play is merged over the
+ * defaults so a save from an older play-tracker version picks up any fields added since. */
+function migratePlay(loadedChar) {
+	const empty = EMPTY_CHAR().play;
+	if (!loadedChar.play || typeof loadedChar.play !== "object") return empty;
+	return {
+		...empty, ...loadedChar.play,
+		slotsUsed: {...loadedChar.play.slotsUsed},
+		resourcesUsed: {...loadedChar.play.resourcesUsed},
+		deathSaves: {...empty.deathSaves, ...loadedChar.play.deathSaves},
+	};
+}
+
 function findFeat(name, source) { return FEATS.find(f => f.name === name && f.source === source); }
 
 /** The background's "Feature: X" entry, e.g. {name: "Feature: Shelter of the Faithful", entries: [...]}. */
@@ -748,6 +886,23 @@ const EMPTY_CHAR = () => ({
 	// classAsiLevels(). Keyed by level (string, since object keys are always strings):
 	// {type: "feat"|"asi"|null, feat: {name,source}|null, asi: {mode: "plus2"|"plus1x2", ability, abilities}|null}.
 	levelAsi: {},
+	// Session/play-mode tracking (see renderPlayCard()) — everything needed to run this character
+	// at the table without leaving the sheet. hpCurrent: null means "undamaged, follows computed
+	// max"; once set it's an absolute number, clamped to computed max on read (see CB.hpCurrent()),
+	// so a level-up/re-spec that changes max HP doesn't strand it above the new max. slotsUsed is
+	// keyed by spell level (string, e.g. "1".."9") -> number of that level's slots expended.
+	// resourcesUsed is keyed by classResourceDefs()'s def.key -> number of uses expended.
+	// rulesOverride: null follows the site's global Classic/Modern switcher (see
+	// activeRulesEdition()); "classic"|"one" pins this character to one ruleset regardless.
+	play: {
+		hpCurrent: null, hpTemp: 0,
+		hitDiceUsed: 0,
+		slotsUsed: {}, pactSlotsUsed: 0,
+		resourcesUsed: {},
+		inspiration: false, exhaustion: 0,
+		deathSaves: {success: 0, fail: 0},
+		rulesOverride: null,
+	},
 });
 
 // ─── REAL DATA LOADING ─────────────────────────────────────────────────────
@@ -1099,6 +1254,7 @@ const CB = {
 		// once, generically, rather than per-step, so the Sheet step (which has no setTimeout wiring
 		// block of its own) gets it too.
 		wireFeatureToggles();
+		if (this.step === 10) this.wirePlayCard();
 	},
 
 	// ─── STEP 0: NAME ──────────────────────────────────────────────────────
@@ -2005,6 +2161,227 @@ const CB = {
 	},
 
 	// ─── STEP 10: SHEET ────────────────────────────────────────────────────
+	// ─── PLAY TRACKER (Sheet step) ─────────────────────────────────────────
+	// State lives in char.play (see EMPTY_CHAR()). Every mutator below ends by calling
+	// refreshPlayCard() rather than a full render() — that only replaces the #cb-play-card
+	// subtree, so clicking a pip doesn't reset scroll position or collapse expanded feature pills
+	// elsewhere on the Sheet step (same reasoning as the name-field/level-slider partial updates
+	// on the Name step).
+	hpMax() {
+		const s = this.finalScores();
+		return this.char.cls ? getHP(this.char.cls, s.con, this.char.level) : 0;
+	},
+	hpCurrent() {
+		const p = this.char.play, max = this.hpMax();
+		return p.hpCurrent == null ? max : Math.max(0, Math.min(p.hpCurrent, max));
+	},
+	hitDiceTotal() { return this.char.level; },
+
+	applyDamage(amount) {
+		if (!(amount > 0)) return;
+		const p = this.char.play;
+		let remaining = amount;
+		const tempUsed = Math.min(p.hpTemp, remaining);
+		p.hpTemp -= tempUsed; remaining -= tempUsed;
+		p.hpCurrent = Math.max(0, this.hpCurrent() - remaining);
+		this.refreshPlayCard();
+	},
+	applyHeal(amount) {
+		if (!(amount > 0)) return;
+		const p = this.char.play;
+		const newCur = Math.min(this.hpMax(), this.hpCurrent() + amount);
+		p.hpCurrent = newCur;
+		if (newCur > 0) p.deathSaves = {success: 0, fail: 0};
+		this.refreshPlayCard();
+	},
+	setTempHP(amount) {
+		this.char.play.hpTemp = Math.max(0, Math.floor(amount) || 0);
+		this.refreshPlayCard();
+	},
+	spendHitDie() {
+		const total = this.hitDiceTotal(), used = Math.min(this.char.play.hitDiceUsed, total);
+		if (total - used <= 0) return;
+		const faces = this.char.cls?.hd?.faces || 8;
+		const conMod = scoreMod(this.finalScores().con);
+		const heal = Math.max(0, Math.floor(faces / 2) + 1 + conMod);
+		this.char.play.hitDiceUsed = used + 1;
+		this.applyHeal(heal); // also refreshes the card
+	},
+	// Generic handler for every pip row (see pipRowHtml()) — "kind" picks which counter, "key"
+	// disambiguates within it (spell level, resource def key; unused for hit dice/pact/death saves).
+	setPipUsed(kind, key, idx) {
+		const p = this.char.play;
+		const read = () => {
+			switch (kind) {
+				case "hitdice": return p.hitDiceUsed;
+				case "pact": return p.pactSlotsUsed;
+				case "slot": return p.slotsUsed[key] || 0;
+				case "resource": return p.resourcesUsed[key] || 0;
+				case "death-success": return p.deathSaves.success;
+				case "death-fail": return p.deathSaves.fail;
+				default: return 0;
+			}
+		};
+		const used = read();
+		const next = idx < used ? idx : idx + 1;
+		switch (kind) {
+			case "hitdice": p.hitDiceUsed = next; break;
+			case "pact": p.pactSlotsUsed = next; break;
+			case "slot": p.slotsUsed[key] = next; break;
+			case "resource": p.resourcesUsed[key] = next; break;
+			case "death-success": p.deathSaves.success = next; break;
+			case "death-fail": p.deathSaves.fail = next; break;
+		}
+		this.refreshPlayCard();
+	},
+	shortRest() {
+		const p = this.char.play, char = this.char;
+		classResourceDefs(char).filter(d => d.shortRest).forEach(d => { p.resourcesUsed[d.key] = 0; });
+		// Pact Magic (Warlock) is the one spell-slot pool that recharges on a short rest rather
+		// than only a long rest — regular spell slots are untouched here.
+		const src = spellcastingSource(char.cls, char.subclass);
+		if (spellSlotInfo(src, char.level)?.type === "pact") p.pactSlotsUsed = 0;
+		this.refreshPlayCard();
+	},
+	longRest() {
+		const p = this.char.play;
+		p.hpCurrent = this.hpMax();
+		const total = this.hitDiceTotal();
+		p.hitDiceUsed = Math.max(0, p.hitDiceUsed - Math.max(1, Math.floor(total / 2)));
+		p.slotsUsed = {};
+		p.pactSlotsUsed = 0;
+		p.resourcesUsed = {};
+		p.deathSaves = {success: 0, fail: 0};
+		p.exhaustion = Math.max(0, p.exhaustion - 1);
+		this.refreshPlayCard();
+	},
+	setRulesOverride(val) { this.char.play.rulesOverride = val || null; this.refreshPlayCard(); },
+	adjustExhaustion(delta) { this.char.play.exhaustion = Math.max(0, Math.min(6, this.char.play.exhaustion + delta)); this.refreshPlayCard(); },
+	clearDeathSaves() { this.char.play.deathSaves = {success: 0, fail: 0}; this.refreshPlayCard(); },
+
+	renderPlayCard() {
+		const char = this.char;
+		if (!char.cls) return `<div class="cb__detail-card cb__play-card"><p class="cb__placeholder">Pick a class to unlock session tracking.</p></div>`;
+		const maxHP = this.hpMax(), curHP = this.hpCurrent(), tempHP = char.play.hpTemp || 0;
+		const faces = char.cls.hd?.faces || 8;
+		const hitDiceTotal = this.hitDiceTotal(), hitDiceUsed = Math.min(char.play.hitDiceUsed, hitDiceTotal);
+		const conMod = scoreMod(this.finalScores().con);
+		const avgHeal = Math.max(0, Math.floor(faces / 2) + 1 + conMod);
+		const src = spellcastingSource(char.cls, char.subclass);
+		const slotInfo = src ? spellSlotInfo(src, char.level) : null;
+		const resourceDefs = classResourceDefs(char);
+		let siteDefaultLabel = "Modern (2024)";
+		try { if (typeof VetoolsConfig !== "undefined" && VetoolsConfig.get("styleSwitcher", "style") === "classic") siteDefaultLabel = "Classic (2014)"; } catch (err) { /* VetoolsConfig not ready */ }
+
+		return `
+		<div class="cb__detail-card cb__play-card">
+			<div class="cb__play-hd">
+				<p class="cb__section-header cb__play-hd-title">Play Tracker</p>
+				<label class="cb__rules-select-wrap">Rest rules
+					<select id="cb-rules-select" class="cb__rules-select">
+						<option value="" ${!char.play.rulesOverride ? "selected" : ""}>Site default (${esc(siteDefaultLabel)})</option>
+						<option value="classic" ${char.play.rulesOverride === "classic" ? "selected" : ""}>Classic (2014)</option>
+						<option value="one" ${char.play.rulesOverride === "one" ? "selected" : ""}>Modern (2024)</option>
+					</select>
+				</label>
+			</div>
+			<div class="cb__play-grid">
+				<div class="cb__play-block">
+					<p class="cb__play-block-label">Hit Points</p>
+					<div class="cb__hp-display">
+						<span class="cb__hp-cur ${curHP === 0 ? "cb__hp-cur--zero" : ""}">${curHP}</span><span class="cb__hp-sep">/</span><span class="cb__hp-max">${maxHP}</span>
+						${tempHP > 0 ? `<span class="cb__hp-temp-badge">+${tempHP} temp</span>` : ""}
+					</div>
+					<div class="cb__hp-controls">
+						<input type="number" min="0" id="cb-hp-amount" class="cb__hp-input" placeholder="amount">
+						<button type="button" data-hp-dmg class="ve-btn ve-btn-xs ve-btn-danger">− Damage</button>
+						<button type="button" data-hp-heal class="ve-btn ve-btn-xs ve-btn-success">+ Heal</button>
+					</div>
+					<div class="cb__hp-controls">
+						<input type="number" min="0" id="cb-hp-temp-amount" class="cb__hp-input" placeholder="temp HP" value="${tempHP || ""}">
+						<button type="button" data-hp-temp-set class="ve-btn ve-btn-xs ve-btn-default">Set Temp HP</button>
+					</div>
+				</div>
+				<div class="cb__play-block">
+					<p class="cb__play-block-label">Hit Dice (d${faces}) — ${hitDiceTotal - hitDiceUsed}/${hitDiceTotal} left</p>
+					${pipRowHtml("hitdice", "", hitDiceTotal, hitDiceUsed)}
+					<button type="button" data-spend-hit-die class="ve-btn ve-btn-xs ve-btn-default" ${hitDiceTotal - hitDiceUsed <= 0 ? "disabled" : ""}>Spend Hit Die (~${avgHeal} HP)</button>
+				</div>
+				${slotInfo?.type === "slots" ? `
+				<div class="cb__play-block">
+					<p class="cb__play-block-label">Spell Slots</p>
+					${slotInfo.slots.map((max, i) => max > 0 ? `<div class="cb__pip-line"><span class="cb__pip-line-label">Lvl ${i + 1}</span>${pipRowHtml("slot", String(i + 1), max, char.play.slotsUsed[String(i + 1)] || 0)}</div>` : "").join("")}
+				</div>` : ""}
+				${slotInfo?.type === "pact" ? `
+				<div class="cb__play-block">
+					<p class="cb__play-block-label">Pact Magic (Lvl ${slotInfo.slotLevel} slots)</p>
+					${pipRowHtml("pact", "", slotInfo.count, char.play.pactSlotsUsed)}
+				</div>` : ""}
+				${resourceDefs.map(d => `
+				<div class="cb__play-block">
+					<p class="cb__play-block-label">${esc(d.label)}${d.dieFaces ? ` (d${d.dieFaces})` : ""}</p>
+					${pipRowHtml("resource", d.key, d.max, char.play.resourcesUsed[d.key] || 0)}
+				</div>`).join("")}
+				<div class="cb__play-block">
+					<p class="cb__play-block-label">Inspiration &amp; Exhaustion</p>
+					<label class="cb__inspiration-toggle"><input type="checkbox" id="cb-inspiration" ${char.play.inspiration ? "checked" : ""}> Inspiration</label>
+					<div class="cb__exhaustion-row">
+						<span>Exhaustion</span>
+						<button type="button" data-exhaustion-dec class="cb__pb-btn" ${char.play.exhaustion <= 0 ? "disabled" : ""}>−</button>
+						<span class="cb__pb-total">${char.play.exhaustion}</span>
+						<button type="button" data-exhaustion-inc class="cb__pb-btn" ${char.play.exhaustion >= 6 ? "disabled" : ""}>+</button>
+					</div>
+				</div>
+				${curHP === 0 ? `
+				<div class="cb__play-block">
+					<p class="cb__play-block-label">Death Saves</p>
+					<div class="cb__death-row"><span class="cb__death-label">Successes</span>${pipRowHtml("death-success", "", 3, char.play.deathSaves.success)}</div>
+					<div class="cb__death-row"><span class="cb__death-label">Failures</span>${pipRowHtml("death-fail", "", 3, char.play.deathSaves.fail)}</div>
+					<button type="button" data-death-clear class="ve-btn ve-btn-xs ve-btn-default">Reset Death Saves</button>
+				</div>` : ""}
+			</div>
+			<div class="cb__rest-row">
+				<button type="button" data-short-rest class="ve-btn ve-btn-default">Short Rest</button>
+				<button type="button" data-long-rest class="ve-btn ve-btn-primary">Long Rest</button>
+			</div>
+		</div>`;
+	},
+
+	wirePlayCard() {
+		const card = document.getElementById("cb-play-card");
+		if (!card) return;
+		card.querySelectorAll("[data-pip-kind]").forEach(el => el.addEventListener("click", () => {
+			this.setPipUsed(el.dataset.pipKind, el.dataset.pipKey, Number(el.dataset.pipIdx));
+		}));
+		card.querySelector("[data-hp-dmg]")?.addEventListener("click", () => {
+			const inp = document.getElementById("cb-hp-amount");
+			this.applyDamage(Number(inp?.value) || 0);
+			if (inp) inp.value = "";
+		});
+		card.querySelector("[data-hp-heal]")?.addEventListener("click", () => {
+			const inp = document.getElementById("cb-hp-amount");
+			this.applyHeal(Number(inp?.value) || 0);
+			if (inp) inp.value = "";
+		});
+		card.querySelector("[data-hp-temp-set]")?.addEventListener("click", () => {
+			this.setTempHP(Number(document.getElementById("cb-hp-temp-amount")?.value) || 0);
+		});
+		card.querySelector("[data-spend-hit-die]")?.addEventListener("click", () => this.spendHitDie());
+		card.querySelector("[data-short-rest]")?.addEventListener("click", () => this.shortRest());
+		card.querySelector("[data-long-rest]")?.addEventListener("click", () => this.longRest());
+		card.querySelector("[data-exhaustion-inc]")?.addEventListener("click", () => this.adjustExhaustion(1));
+		card.querySelector("[data-exhaustion-dec]")?.addEventListener("click", () => this.adjustExhaustion(-1));
+		card.querySelector("[data-death-clear]")?.addEventListener("click", () => this.clearDeathSaves());
+		card.querySelector("#cb-inspiration")?.addEventListener("change", e => { this.char.play.inspiration = e.target.checked; });
+		card.querySelector("#cb-rules-select")?.addEventListener("change", e => this.setRulesOverride(e.target.value));
+	},
+	refreshPlayCard() {
+		const card = document.getElementById("cb-play-card");
+		if (!card) return;
+		card.innerHTML = this.renderPlayCard();
+		this.wirePlayCard();
+	},
+
 	renderSheet() {
 		const finalScores = this.finalScores();
 		const allProf = this.allProfSkills();
@@ -2029,6 +2406,7 @@ const CB = {
 					</div>
 				</div>
 			</div>
+			<div id="cb-play-card">${this.renderPlayCard()}</div>
 			<div class="cb__sheet-grid">
 				<div>
 					${ABILITIES.map(a => {
@@ -2102,7 +2480,9 @@ const CB = {
 			// called from importJSON() below, for how a v1 (or unversioned) save gets upgraded.
 			// v3: flat char.feats array replaced by char.levelAsi (per-class-level feat-or-ASI
 			// slots) — see migrateLevelAsi(), also called from importJSON().
-			_version: 3,
+			// v4: added char.play (HP/slots/hit dice/rests/resources session tracking) — see
+			// migratePlay(), also called from importJSON().
+			_version: 4,
 			step: this.step,
 			char: this.char,
 		};
@@ -2124,6 +2504,7 @@ const CB = {
 				if (!loadedChar || typeof loadedChar !== "object") throw new Error("File does not contain character data.");
 				loadedChar.equipment = migrateEquipment(loadedChar.equipment);
 				loadedChar.levelAsi = migrateLevelAsi(loadedChar);
+				loadedChar.play = migratePlay(loadedChar);
 				delete loadedChar.feats;
 				this.char = {...EMPTY_CHAR(), ...loadedChar};
 				this.step = Number.isInteger(data?.step) ? data.step : 0;
