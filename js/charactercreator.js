@@ -11,6 +11,32 @@ import {ModalFilterClasses} from "./filter-classes-raw.js";
 // ─── DATA ────────────────────────────────────────────────────────────────────
 
 const ABILITY_LABELS = Parser.ATB_ABV_TO_FULL; // {str:"Strength", dex:"Dexterity", ...} — from parser.js
+
+// Standard PHB language list — unlike skills/tools, languages aren't derived from any loaded
+// catalog (there's no "language" entity type in the site's data), so this is a small, genuinely
+// fixed enumeration, same justification as ABILITY_LABELS being effectively hardcoded via Parser.
+const LANGUAGE_OPTIONS = ["Common", "Dwarvish", "Elvish", "Giant", "Gnomish", "Goblin", "Halfling", "Orc", "Abyssal", "Celestial", "Draconic", "Deep Speech", "Infernal", "Primordial", "Sylvan", "Undercommon"]
+	.map(l => ({key: `languageProf.${l.toLowerCase()}`, label: l}));
+
+/** Every real tool/gaming-set/instrument/misc-kit item in the loaded catalog (type codes AT/INS/
+ * GS/T — confirmed against the real data: Artisan's Tools, Instruments, Gaming Sets, and the
+ * catch-all "T" bucket that covers Thieves' Tools, Herbalism Kit, Navigator's Tools, etc.), deduped
+ * by name. Populated by buildToolOptions() once ITEMS finishes loading — used for any feat/item/
+ * feature's tool-proficiency choose-block (see featChoiceRequirements()). */
+let TOOL_OPTIONS = [];
+function buildToolOptions() {
+	const types = new Set(["AT", "INS", "GS", "T"]);
+	const seen = new Set();
+	TOOL_OPTIONS = [];
+	ITEMS.forEach(it => {
+		if (!types.has((it.type || "").split("|")[0])) return;
+		const key = it.name.toLowerCase().replace(/[^a-z0-9]+/g, "");
+		if (seen.has(key)) return;
+		seen.add(key);
+		TOOL_OPTIONS.push({key: `toolProf.${key}`, label: it.name});
+	});
+	TOOL_OPTIONS.sort((a, b) => a.label.localeCompare(b.label));
+}
 const ABILITIES = Parser.ABIL_ABVS; // ["str","dex","con","int","wis","cha"] — from parser.js
 const STANDARD_ARRAY = [15,14,13,12,10,8];
 const STEPS = ["Name","Race","Class","Subclass","Background","Abilities","Skills","Equipment","Feats","Spells","Sheet"];
@@ -62,6 +88,19 @@ let SPELLS = [];
 let ITEMS = [];
 let itemLookupExact = new Map();
 let itemLookupByName = new Map();
+
+// Populated at startup by loadFoundryEffectData() from the repo's Foundry-VTT "Active Effect"
+// overlay files (data/foundry-items.json, data/foundry-feats.json, data/class/foundry.json) —
+// see the EFFECTS ENGINE section below. These are Tier 2 for the live-stat pass: real structured
+// data, just sparser than items/feats' own native fields and absent entirely from the main
+// class/*.json (class/subclass features carry zero native mechanical fields — see
+// classFeatureEntryData()/foundryEffectsFor() below). Keyed the same way the matching native
+// lookup is keyed (buildItemLookup()/classFeatureKey()/subclassFeatureKey()) so a resolved
+// item/feat/feature can look its Tier 2 record straight up.
+let FOUNDRY_ITEMS = new Map();
+let FOUNDRY_FEATS = new Map();
+let FOUNDRY_CLASS_FEATURES = new Map();
+let FOUNDRY_SUBCLASS_FEATURES = new Map();
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 function scoreMod(s) { return Math.floor((s - 10) / 2); }
@@ -750,18 +789,32 @@ function equipItemRef(it) {
 	return {name, source: source || undefined};
 }
 
+/** Whether a resolved item should start equipped by default when its part is first added to
+ * char.equipment (see equipItemParts()) — armor, shields, and weapons auto-equip so the Sheet
+ * shows correct starting AC immediately; everything else (rope, a tinderbox, a holy symbol)
+ * starts unequipped. The player can still toggle either way afterward on the Sheet step. */
+function defaultEquipped(ref) {
+	const item = ref ? resolveItemRef(ref) : null;
+	if (!item) return false;
+	const typeCode = (item.type || "").split("|")[0];
+	if (["LA", "MA", "HA", "S"].includes(typeCode)) return true;
+	if (item.weaponCategory) return true;
+	return false;
+}
+
 /**
  * Splits one raw startingEquipment entry into its individually-describable parts: a plain entry
  * is one part, but an array entry (multiple items bundled into a single choice-row option, e.g.
  * "a martial weapon (your choice) + a shield") becomes one part per array element, each carrying
- * its own {label, ref} — so a bundle picked as a single option can still show one expandable pill
- * per real item inside it, rather than one pill for the whole bundle. See equipmentChoiceSets()
- * (builds these into char.equipment entries) and the Sheet step's equipment pill list (flattens
- * every entry's parts into the final pill row).
+ * its own {label, ref, equipped} — so a bundle picked as a single option can still show one
+ * expandable, individually-toggleable pill per real item inside it, rather than one pill for the
+ * whole bundle. See equipmentChoiceSets() (builds these into char.equipment entries) and the
+ * Sheet step's equipment pill list (flattens every entry's parts into the final pill row).
  */
 function equipItemParts(it) {
 	if (Array.isArray(it)) return it.flatMap(equipItemParts);
-	return [{label: equipItemLabel(it), ref: equipItemRef(it)}];
+	const ref = equipItemRef(it);
+	return [{label: equipItemLabel(it), ref, equipped: defaultEquipped(ref)}];
 }
 
 /** Renders one char.equipment entry's label safely — normally already a plain string (entry.label),
@@ -806,13 +859,19 @@ function equipmentChoiceSets(sets) {
  * equipmentChoiceSets()) — older saves (pre item-description refactor) stored plain display
  * strings with no recoverable item ref, so those become a single static (ref: null) part; entries
  * already in the new shape pass through unchanged. Called from importJSON().
+ *
+ * v5: parts gained `equipped` (see equipItemParts()) — a save from before that defaults each part
+ * to defaultEquipped()'s own armor/shield/weapon-type heuristic (matching what a fresh pick would
+ * get) rather than leaving every previously-saved item unequipped.
  */
 function migrateEquipment(equipment) {
 	if (!Array.isArray(equipment)) return [];
 	return equipment.map(e => {
-		if (e && typeof e === "object" && typeof e.label === "string" && Array.isArray(e.parts)) return e;
+		if (e && typeof e === "object" && typeof e.label === "string" && Array.isArray(e.parts)) {
+			return {...e, parts: e.parts.map(p => p.equipped === undefined ? {...p, equipped: defaultEquipped(p.ref)} : p)};
+		}
 		const label = typeof e === "string" ? e : equipItemLabel(e);
-		return {label, parts: [{label, ref: null}]};
+		return {label, parts: [{label, ref: null, equipped: false}]};
 	});
 }
 
@@ -844,6 +903,7 @@ function migratePlay(loadedChar) {
 		...empty, ...loadedChar.play,
 		slotsUsed: {...loadedChar.play.slotsUsed},
 		resourcesUsed: {...loadedChar.play.resourcesUsed},
+		itemCharges: {...loadedChar.play.itemCharges},
 		deathSaves: {...empty.deathSaves, ...loadedChar.play.deathSaves},
 	};
 }
@@ -892,6 +952,9 @@ const EMPTY_CHAR = () => ({
 	// so a level-up/re-spec that changes max HP doesn't strand it above the new max. slotsUsed is
 	// keyed by spell level (string, e.g. "1".."9") -> number of that level's slots expended.
 	// resourcesUsed is keyed by classResourceDefs()'s def.key -> number of uses expended.
+	// itemCharges is keyed by "<equipment entry index>:<part index>" (see toggleEquipped()) ->
+	// number of that item's charges expended — see chargeItemDefs() for which equipped items get
+	// a tracker row and how their max/recharge is read from native charges/recharge/rechargeAmount.
 	// rulesOverride: null follows the site's global Classic/Modern switcher (see
 	// activeRulesEdition()); "classic"|"one" pins this character to one ruleset regardless.
 	play: {
@@ -899,6 +962,7 @@ const EMPTY_CHAR = () => ({
 		hitDiceUsed: 0,
 		slotsUsed: {}, pactSlotsUsed: 0,
 		resourcesUsed: {},
+		itemCharges: {},
 		inspiration: false, exhaustion: 0,
 		deathSaves: {success: 0, fail: 0},
 		rulesOverride: null,
@@ -979,6 +1043,33 @@ function resolveItemRef(ref) {
 	return candidates.slice().sort((a, b) => (a.source || "").localeCompare(b.source || ""))[0];
 }
 
+/**
+ * Loads the Tier 2 Foundry-VTT effect overlay files directly (they're plain static JSON, not
+ * registered with DataLoader as a page/prop the way class/race/feat/item/spell data is — so this
+ * is a bare fetch via the same DataUtil.loadJSON() helper the framework itself uses for its own
+ * one-off generated-data files, e.g. SourceUtil's subclass-reprint lookup). Each file indexes by
+ * name+source (items/feats) or the same classFeatureKey()/subclassFeatureKey() the native feature
+ * lookups already use. Missing/unreachable files degrade to an empty index rather than failing
+ * character-creator startup — Tier 2 is a supplement, not a requirement.
+ */
+async function loadFoundryEffectData() {
+	const base = Renderer.get().baseUrl;
+	const indexBy = (arr, keyFn) => {
+		const m = new Map();
+		(arr || []).forEach(it => { const k = keyFn(it); if (k) m.set(k, it); });
+		return m;
+	};
+	const [fItems, fFeats, fClass] = await Promise.all([
+		DataUtil.loadJSON(`${base}data/foundry-items.json`).catch(() => ({item: []})),
+		DataUtil.loadJSON(`${base}data/foundry-feats.json`).catch(() => ({feat: []})),
+		DataUtil.loadJSON(`${base}data/class/foundry.json`).catch(() => ({classFeature: [], subclassFeature: []})),
+	]);
+	FOUNDRY_ITEMS = indexBy(fItems.item, it => it.name && `${it.name.toLowerCase()}|${(it.source || "").toLowerCase()}`);
+	FOUNDRY_FEATS = indexBy(fFeats.feat, it => it.name && `${it.name.toLowerCase()}|${(it.source || "").toLowerCase()}`);
+	FOUNDRY_CLASS_FEATURES = indexBy(fClass.classFeature, it => it.name && classFeatureKey(it.name, it.className, it.level, it.source || it.classSource));
+	FOUNDRY_SUBCLASS_FEATURES = indexBy(fClass.subclassFeature, it => it.name && subclassFeatureKey(it.name, it.className, it.subclassShortName, it.level, it.source || it.subclassSource));
+}
+
 async function loadRuleData() {
 	await Promise.all([
 		PrereleaseUtil.pInit(),
@@ -1012,6 +1103,8 @@ async function loadRuleData() {
 	]);
 	buildFeatureLookups();
 	buildItemLookup();
+	buildToolOptions();
+	await loadFoundryEffectData();
 
 	// Merge subclasses onto their parent classes (cls.subclasses[]) using the framework's own
 	// logic — the same static helper ModalFilterClasses uses internally when it loads its own
@@ -1038,6 +1131,547 @@ async function loadRuleData() {
 		modalFilterClasses.pPreloadHidden(),
 		modalFilterSpells.pPopulateHiddenWrapper(),
 	]);
+}
+
+// ─── EFFECTS ENGINE (mechanical modifiers → live Sheet stats) ─────────────────
+// Two data-driven tiers, no curated allowlist for the bulk of it (see project notes for the
+// full writeup of what was checked in the real data before this was designed):
+//   Tier 1 — native 5etools fields authored directly on the entity: item.bonusAc/ability/resist/
+//            modifySpeed/etc., feat.ability/resist/skillProficiencies/etc., and (found while
+//            grounding this pass) the *same* feat-shaped fields nested under a class/subclass
+//            feature's Tier 2 entryData — see nativeStructuredEffects() below, shared by both.
+//   Tier 2 — the Foundry-VTT "Active Effect" overlay (FOUNDRY_ITEMS/FOUNDRY_FEATS/
+//            FOUNDRY_CLASS_FEATURES/FOUNDRY_SUBCLASS_FEATURES) — covers grants Tier 1 has no
+//            field for at all (Tough's +HP/level, Fast Movement, Brutal Critical, save/skill
+//            advantage flags). Values are sometimes plain numbers, sometimes small formula
+//            strings like "+(2 * @details.level)" — see evalFoundryValue()/FOUNDRY_KEY_MAP below.
+// Every effect, from either tier, normalizes to {source: {type, name}, key, mode, value}.
+// collectEffects(char) flattens every equipped item + selected feat + unlocked class/subclass
+// feature into a list of these; finalScores() folds the ability.* ones in, derivedCombatStats()
+// folds in everything else.
+//
+// Known, deliberate gaps (flagged rather than silently dropped):
+//  - Player-choice proficiency grants with no fixed target (e.g. Resilient's "choose one ability
+//    you lack save proficiency in") have nothing to auto-apply *to* without a dedicated picker —
+//    out of scope this pass (same category as the granted-spells choose-blocks, but those got a
+//    picker per your call; this didn't). These show as a "choose a save/skill" note instead.
+//  - A handful of narrower Tier 2 keys (system.magicalBonus, system.damage.*, weapon mastery
+//    bonus dice, activities[attack].*) aren't mapped — see FOUNDRY_KEY_MAP's comment. They're
+//    real but low-frequency (<20 occurrences total across every source) and mostly duplicate what
+//    Tier 1's bonusWeapon/dmg1/dmg2 already covers for the same items.
+//  - Barbarian/Monk Unarmored Defense is hand-curated (see UNARMORED_DEFENSE by class name) —
+//    Foundry's own data deliberately excludes it (`ignoreSrdEffects`) since it's conditional on
+//    "wearing no armor," which their engine handles as a special AC-calc mode rather than a
+//    stackable effect. We *can* evaluate that condition here (equipped-state is tracked), so it's
+//    worth the one hardcoded exception rather than leaving out a rule this common.
+
+/** Foundry key (dot path) -> {key: normalized key template, mode}. Anything not listed here is a
+ * real Tier 2 effect we're choosing not to surface yet (see the gaps note above) rather than one
+ * we failed to find. */
+const FOUNDRY_KEY_MAP = {
+	"system.attributes.ac.bonus": {key: "ac", mode: "add"},
+	"system.attributes.hp.bonuses.overall": {key: "hpBonus", mode: "add"},
+	"system.attributes.hp.bonuses.level": {key: "hpBonus", mode: "addPerLevel"},
+	"system.attributes.movement.walk": {key: "speed.walk", mode: "addOrMultiply"},
+	"system.attributes.movement.fly": {key: "speed.fly", mode: "add"},
+	"system.attributes.movement.swim": {key: "speed.swim", mode: "add"},
+	"system.attributes.movement.climb": {key: "speed.climb", mode: "add"},
+	"system.attributes.movement.burrow": {key: "speed.burrow", mode: "add"},
+	"system.attributes.init.bonus": {key: "initiativeBonus", mode: "add"},
+	"system.bonuses.abilities.save": {key: "saveBonusAll", mode: "add"},
+	"system.bonuses.abilities.check": {key: "abilityCheckBonusAll", mode: "add"},
+	"system.bonuses.mwak.attack": {key: "attackBonus.mw", mode: "add"},
+	"system.bonuses.mwak.damage": {key: "damageBonus.mw", mode: "add"},
+	"system.bonuses.rwak.attack": {key: "attackBonus.rw", mode: "add"},
+	"system.bonuses.rwak.damage": {key: "damageBonus.rw", mode: "add"},
+	"system.bonuses.msak.attack": {key: "attackBonus.ms", mode: "add"},
+	"system.bonuses.msak.damage": {key: "damageBonus.ms", mode: "add"},
+	"system.bonuses.rsak.attack": {key: "attackBonus.rs", mode: "add"},
+	"system.bonuses.rsak.damage": {key: "damageBonus.rs", mode: "add"},
+	"system.attributes.senses.darkvision": {key: "sense.darkvision", mode: "max"},
+	"system.attributes.senses.blindsight": {key: "sense.blindsight", mode: "max"},
+	"system.attributes.senses.truesight": {key: "sense.truesight", mode: "max"},
+	"flags.dnd5e.jackOfAllTrades": {key: "flag.jackOfAllTrades", mode: "or"},
+	"flags.dnd5e.reliableTalent": {key: "flag.reliableTalent", mode: "or"},
+	"flags.dnd5e.initiativeAdv": {key: "advantage.initiative", mode: "or"},
+};
+// system.abilities.<abl>.value (ADD), .save.roll.mode/.check.roll.mode ("advantage"), and
+// system.skills.<skl>.bonuses.check/.roll.mode are handled by pattern match in mapFoundryChange()
+// below rather than one static entry per ability/skill.
+
+/** Evaluates one Foundry effect change's `value` against the character. Handles: plain numbers/
+ * booleans passed through as-is; the "advantage" roll-mode string; and small arithmetic formula
+ * strings (`"+(2 * @details.level)"`, `"+(sign(@attributes.movement.walk) * @scale.monk.
+ * unarmored-movement)"`) via token substitution + a guarded eval — safe here because this is our
+ * own bundled data file, not user input, and the whitelist regex refuses anything that isn't
+ * plain arithmetic before it ever reaches Function(). Returns null (effect skipped) if the
+ * formula references something we can't resolve, rather than silently mis-computing. */
+function evalFoundryValue(raw, char) {
+	if (typeof raw === "number" || typeof raw === "boolean") return raw;
+	if (typeof raw !== "string") return null;
+	const trimmed = raw.trim();
+	if (/^advantage$/i.test(trimmed)) return true;
+	if (/^-?\d+(\.\d+)?$/.test(trimmed)) return Number(trimmed);
+	let expr = trimmed.replace(/^\+\s*/, "");
+	let unresolved = false;
+	expr = expr.replace(/@details\.level/g, () => String(char.level || 0));
+	expr = expr.replace(/@scale\.([\w-]+)\.([\w-]+)/g, (_, cls, key) => {
+		const v = classScaleValue(char, key);
+		if (v == null) { unresolved = true; return "0"; }
+		return String(v);
+	});
+	if (/@/.test(expr)) unresolved = true; // any other @-token isn't one we handle — bail rather than guess
+	if (unresolved) return null;
+	expr = expr.replace(/\bsign\(/g, "Math.sign(").replace(/\bfloor\(/g, "Math.floor(").replace(/\bceil\(/g, "Math.ceil(").replace(/\babs\(/g, "Math.abs(");
+	if (!/^[-+*/().,\s\dMathsigflorceabMAX]*$/.test(expr)) return null; // whitelist guard — only arithmetic + the Math.* calls above should remain
+	try { return Function(`"use strict"; return (${expr});`)(); } catch (err) { return null; }
+}
+
+/** Best-effort lookup for a `@scale.<class>.<key>` token — searches the character's own class/
+ * subclass classTableGroups for a column whose label matches `key` (kebab-case -> space), at the
+ * current level, same table shape classResourceDefs()/spellSlotInfo() already scan. Returns null
+ * (not 0) when nothing matches, so evalFoundryValue() can tell "resolved to zero" apart from
+ * "couldn't find this scale at all" and skip the effect rather than silently apply a wrong 0. */
+function classScaleValue(char, scaleKey) {
+	const label = scaleKey.replace(/-/g, " ").toLowerCase();
+	const scan = entity => {
+		for (const tg of entity?.classTableGroups || []) {
+			const idx = (tg.colLabels || []).findIndex(l => String(l || "").replace(/\{@filter ([^|]+)\|.*?\}/, "$1").toLowerCase().trim() === label);
+			if (idx === -1) continue;
+			const row = tg.rows?.[Math.min(char.level, tg.rows.length) - 1];
+			const cell = row?.[idx];
+			if (cell == null || cell === "") return null;
+			if (typeof cell === "object" && cell.type === "dice") return cell.toRoll?.[0]?.number ?? null;
+			// Other typed cells (e.g. Monk's Unarmored Movement column uses {type:"bonusSpeed",
+			// value:N}) — fall back to a numeric .value if present, rather than only recognizing
+			// the "dice" shape.
+			if (typeof cell === "object" && typeof cell.value === "number") return cell.value;
+			const n = Number(cell);
+			return Number.isNaN(n) ? null : n;
+		}
+		return undefined; // this entity has no matching column at all — caller tries the other one
+	};
+	const fromClass = scan(char.cls);
+	if (fromClass !== undefined) return fromClass;
+	const fromSubclass = scan(char.subclass);
+	return fromSubclass !== undefined ? fromSubclass : null;
+}
+
+/** Foundry dnd5e system's fixed 3-letter skill abbreviations -> full skill name (lowercase, no
+ * spaces) matching how ALL_SKILLS/skillBonusOf() key everything else in this file. */
+const FOUNDRY_SKILL_ABV = {
+	acr: "acrobatics", ani: "animalhandling", arc: "arcana", ath: "athletics", dec: "deception",
+	his: "history", ins: "insight", itm: "intimidation", inv: "investigation", med: "medicine",
+	nat: "nature", prc: "perception", prf: "performance", per: "persuasion", rel: "religion",
+	slt: "sleightofhand", ste: "stealth", sur: "survival",
+};
+
+/** Normalizes one Tier 2 `effects[].changes[]` entry to {key, mode, value}, or null if this key
+ * isn't one we map (see the gaps note above FOUNDRY_KEY_MAP). Handles the per-ability/per-skill
+ * key families that would otherwise need one FOUNDRY_KEY_MAP row each. */
+function mapFoundryChange(change, char) {
+	const k = change.key;
+	let abilityMatch = k.match(/^system\.abilities\.(\w+)\.value$/);
+	if (abilityMatch) {
+		const val = evalFoundryValue(change.value, char);
+		if (val == null) return null;
+		return {key: `ability.${abilityMatch[1]}`, mode: change.mode === "OVERRIDE" ? "max" : "add", value: val};
+	}
+	abilityMatch = k.match(/^system\.abilities\.(\w+)\.save\.roll\.mode$/);
+	if (abilityMatch && evalFoundryValue(change.value, char) === true) return {key: `saveAdvantage.${abilityMatch[1]}`, mode: "or", value: true};
+	abilityMatch = k.match(/^system\.abilities\.(\w+)\.check\.roll\.mode$/);
+	if (abilityMatch && evalFoundryValue(change.value, char) === true) return {key: `abilityCheckAdvantage.${abilityMatch[1]}`, mode: "or", value: true};
+	let skillMatch = k.match(/^system\.skills\.(\w+)\.bonuses\.check$/);
+	if (skillMatch) {
+		const skillName = FOUNDRY_SKILL_ABV[skillMatch[1]];
+		if (!skillName) return null; // an abbreviation we don't recognize — skip rather than mis-key it
+		const val = evalFoundryValue(change.value, char);
+		return val == null ? null : {key: `skillBonus.${skillName}`, mode: "add", value: val};
+	}
+	skillMatch = k.match(/^system\.skills\.(\w+)\.roll\.mode$/);
+	if (skillMatch) {
+		const skillName = FOUNDRY_SKILL_ABV[skillMatch[1]];
+		if (skillName && evalFoundryValue(change.value, char) === true) return {key: `skillAdvantage.${skillName}`, mode: "or", value: true};
+		return null;
+	}
+	let traitMatch = k.match(/^system\.traits\.(dr|di|ci)\.value$/);
+	if (traitMatch && typeof change.value === "string") {
+		const bucket = {dr: "resist", di: "immune", ci: "conditionImmune"}[traitMatch[1]];
+		return {key: `${bucket}.${change.value.toLowerCase()}`, mode: "or", value: true};
+	}
+	const mapped = FOUNDRY_KEY_MAP[k];
+	if (!mapped) return null;
+	const val = evalFoundryValue(change.value, char);
+	if (val == null) return null;
+	if (mapped.mode === "addPerLevel") return {key: mapped.key, mode: "add", value: val * (char.level || 0)};
+	if (mapped.mode === "addOrMultiply") return change.mode === "MULTIPLY" ? {key: mapped.key, mode: "multiply", value: val} : {key: mapped.key, mode: "add", value: val};
+	if (mapped.mode === "or") return {key: mapped.key, mode: "or", value: !!val};
+	return {key: mapped.key, mode: mapped.mode, value: val};
+}
+
+/** Tier 1: reads the native feat-shaped structured fields shared by feats.json entries and a
+ * class/subclass feature's Tier 2 `entryData` block (same schema in both places). Only the
+ * *fixed* (non player-choice) grants are applied automatically; a `{choose: {...}}` block with
+ * no fixed target has nothing to auto-apply to (see the "known gaps" note above) and is skipped. */
+function nativeStructuredEffects(entity) {
+	const out = [];
+	if (!entity) return out;
+	// Ability-score grants use two *different* shapes depending on entity type, both real:
+	//  - items: entity.ability is a plain OBJECT, `{static: {<abl>: N}}` — N is an absolute score
+	//    to set TO if higher than current (Amulet of Health -> CON 19, Gauntlets of Ogre Power ->
+	//    STR 19), never additive despite the field being named "static".
+	//  - feats / entryData: entity.ability is an ARRAY of `{<abl>: N}` (small, genuinely additive,
+	//    e.g. Actor's {cha: 1}) or `{choose: {...}}` (player-choice, no fixed target — skipped,
+	//    same "known gap" as the other choose-blocks above; feat ability bumps chosen through the
+	//    Feats step's own ASI slots are already applied via the pre-existing levelAsi pathway, not
+	//    this engine, so this isn't a functional gap for the common case).
+	// Getting this wrong isn't just a wrong number: entity.ability.forEach() on the item (object)
+	// shape throws, so this distinction was verified against the real data before shipping.
+	if (Array.isArray(entity.ability)) {
+		entity.ability.forEach(a => {
+			if (!a || typeof a !== "object") return;
+			ABILITIES.forEach(abl => { if (typeof a[abl] === "number") out.push({key: `ability.${abl}`, mode: "add", value: a[abl]}); });
+		});
+	} else if (entity.ability && typeof entity.ability === "object" && entity.ability.static) {
+		Object.entries(entity.ability.static).forEach(([abl, v]) => out.push({key: `ability.${abl}`, mode: "max", value: v}));
+	}
+	const boolMap = (list, keyPrefix) => (list || []).forEach(entry => {
+		if (!entry || typeof entry !== "object") return;
+		Object.keys(entry).forEach(k => { if (k !== "choose" && entry[k] === true) out.push({key: `${keyPrefix}.${k.toLowerCase()}`, mode: "or", value: true}); });
+	});
+	boolMap(entity.skillProficiencies, "skillProf");
+	boolMap(entity.savingThrowProficiencies, "saveProf");
+	boolMap(entity.expertise, "skillExpertise");
+	boolMap(entity.weaponProficiencies, "weaponProf");
+	boolMap(entity.armorProficiencies, "armorProf");
+	boolMap(entity.toolProficiencies, "toolProf");
+	boolMap(entity.languageProficiencies, "languageProf");
+	(Array.isArray(entity.resist) ? entity.resist : []).forEach(r => { if (typeof r === "string") out.push({key: `resist.${r.toLowerCase()}`, mode: "or", value: true}); });
+	(Array.isArray(entity.immune) ? entity.immune : []).forEach(r => { if (typeof r === "string") out.push({key: `immune.${r.toLowerCase()}`, mode: "or", value: true}); });
+	(Array.isArray(entity.conditionImmune) ? entity.conditionImmune : []).forEach(r => { if (typeof r === "string") out.push({key: `conditionImmune.${r.toLowerCase()}`, mode: "or", value: true}); });
+	if (entity.senses && typeof entity.senses === "object") Object.entries(entity.senses).forEach(([k, v]) => { if (typeof v === "number") out.push({key: `sense.${k.toLowerCase()}`, mode: "max", value: v}); });
+	if (typeof entity.bonusAc === "string") { const n = parseInt(entity.bonusAc, 10); if (!Number.isNaN(n)) out.push({key: "ac", mode: "add", value: n}); }
+	if (typeof entity.bonusSavingThrow === "string") { const n = parseInt(entity.bonusSavingThrow, 10); if (!Number.isNaN(n)) out.push({key: "saveBonusAll", mode: "add", value: n}); }
+	if (typeof entity.bonusWeapon === "string") {
+		const n = parseInt(entity.bonusWeapon, 10);
+		if (!Number.isNaN(n)) ["attackBonus.mw", "damageBonus.mw", "attackBonus.rw", "damageBonus.rw"].forEach(key => out.push({key, mode: "add", value: n}));
+	}
+	if (typeof entity.bonusSpellAttack === "string") { const n = parseInt(entity.bonusSpellAttack, 10); if (!Number.isNaN(n)) out.push({key: "spellAttackBonus", mode: "add", value: n}); }
+	if (typeof entity.bonusSpellSaveDc === "string") { const n = parseInt(entity.bonusSpellSaveDc, 10); if (!Number.isNaN(n)) out.push({key: "spellSaveDcBonus", mode: "add", value: n}); }
+	if (entity.modifySpeed && typeof entity.modifySpeed === "object") {
+		if (entity.modifySpeed.static) Object.entries(entity.modifySpeed.static).forEach(([k, v]) => out.push({key: `speed.${k}`, mode: "max", value: v}));
+		if (entity.modifySpeed.multiply) Object.entries(entity.modifySpeed.multiply).forEach(([k, v]) => out.push({key: `speed.${k}`, mode: "multiply", value: v}));
+	}
+	return out;
+}
+
+/**
+ * Reads the player-choice ("choose") side of the same proficiency fields nativeStructuredEffects()
+ * reads the fixed side of — Skilled's "any combination of three skills or tools," Resilient's
+ * "choose one saving throw," etc. — and normalizes each into a pickable requirement:
+ * {id, label, count, options: [{key, label}]}. `key` in each option is already a fully-formed
+ * normalized effect key (e.g. "skillProf.stealth", "toolProf.thievestools") — collectEffects()
+ * turns a player's stored picks directly into effects with zero further translation, since the
+ * option keys already match the vocabulary it understands.
+ * Covers skillProficiencies/savingThrowProficiencies/toolProficiencies/languageProficiencies
+ * choose-blocks, and the combined skillToolLanguageProficiencies shape (Skilled: "any 3 of skill
+ * or tool"). Entity here is the same feat-shaped object nativeStructuredEffects() takes (a feat
+ * itself, or a class/subclass feature's entryData).
+ */
+function featChoiceRequirements(entity) {
+	if (!entity) return [];
+	const reqs = [];
+	const skillOptions = ALL_SKILLS.map(s => ({key: `skillProf.${s.name.toLowerCase()}`, label: s.name}));
+	const toolOptionsFor = from => {
+		if (!from || from.some(f => /^any/i.test(f))) return TOOL_OPTIONS;
+		return from.map(t => ({key: `toolProf.${String(t).toLowerCase().replace(/[^a-z0-9]+/g, "")}`, label: capitalizeWords(t)}));
+	};
+	(entity.savingThrowProficiencies || []).forEach((entry, i) => {
+		if (!entry?.choose?.from) return;
+		reqs.push({id: `save${i}`, label: "Saving Throw Proficiency", count: entry.choose.count || entry.choose.amount || 1, options: entry.choose.from.map(a => ({key: `saveProf.${a}`, label: ABILITY_LABELS[a] || a}))});
+	});
+	(entity.skillProficiencies || []).forEach((entry, i) => {
+		if (!entry?.choose) return;
+		const from = entry.choose.from;
+		const options = (!from || from.some(f => /^any/i.test(f))) ? skillOptions : from.filter(f => !/^any/i.test(f)).map(s => ({key: `skillProf.${String(s).toLowerCase()}`, label: capitalizeWords(s)}));
+		reqs.push({id: `skill${i}`, label: "Skill Proficiency", count: entry.choose.count || entry.choose.amount || 1, options});
+	});
+	(entity.toolProficiencies || []).forEach((entry, i) => {
+		if (!entry?.choose) return;
+		reqs.push({id: `tool${i}`, label: "Tool Proficiency", count: entry.choose.count || entry.choose.amount || 1, options: toolOptionsFor(entry.choose.from)});
+	});
+	(entity.languageProficiencies || []).forEach((entry, i) => {
+		if (!entry?.choose) return;
+		reqs.push({id: `lang${i}`, label: "Language", count: entry.choose.count || entry.choose.amount || 1, options: LANGUAGE_OPTIONS});
+	});
+	(entity.skillToolLanguageProficiencies || []).forEach((entry, i) => {
+		(entry?.choose || []).forEach((sub, j) => {
+			const options = [];
+			(sub.from || []).forEach(f => {
+				if (f === "anySkill") options.push(...skillOptions);
+				else if (f === "anyTool") options.push(...TOOL_OPTIONS);
+				else if (f === "anyLanguage") options.push(...LANGUAGE_OPTIONS);
+			});
+			reqs.push({id: `stl${i}_${j}`, label: "Skill or Tool Proficiency", count: sub.count || sub.amount || 1, options});
+		});
+	});
+	return reqs;
+}
+function capitalizeWords(s) { return String(s).replace(/\b\w/g, c => c.toUpperCase()); }
+
+/** Tier 2: reads one entity's `effects[].changes[]` (already-resolved Foundry record — see
+ * FOUNDRY_ITEMS/FOUNDRY_FEATS/FOUNDRY_CLASS_FEATURES/FOUNDRY_SUBCLASS_FEATURES) through
+ * mapFoundryChange(), dropping anything unmapped or unresolvable. */
+function foundryTierEffects(foundryEntity, char) {
+	if (!foundryEntity?.effects) return [];
+	return foundryEntity.effects.flatMap(eff => (eff.changes || []).map(ch => mapFoundryChange(ch, char)).filter(Boolean));
+}
+
+// Barbarian/Monk Unarmored Defense — see the "known gaps" note above FOUNDRY_KEY_MAP. The two
+// classes' rules text genuinely differs on shields: Barbarian's explicitly stacks with one ("You
+// can use a shield and still gain this benefit" — PHB/XPHB), Monk's explicitly excludes one
+// ("...aren't wearing armor or wielding a shield" — PHB/XPHB). allowShield encodes that per class
+// rather than treating both the same.
+const UNARMORED_DEFENSE = {Barbarian: {ability: "con", allowShield: true}, Monk: {ability: "wis", allowShield: false}};
+/** Returns {label, ability} if the character has an Unarmored Defense feature unlocked from
+ * their class AND the shield rule for that class's version of it is satisfied, else null.
+ * Doesn't check "is armor equipped" — derivedCombatStats() does that before calling this (it
+ * already resolves equipped items for the AC calc anyway). */
+function unarmoredDefenseInfo(char, hasShield) {
+	const cfg = UNARMORED_DEFENSE[char.cls?.name];
+	if (!cfg || (hasShield && !cfg.allowShield) || !char.cls) return null;
+	const has = classFeatureRefs(char.cls).some(f => f.ref.level <= char.level && /^unarmored defense$/i.test(f.ref.name));
+	return has ? {label: "Unarmored Defense", ability: cfg.ability} : null;
+}
+
+/** One equipped item's full effect list (Tier 1 native fields + Tier 2 Foundry overlay). */
+function itemEffects(item, char) {
+	if (!item) return [];
+	const foundry = FOUNDRY_ITEMS.get(`${item.name.toLowerCase()}|${(item.source || "").toLowerCase()}`);
+	return [...nativeStructuredEffects(item), ...foundryTierEffects(foundry, char)];
+}
+/** One feat's full effect list. */
+function featEffects(feat, char) {
+	if (!feat) return [];
+	const foundry = FOUNDRY_FEATS.get(`${feat.name.toLowerCase()}|${(feat.source || "").toLowerCase()}`);
+	return [...nativeStructuredEffects(feat), ...foundryTierEffects(foundry, char)];
+}
+/** One class/subclass feature's full effect list — Tier 1 here means its Tier 2 file's own
+ * `entryData` block (same native-field schema as feats, just carried in the overlay file since
+ * the base class/*.json has no mechanical fields at all — see the module comment above). */
+function classFeatureEffects(foundryEntity, char) {
+	if (!foundryEntity) return [];
+	return [...nativeStructuredEffects(foundryEntity.entryData), ...foundryTierEffects(foundryEntity, char)];
+}
+
+/** Every equipped item, resolved to its real catalog entity — shared by collectEffects() and the
+ * AC calc's armor/shield lookup. */
+function equippedResolvedItems(char) {
+	return (char.equipment || [])
+		.flatMap(entry => entry.parts || [])
+		.filter(part => part.equipped && part.ref)
+		.map(part => resolveItemRef(part.ref))
+		.filter(Boolean);
+}
+
+/**
+ * Flattens every mechanical effect currently in play for this character: equipped items, all
+ * selected feats (chosenFeats() — always-on, no toggle), and every class/subclass feature
+ * unlocked at the current level (same `.ref.level <= char.level` filter the Sheet's feature pills
+ * already use). This is the single list finalScores() and derivedCombatStats() both fold onto the
+ * character's base numbers.
+ */
+function collectEffects(char) {
+	const out = [];
+	equippedResolvedItems(char).forEach(item => {
+		itemEffects(item, char).forEach(e => out.push({source: {type: "item", name: item.name}, ...e}));
+	});
+	chosenFeats(char).forEach(fRef => {
+		const feat = findFeat(fRef.name, fRef.source);
+		featEffects(feat, char).forEach(e => out.push({source: {type: "feat", name: fRef.name}, ...e}));
+	});
+	// Player-choice proficiency picks (Skilled/Resilient-style) — stored per ASI slot alongside
+	// the feat itself (see setFeatChoice()/toggleFeatChoiceOption()); each stored option key is
+	// already a normalized effect key (see featChoiceRequirements()), so no further translation
+	// is needed here.
+	Object.entries(char.levelAsi || {}).forEach(([, slot]) => {
+		if (slot?.type !== "feat" || !slot.feat || !slot.featChoice) return;
+		Object.values(slot.featChoice).forEach(picked => (picked || []).forEach(key => out.push({source: {type: "feat", name: slot.feat.name}, key, mode: "or", value: true})));
+	});
+	if (char.cls) {
+		classFeatureRefs(char.cls).filter(f => f.ref.level <= char.level).forEach(f => {
+			const foundry = FOUNDRY_CLASS_FEATURES.get(classFeatureKey(f.ref.name, f.ref.className, f.ref.level, f.ref.source || f.ref.classSource));
+			classFeatureEffects(foundry, char).forEach(e => out.push({source: {type: "classFeature", name: f.ref.name}, ...e}));
+		});
+	}
+	if (char.subclass) {
+		subclassFeatureRefs(char.subclass).filter(f => f.ref.level <= char.level).forEach(f => {
+			const foundry = FOUNDRY_SUBCLASS_FEATURES.get(subclassFeatureKey(f.ref.name, f.ref.className, f.ref.subclassShortName, f.ref.level, f.ref.source || f.ref.subclassSource));
+			classFeatureEffects(foundry, char).forEach(e => out.push({source: {type: "subclassFeature", name: f.ref.name}, ...e}));
+		});
+	}
+	return out;
+}
+
+/** Parses a rechargeAmount dice string (e.g. `"{@dice 1d6+4}"`, or occasionally a bare number) to
+ * its average value, for the Play Tracker's automatic partial-recharge-on-rest calc — rolling for
+ * an exact number isn't worth a dice-roll UI for what's meant to be a quick session tracker. */
+function diceAverage(rechargeAmount) {
+	if (!rechargeAmount) return null;
+	const tagMatch = String(rechargeAmount).match(/\{@dice ([^}|]+)/);
+	const expr = tagMatch ? tagMatch[1] : String(rechargeAmount);
+	const diceMatch = expr.match(/(\d+)d(\d+)/);
+	if (!diceMatch) { const n = Number(expr); return Number.isNaN(n) ? null : n; }
+	let avg = Number(diceMatch[1]) * (Number(diceMatch[2]) + 1) / 2;
+	const bonusMatch = expr.match(/[+-]\s*\d+\s*$/);
+	if (bonusMatch) avg += Number(bonusMatch[0].replace(/\s+/g, ""));
+	return Math.round(avg);
+}
+
+/**
+ * Equipped items with native limited-use charges (items.json's charges/recharge/rechargeAmount —
+ * present on 275/2428 items) get a row in the Play Tracker alongside hit dice/spell slots/class
+ * resources, per your call to keep consumables in the same card rather than a separate one.
+ * Returns [{key, label, max, recharge, rechargeAmount}] — key is the same "<entryIdx>:<partIdx>"
+ * address toggleEquipped() already uses for that part, so char.play.itemCharges keys off it
+ * directly without a second id scheme.
+ */
+function chargeItemDefs(char) {
+	const out = [];
+	(char.equipment || []).forEach((entry, entryIdx) => {
+		(entry.parts || []).forEach((part, partIdx) => {
+			if (!part.equipped || !part.ref) return;
+			const item = resolveItemRef(part.ref);
+			if (!item || typeof item.charges !== "number") return;
+			out.push({key: `${entryIdx}:${partIdx}`, label: item.name, max: item.charges, recharge: item.recharge || null, rechargeAmount: item.rechargeAmount || null});
+		});
+	});
+	return out;
+}
+const RECHARGE_LABEL = {dawn: "at dawn", dusk: "at dusk", midnight: "at midnight", restLong: "on a long rest", special: "on a special trigger (reset manually)"};
+
+// ─── GRANTED SPELLS (feat additionalSpells) ────────────────────────────────────
+// Scope: feat-granted spells only this pass (Magic Initiate, Fey Touched, Ritual Caster, dragon-
+// mark feats, etc. — chosen through the same ASI slots feats already use). Item-granted and
+// subclass-domain-spell additionalSpells use the identical schema but aren't wired up yet — an
+// explicit trim, not a silent gap: see the project notes on this pass.
+
+/** Parses one `choose` filter-query string (e.g. "level=1|class=Wizard|components & miscellaneous=ritual")
+ * into {level, className, ritualOnly, schools}. This is the site's own filter-string format (same
+ * idea as the `{@filter ...}` tags seen in class tables), just applied here to a spell list. */
+function parseSpellChooseQuery(query) {
+	const out = {level: null, className: null, ritualOnly: false, schools: null};
+	String(query).split("|").forEach(part => {
+		const eq = part.indexOf("=");
+		if (eq === -1) return;
+		const k = part.slice(0, eq).trim(), v = part.slice(eq + 1).trim();
+		if (k === "level") out.level = Number(v);
+		else if (k === "class") out.className = v;
+		else if (/ritual/i.test(k)) out.ritualOnly = /ritual/i.test(v);
+		else if (k === "school") out.schools = v.split(";"); // spell.school is already this same single-letter code (V/E/D/etc.) — no translation needed
+	});
+	return out;
+}
+/** Filters the real loaded SPELLS list by one parsed choose-query — class membership reuses
+ * sp.classes.fromClassList (name match only, same field the Spells step's own class-spell-list
+ * filtering already reads — see spellsAvailableFor()-adjacent code above). */
+function spellsForChooseQuery(query) {
+	const q = parseSpellChooseQuery(query);
+	return SPELLS.filter(sp => {
+		if (q.level != null && sp.level !== q.level) return false;
+		if (q.className && !(sp.classes?.fromClassList || []).some(c => c.name === q.className)) return false;
+		if (q.ritualOnly && !sp.meta?.ritual) return false;
+		if (q.schools && !q.schools.includes(sp.school)) return false;
+		return true;
+	});
+}
+/** Resolves a plain spell UID string ("misty step", "fog cloud|xphb") — the *fixed*, no-choice
+ * side of an additionalSpells block — to the real loaded spell entity. */
+function resolveSpellUid(uid) {
+	const [namePart, sourcePart] = String(uid).split("|");
+	const name = namePart.trim().toLowerCase();
+	if (sourcePart) return SPELLS.find(sp => sp.name.toLowerCase() === name && sp.source.toLowerCase() === sourcePart.trim().toLowerCase());
+	return SPELLS.find(sp => sp.name.toLowerCase() === name);
+}
+function unitFromSpellEntry(e, id, mode, freqLabel) {
+	if (typeof e === "string") return {id, mode, fixed: e, count: 1, freqLabel};
+	return {id, mode, query: e.choose, count: e.count || 1, freqLabel};
+}
+/**
+ * Flattens one additionalSpells array entry (one "flavor" — e.g. Magic Initiate's "Wizard
+ * Spells") into flat grant units: {id, mode, query|fixed, count, freqLabel}. `query` needs a
+ * picker (spellsForChooseQuery()); `fixed` is a direct UID needing no choice at all.
+ * mode is "known" (always known, no slot), "prepared" (always prepared, no slot), or "innate"
+ * (castable without a slot at the given frequency — freqLabel is the display text for that).
+ * A numeric top-level key (Ritual Caster XPHB's "prepared": {"1":[...], "5":[...], ...}) is
+ * treated as a character-level gate — only included once char.level reaches it; "_" and any
+ * non-numeric key (the rare dragonmark "s1".."s5" stage keys) are always included, since we don't
+ * model feat-repetition staging — a small, explicit simplification, not a silent one.
+ * `expanded` blocks (adds to a spell LIST rather than granting an actually-castable spell) are
+ * skipped entirely — same reasoning.
+ */
+function flattenAdditionalSpellsBlock(block, char) {
+	const units = [];
+	const levelGateOk = key => key === "_" || Number.isNaN(Number(key)) || Number(key) <= (char.level || 0);
+	const walkFlat = (obj, mode) => {
+		Object.entries(obj || {}).forEach(([key, arr]) => {
+			if (!levelGateOk(key)) return;
+			(arr || []).forEach((e, i) => units.push(unitFromSpellEntry(e, `${mode}_${key}_${i}`, mode, null)));
+		});
+	};
+	if (block.known) walkFlat(block.known, "known");
+	if (block.prepared) walkFlat(block.prepared, "prepared");
+	if (block.innate) {
+		Object.entries(block.innate).forEach(([levelKey, freqObj]) => {
+			if (!levelGateOk(levelKey)) return;
+			Object.entries(freqObj || {}).forEach(([freqType, val]) => {
+				const freqEntries = Array.isArray(val) ? {"1": val} : val; // "will"/"ritual" are sometimes a flat array (no count subdivision)
+				Object.entries(freqEntries || {}).forEach(([freqCount, arr]) => {
+					const n = freqCount.replace(/\D/g, "") || "1";
+					const freqLabel = freqType === "will" ? "at will" : freqType === "ritual" ? "as a ritual only" : `${n}/${freqType === "daily" ? "day" : "rest"}`;
+					(arr || []).forEach((e, i) => units.push(unitFromSpellEntry(e, `innate_${levelKey}_${freqType}_${freqCount}_${i}`, "innate", freqLabel)));
+				});
+			});
+		});
+	}
+	return units;
+}
+/** The currently-active additionalSpells "flavor" (array entry) for one ASI slot's feat — the
+ * single entry if there's only one, or whichever one the player picked via setFeatSpellFlavor()
+ * if the feat offers several (Magic Initiate's per-class options). */
+function activeSpellFlavor(feat, slot) {
+	const blocks = feat?.additionalSpells;
+	if (!blocks?.length) return null;
+	if (blocks.length === 1) return blocks[0];
+	const flavor = slot.featSpellChoice?.flavor;
+	return blocks.find(b => b.name === flavor) || null;
+}
+/**
+ * Every feat-granted spell currently in play, across all ASI slots — fixed grants resolved
+ * automatically, choice-based ones resolved from the player's stored picks (setFeatSpellPick()).
+ * Used both for the Feats step's own "already granted" summary and the Sheet's Granted Spells
+ * block, so the two can never disagree about what's actually active.
+ */
+function grantedSpellsForChar(char) {
+	const out = [];
+	Object.entries(char.levelAsi || {}).forEach(([, slot]) => {
+		if (slot?.type !== "feat" || !slot.feat) return;
+		const feat = findFeat(slot.feat.name, slot.feat.source);
+		const activeBlock = activeSpellFlavor(feat, slot);
+		if (!activeBlock) return;
+		flattenAdditionalSpellsBlock(activeBlock, char).forEach(unit => {
+			if (unit.fixed) {
+				const sp = resolveSpellUid(unit.fixed);
+				if (sp) out.push({spell: sp, mode: unit.mode, freqLabel: unit.freqLabel, sourceFeat: slot.feat.name, unitId: unit.id});
+			} else {
+				((slot.featSpellChoice?.picks || {})[unit.id] || []).forEach(p => {
+					const sp = SPELLS.find(s => s.name === p.name && s.source === p.source);
+					if (sp) out.push({spell: sp, mode: unit.mode, freqLabel: unit.freqLabel, sourceFeat: slot.feat.name, unitId: unit.id});
+				});
+			}
+		});
+	});
+	return out;
 }
 
 const CB = {
@@ -1145,11 +1779,48 @@ const CB = {
 			b = {...this.char.manual};
 		}
 		ABILITIES.forEach(a => { b[a] = (b[a] || 10) + (racial[a] || 0) + (bgAsi[a] || 0) + (lvlAsi[a] || 0); });
+		// Fold in item/feat/class-or-subclass-feature ability-score effects (Amulet of Health's
+		// set-to-19 CON, Primal Champion's +4 STR/CON, etc.) — see collectEffects() in the EFFECTS
+		// ENGINE section. Doesn't depend on ability scores itself, so it's safe to layer on last.
+		const abilityEffects = collectEffects(this.char).filter(e => e.key.startsWith("ability."));
+		ABILITIES.forEach(a => {
+			const forAbl = abilityEffects.filter(e => e.key === `ability.${a}`);
+			const add = forAbl.filter(e => e.mode === "add").reduce((s, e) => s + (Number(e.value) || 0), 0);
+			const maxes = forAbl.filter(e => e.mode === "max").map(e => Number(e.value) || 0);
+			b[a] += add;
+			if (maxes.length) b[a] = Math.max(b[a], ...maxes);
+		});
 		return b;
 	},
 	getAsiSlot(level) { return (this.char.levelAsi || {})[level] || {type: null, feat: null, asi: null}; },
 	setAsiSlot(level, patch) {
 		this.char.levelAsi = {...(this.char.levelAsi || {}), [level]: {...this.getAsiSlot(level), ...patch}};
+	},
+	/** Player-choice proficiency picks for the feat currently in this ASI slot (Skilled/Resilient-
+	 * style — see featChoiceRequirements()). Keyed by requirement id -> array of selected option
+	 * keys; a fresh feat pick starts with none, cleared out via setAsiSlot's {featChoice: {}}
+	 * whenever the slot's feat itself changes (see the feat-pick handlers in renderFeats()). */
+	getFeatChoice(level, reqId) { return (this.getAsiSlot(level).featChoice || {})[reqId] || []; },
+	toggleFeatChoiceOption(level, reqId, optKey, maxCount) {
+		const cur = this.getFeatChoice(level, reqId);
+		const next = cur.includes(optKey) ? cur.filter(k => k !== optKey) : cur.length < maxCount ? [...cur, optKey] : cur;
+		const featChoice = {...(this.getAsiSlot(level).featChoice || {}), [reqId]: next};
+		this.setAsiSlot(level, {featChoice});
+	},
+	/** Which additionalSpells "flavor" (Magic Initiate's per-class option) this ASI slot's feat is
+	 * using — see activeSpellFlavor(). Switching flavor clears any spells already picked, since a
+	 * different class means a different valid spell pool (last-picked spells for the old class
+	 * wouldn't even pass spellsForChooseQuery() for the new one). */
+	setFeatSpellFlavor(level, flavorName) {
+		this.setAsiSlot(level, {featSpellChoice: {flavor: flavorName, picks: {}}});
+	},
+	toggleFeatSpellPick(level, unitId, name, source, maxCount) {
+		const cur = this.getAsiSlot(level).featSpellChoice || {flavor: null, picks: {}};
+		const picks = cur.picks || {};
+		const list = picks[unitId] || [];
+		const exists = list.some(p => p.name === name && p.source === source);
+		const next = exists ? list.filter(p => !(p.name === name && p.source === source)) : (list.length < maxCount ? [...list, {name, source}] : list);
+		this.setAsiSlot(level, {featSpellChoice: {...cur, picks: {...picks, [unitId]: next}}});
 	},
 	pb() { return profBonus(this.char.level); },
 	bgSkills() { return backgroundSkillNames(this.char.background); },
@@ -1254,7 +1925,15 @@ const CB = {
 		// once, generically, rather than per-step, so the Sheet step (which has no setTimeout wiring
 		// block of its own) gets it too.
 		wireFeatureToggles();
-		if (this.step === 10) this.wirePlayCard();
+		if (this.step === 10) {
+			this.wirePlayCard();
+			body.querySelectorAll("[data-equip-toggle]").forEach(cb => {
+				cb.addEventListener("change", () => {
+					const [entryIdx, partIdx] = cb.dataset.equipToggle.split(":").map(Number);
+					this.toggleEquipped(entryIdx, partIdx);
+				});
+			});
+		}
 	},
 
 	// ─── STEP 0: NAME ──────────────────────────────────────────────────────
@@ -1922,6 +2601,66 @@ const CB = {
 			`;
 		};
 
+		const featChoicePickerHtml = level => {
+			const slot = this.getAsiSlot(level);
+			if (!slot.feat) return "";
+			const feat = findFeat(slot.feat.name, slot.feat.source);
+			const reqs = featChoiceRequirements(feat);
+			if (!reqs.length) return "";
+			return `
+				<div class="cb__block">
+					${reqs.map(req => {
+						const picked = this.getFeatChoice(level, req.id);
+						return `
+							<p class="cb__detail-meta">${esc(req.label)} — choose ${req.count}${picked.length ? ` (${picked.length}/${req.count} picked)` : ""}:</p>
+							<div>${req.options.map(opt => {
+								const isPicked = picked.includes(opt.key);
+								const atLimit = !isPicked && picked.length >= req.count;
+								return `<span class="cb__pill cb__pill--blue" style="cursor:${atLimit ? "not-allowed" : "pointer"};${isPicked ? "" : atLimit ? "opacity:0.4;" : ""}" data-feat-choice-level="${level}" data-feat-choice-req="${esc(req.id)}" data-feat-choice-opt="${esc(opt.key)}" data-feat-choice-count="${req.count}">${isPicked ? "✓ " : ""}${esc(opt.label)}</span>`;
+							}).join("")}</div>
+						`;
+					}).join("")}
+				</div>
+			`;
+		};
+
+		const featSpellPickerHtml = level => {
+			const slot = this.getAsiSlot(level);
+			if (!slot.feat) return "";
+			const feat = findFeat(slot.feat.name, slot.feat.source);
+			const blocks = feat?.additionalSpells;
+			if (!blocks?.length) return "";
+			let html = "";
+			if (blocks.length > 1) {
+				const flavor = slot.featSpellChoice?.flavor;
+				html += `<p class="cb__detail-meta">Choose a spell list:</p><div>${blocks.map(b => `<span class="cb__pill cb__pill--blue" style="cursor:pointer;" data-feat-spell-flavor-level="${level}" data-feat-spell-flavor="${esc(b.name)}">${flavor === b.name ? "✓ " : ""}${esc(b.name)}</span>`).join("")}</div>`;
+			}
+			const activeBlock = activeSpellFlavor(feat, slot);
+			if (!activeBlock) return html;
+			const units = flattenAdditionalSpellsBlock(activeBlock, this.char);
+			const fixedUnits = units.filter(u => u.fixed);
+			if (fixedUnits.length) {
+				html += `<p class="cb__detail-meta">Automatically granted:</p><div>${fixedUnits.map(u => {
+					const sp = resolveSpellUid(u.fixed);
+					return `<span class="cb__pill cb__pill--static cb__pill--blue">${esc(sp?.name || u.fixed)}${u.freqLabel ? ` (${esc(u.freqLabel)})` : ""}</span>`;
+				}).join("")}</div>`;
+			}
+			units.filter(u => u.query).forEach(unit => {
+				const picked = (slot.featSpellChoice?.picks || {})[unit.id] || [];
+				const options = spellsForChooseQuery(unit.query);
+				const modeLabel = unit.mode === "known" ? "Spell Known" : unit.mode === "prepared" ? "Always Prepared" : `Innate Spell${unit.freqLabel ? ` (${unit.freqLabel})` : ""}`;
+				html += `
+					<p class="cb__detail-meta">${esc(modeLabel)} — choose ${unit.count}${picked.length ? ` (${picked.length}/${unit.count} picked)` : ""}${!options.length ? " (no matching spells found)" : ""}:</p>
+					<div class="cb__scroll-list">${options.map(sp => {
+						const isPicked = picked.some(p => p.name === sp.name && p.source === sp.source);
+						const atLimit = !isPicked && picked.length >= unit.count;
+						return `<span class="cb__pill cb__pill--blue" style="cursor:${atLimit ? "not-allowed" : "pointer"};${isPicked ? "" : atLimit ? "opacity:0.4;" : ""}" data-feat-spell-level="${level}" data-feat-spell-unit="${esc(unit.id)}" data-feat-spell-name="${esc(sp.name)}" data-feat-spell-source="${esc(sp.source)}" data-feat-spell-count="${unit.count}">${isPicked ? "✓ " : ""}${esc(sp.name)}</span>`;
+					}).join("")}</div>
+				`;
+			});
+			return html;
+		};
+
 		const slotsHtml = slotLevels.map(level => {
 			const slot = this.getAsiSlot(level);
 			// this.activeAsiSlot comes from a click handler's el.dataset (always a string); level
@@ -1939,6 +2678,8 @@ const CB = {
 							? `<p class="cb__detail-meta">Chosen: <strong>${esc(slot.feat.name)}</strong> ${srcBadge(slot.feat.source)} <button type="button" class="ve-btn ve-btn-default ve-btn-xs" data-slot-toggle-picker-level="${level}" style="margin-left:6px;">${isActivePicker ? "Close" : "Change"}</button></p>`
 							: `<p class="cb__hint">No feat chosen yet. <button type="button" class="ve-btn ve-btn-default ve-btn-xs" data-slot-toggle-picker-level="${level}">${isActivePicker ? "Close" : "Choose Feat"}</button></p>`}
 						${isActivePicker ? featPickerHtml(level) : ""}
+						${!isActivePicker ? featChoicePickerHtml(level) : ""}
+						${!isActivePicker ? featSpellPickerHtml(level) : ""}
 					` : slot.type === "asi" ? asiPickerHtml(level) : `
 						<p class="cb__hint">Choose Feat or Ability Score Improvement above.</p>
 					`}
@@ -1977,7 +2718,7 @@ const CB = {
 					});
 					return;
 				}
-				this.setAsiSlot(level, {type: "feat", feat: {name: match.name, source: match.source}, asi: null});
+				this.setAsiSlot(level, {type: "feat", feat: {name: match.name, source: match.source}, asi: null, featChoice: isSameAsCurrent ? this.getAsiSlot(level).featChoice : {}, featSpellChoice: isSameAsCurrent ? this.getAsiSlot(level).featSpellChoice : {flavor: null, picks: {}}});
 				this.activeAsiSlot = null;
 				this.render();
 			}));
@@ -1993,8 +2734,22 @@ const CB = {
 				const level = el.dataset.featPickLevel;
 				const feat = FEATS.find(f => f.name === el.dataset.featPick && f.source === el.dataset.featPickSource);
 				if (!feat) return;
-				this.setAsiSlot(level, {type: "feat", feat: {name: feat.name, source: feat.source}, asi: null});
+				const curFeat = this.getAsiSlot(level).feat;
+				const isSame = curFeat && curFeat.name === feat.name && curFeat.source === feat.source;
+				this.setAsiSlot(level, {type: "feat", feat: {name: feat.name, source: feat.source}, asi: null, featChoice: isSame ? this.getAsiSlot(level).featChoice : {}, featSpellChoice: isSame ? this.getAsiSlot(level).featSpellChoice : {flavor: null, picks: {}}});
 				this.activeAsiSlot = null;
+				this.render();
+			}));
+			document.querySelectorAll("[data-feat-choice-opt]").forEach(el => el.addEventListener("click", () => {
+				this.toggleFeatChoiceOption(el.dataset.featChoiceLevel, el.dataset.featChoiceReq, el.dataset.featChoiceOpt, Number(el.dataset.featChoiceCount));
+				this.render();
+			}));
+			document.querySelectorAll("[data-feat-spell-flavor]").forEach(el => el.addEventListener("click", () => {
+				this.setFeatSpellFlavor(el.dataset.featSpellFlavorLevel, el.dataset.featSpellFlavor);
+				this.render();
+			}));
+			document.querySelectorAll("[data-feat-spell-name]").forEach(el => el.addEventListener("click", () => {
+				this.toggleFeatSpellPick(el.dataset.featSpellLevel, el.dataset.featSpellUnit, el.dataset.featSpellName, el.dataset.featSpellSource, Number(el.dataset.featSpellCount));
 				this.render();
 			}));
 			document.querySelectorAll("[data-asi-mode-level]").forEach(el => el.addEventListener("click", () => {
@@ -2167,9 +2922,71 @@ const CB = {
 	// subtree, so clicking a pip doesn't reset scroll position or collapse expanded feature pills
 	// elsewhere on the Sheet step (same reasoning as the name-field/level-slider partial updates
 	// on the Name step).
+	/**
+	 * Single source of truth for every equipped-item/feat/feature-derived combat stat — AC, HP
+	 * bonus, speed, initiative, save/skill bonuses and advantage, resistances/immunities/senses,
+	 * and attack/damage/spellcasting bonuses. Replaces what used to be two separately-hardcoded
+	 * "10 + DEX mod" AC formulas (Sheet render + PDF export) with one real calc that accounts for
+	 * equipped armor/shield, Barbarian/Monk Unarmored Defense, and every collectEffects() source.
+	 * Stacking: numeric bonuses are additive across sources; ability-score "set" effects (folded
+	 * into finalScores() already, not here) take the max; proficiency/advantage/resistance grants
+	 * are a plain union (having it from two sources isn't double-counted).
+	 */
+	derivedCombatStats() {
+		const char = this.char;
+		const scores = this.finalScores();
+		const effects = collectEffects(char);
+		const sum = key => effects.filter(e => e.key === key && e.mode === "add").reduce((s, e) => s + (Number(e.value) || 0), 0);
+		const setOf = prefix => new Set(effects.filter(e => e.key.startsWith(prefix + ".")).map(e => e.key.slice(prefix.length + 1)));
+		const dexMod = scoreMod(scores.dex);
+
+		// ── AC ──────────────────────────────────────────────────────────────
+		const equippedItems = equippedResolvedItems(char);
+		const armor = equippedItems.find(it => ["LA", "MA", "HA"].includes((it.type || "").split("|")[0]));
+		const hasShield = equippedItems.some(it => (it.type || "").split("|")[0] === "S");
+		// RAW: Monk's Unarmored Defense excludes wielding a shield entirely (falls back to plain
+		// 10+DEX, no ability bonus); Barbarian's explicitly stacks with one — see
+		// UNARMORED_DEFENSE/unarmoredDefenseInfo() above for the per-class rule text.
+		const unarmoredDef = !armor ? unarmoredDefenseInfo(char, hasShield) : null;
+		let baseAc, acSource;
+		if (unarmoredDef) { baseAc = 10 + dexMod + scoreMod(scores[unarmoredDef.ability]); acSource = unarmoredDef.label; }
+		else if (armor) {
+			const armorType = (armor.type || "").split("|")[0];
+			const armorDexMod = armorType === "HA" ? 0 : armorType === "MA" ? Math.min(dexMod, 2) : dexMod;
+			baseAc = (armor.ac || 10) + armorDexMod; acSource = armor.name;
+		} else { baseAc = 10 + dexMod; acSource = "Unarmored"; }
+		const ac = baseAc + (hasShield ? 2 : 0) + sum("ac");
+
+		// ── HP / Speed / Initiative ────────────────────────────────────────
+		const hpBase = char.cls ? getHP(char.cls, scores.con, char.level) : 0;
+		const hpBonus = sum("hpBonus");
+		let speed = raceWalkSpeed(char.race) + sum("speed.walk");
+		effects.filter(e => e.key === "speed.walk" && e.mode === "multiply").forEach(e => { speed *= Number(e.value) || 1; });
+		const initiative = dexMod + sum("initiativeBonus");
+
+		// ── Saves / skills ──────────────────────────────────────────────────
+		const skillBonusOf = name => sum(`skillBonus.${name.toLowerCase().replace(/\s+/g, "")}`);
+
+		return {
+			ac, acSource, hasShield, armor,
+			hpMax: hpBase + hpBonus, hpBonus,
+			speed, initiative,
+			saveBonusAll: sum("saveBonusAll"), checkBonusAll: sum("abilityCheckBonusAll"),
+			saveAdvantage: setOf("saveAdvantage"), skillAdvantage: setOf("skillAdvantage"),
+			skillBonusOf,
+			extraSaveProf: setOf("saveProf"), extraSkillProf: setOf("skillProf"), extraSkillExpertise: setOf("skillExpertise"),
+			toolProf: setOf("toolProf"), languageProf: setOf("languageProf"), weaponProf: setOf("weaponProf"), armorProf: setOf("armorProf"),
+			resistances: setOf("resist"), immunities: setOf("immune"), conditionImmunities: setOf("conditionImmune"),
+			senses: Object.fromEntries(effects.filter(e => e.key.startsWith("sense.")).map(e => [e.key.slice(6), e.value])),
+			attackBonus: {mw: sum("attackBonus.mw"), rw: sum("attackBonus.rw"), ms: sum("attackBonus.ms"), rs: sum("attackBonus.rs")},
+			damageBonus: {mw: sum("damageBonus.mw"), rw: sum("damageBonus.rw"), ms: sum("damageBonus.ms"), rs: sum("damageBonus.rs")},
+			spellAttackBonus: sum("spellAttackBonus"), spellSaveDcBonus: sum("spellSaveDcBonus"),
+			flags: new Set(effects.filter(e => e.key.startsWith("flag.")).map(e => e.key.slice(5))),
+			effects,
+		};
+	},
 	hpMax() {
-		const s = this.finalScores();
-		return this.char.cls ? getHP(this.char.cls, s.con, this.char.level) : 0;
+		return this.derivedCombatStats().hpMax;
 	},
 	hpCurrent() {
 		const p = this.char.play, max = this.hpMax();
@@ -2217,6 +3034,7 @@ const CB = {
 				case "pact": return p.pactSlotsUsed;
 				case "slot": return p.slotsUsed[key] || 0;
 				case "resource": return p.resourcesUsed[key] || 0;
+				case "item-charge": return p.itemCharges[key] || 0;
 				case "death-success": return p.deathSaves.success;
 				case "death-fail": return p.deathSaves.fail;
 				default: return 0;
@@ -2229,11 +3047,16 @@ const CB = {
 			case "pact": p.pactSlotsUsed = next; break;
 			case "slot": p.slotsUsed[key] = next; break;
 			case "resource": p.resourcesUsed[key] = next; break;
+			case "item-charge": p.itemCharges[key] = next; break;
 			case "death-success": p.deathSaves.success = next; break;
 			case "death-fail": p.deathSaves.fail = next; break;
 		}
 		this.refreshPlayCard();
 	},
+	/** Manual full-recharge for one item's charges — always available regardless of its native
+	 * `recharge` field, since `recharge: "special"` and no-recharge-field items (see
+	 * chargeItemDefs()) have no rest this engine can hook automatically. */
+	resetItemCharge(key) { this.char.play.itemCharges[key] = 0; this.refreshPlayCard(); },
 	shortRest() {
 		const p = this.char.play, char = this.char;
 		classResourceDefs(char).filter(d => d.shortRest).forEach(d => { p.resourcesUsed[d.key] = 0; });
@@ -2253,6 +3076,16 @@ const CB = {
 		p.resourcesUsed = {};
 		p.deathSaves = {success: 0, fail: 0};
 		p.exhaustion = Math.max(0, p.exhaustion - 1);
+		// Items whose native `recharge` is a time-of-day trigger (dawn/dusk/midnight) or
+		// "restLong" all recharge here — we don't track an actual day/night clock, so any of
+		// those is treated as "recharges by your next Long Rest." `recharge: "special"` and items
+		// with no recharge field at all get no automatic behavior — see the manual per-item Reset
+		// button in the Play Tracker instead (chargeItemDefs()/resetItemCharge()).
+		chargeItemDefs(this.char).filter(d => ["dawn", "dusk", "midnight", "restLong"].includes(d.recharge)).forEach(d => {
+			const avg = diceAverage(d.rechargeAmount);
+			const used = p.itemCharges[d.key] || 0;
+			p.itemCharges[d.key] = avg == null ? 0 : Math.max(0, used - avg);
+		});
 		this.refreshPlayCard();
 	},
 	setRulesOverride(val) { this.char.play.rulesOverride = val || null; this.refreshPlayCard(); },
@@ -2322,6 +3155,12 @@ const CB = {
 					<p class="cb__play-block-label">${esc(d.label)}${d.dieFaces ? ` (d${d.dieFaces})` : ""}</p>
 					${pipRowHtml("resource", d.key, d.max, char.play.resourcesUsed[d.key] || 0)}
 				</div>`).join("")}
+				${chargeItemDefs(char).map(d => `
+				<div class="cb__play-block">
+					<p class="cb__play-block-label">${esc(d.label)} — ${d.max - (char.play.itemCharges[d.key] || 0)}/${d.max} charges${d.recharge ? ` (recharges ${esc(RECHARGE_LABEL[d.recharge] || d.recharge)})` : " (no natural recharge)"}</p>
+					${pipRowHtml("item-charge", d.key, d.max, char.play.itemCharges[d.key] || 0)}
+					<button type="button" data-reset-charge="${esc(d.key)}" class="ve-btn ve-btn-xs ve-btn-default">Reset to Full</button>
+				</div>`).join("")}
 				<div class="cb__play-block">
 					<p class="cb__play-block-label">Inspiration &amp; Exhaustion</p>
 					<label class="cb__inspiration-toggle"><input type="checkbox" id="cb-inspiration" ${char.play.inspiration ? "checked" : ""}> Inspiration</label>
@@ -2372,6 +3211,7 @@ const CB = {
 		card.querySelector("[data-exhaustion-inc]")?.addEventListener("click", () => this.adjustExhaustion(1));
 		card.querySelector("[data-exhaustion-dec]")?.addEventListener("click", () => this.adjustExhaustion(-1));
 		card.querySelector("[data-death-clear]")?.addEventListener("click", () => this.clearDeathSaves());
+		card.querySelectorAll("[data-reset-charge]").forEach(el => el.addEventListener("click", () => this.resetItemCharge(el.dataset.resetCharge)));
 		card.querySelector("#cb-inspiration")?.addEventListener("change", e => { this.char.play.inspiration = e.target.checked; });
 		card.querySelector("#cb-rules-select")?.addEventListener("change", e => this.setRulesOverride(e.target.value));
 	},
@@ -2382,15 +3222,28 @@ const CB = {
 		this.wirePlayCard();
 	},
 
+	/** Toggles one equipment part's equipped state (address by entry index + part index within that
+	 * entry's `parts` array — stable for the lifetime of a render since equipment isn't reordered
+	 * elsewhere). Only equipped items feed derivedCombatStats()/collectEffects() — see
+	 * equippedResolvedItems(). Full re-render (not a partial refresh) since this can move AC/HP/
+	 * saves/skills/resistances all at once, unlike the Play Tracker's own pip clicks. */
+	toggleEquipped(entryIdx, partIdx) {
+		const entry = this.char.equipment[entryIdx];
+		if (!entry?.parts?.[partIdx]) return;
+		const parts = entry.parts.map((p, i) => i === partIdx ? {...p, equipped: !p.equipped} : p);
+		this.char.equipment = this.char.equipment.map((e, i) => i === entryIdx ? {...e, parts} : e);
+		this.render();
+	},
+
 	renderSheet() {
 		const finalScores = this.finalScores();
 		const allProf = this.allProfSkills();
 		const pb = this.pb();
 		const char = this.char;
-		const hp = char.cls ? getHP(char.cls, finalScores.con, char.level) : 0;
-		const ac = 10 + scoreMod(finalScores.dex), ini = scoreMod(finalScores.dex);
+		const ds = this.derivedCombatStats();
 		const raceName = char.race?.name || "—";
 		const {cantrips, leveled} = chosenSpellsByTier(char);
+		const traitLabel = t => t.replace(/^./, c => c.toUpperCase());
 
 		return `
 			<div class="cb__sheet-header">
@@ -2400,11 +3253,12 @@ const CB = {
 						<p class="cb__sheet-sub">Level ${char.level} ${esc(raceName)} ${esc(char.cls?.name || "—")}${char.subclass ? ` (${esc(char.subclass.name)})` : ""} · ${esc(char.background?.name || "—")}</p>
 					</div>
 					<div class="cb__sheet-stats">
-						${[["HP",hp],["AC",ac],["Init",fmtMod(ini)],["Prof","+"+pb],["Speed",raceWalkSpeed(char.race) + "ft"]].map(([l,v]) => `
+						${[["HP",ds.hpMax],["AC",ds.ac],["Init",fmtMod(ds.initiative)],["Prof","+"+pb],["Speed",ds.speed + "ft"]].map(([l,v]) => `
 							<div class="cb__stat-box"><p class="cb__stat-label">${esc(l)}</p><p class="cb__stat-value">${esc(v)}</p></div>
 						`).join("")}
 					</div>
 				</div>
+				<p class="cb__sheet-sub" style="margin-top:6px;">AC from ${esc(ds.acSource)}${ds.hasShield ? " + shield" : ""}${ds.hpBonus ? ` · HP includes +${ds.hpBonus} from items/feats/features` : ""}</p>
 			</div>
 			<div id="cb-play-card">${this.renderPlayCard()}</div>
 			<div class="cb__sheet-grid">
@@ -2423,11 +3277,13 @@ const CB = {
 				<div>
 					<p class="cb__section-header">Saving Throws</p>
 					${ABILITIES.map(a => {
-						const isProf = char.cls?.proficiency?.includes(a), bonus = scoreMod(finalScores[a]) + (isProf ? pb : 0);
+						const isProf = char.cls?.proficiency?.includes(a) || ds.extraSaveProf.has(a);
+						const bonus = scoreMod(finalScores[a]) + (isProf ? pb : 0) + ds.saveBonusAll;
+						const adv = ds.saveAdvantage.has(a);
 						return `
 						<div class="cb__save-row">
 							<div class="cb__skill-dot ${isProf ? "cb__skill-dot--on" : ""}"></div>
-							<span class="cb__save-name">${ABILITY_LABELS[a]}</span>
+							<span class="cb__save-name">${ABILITY_LABELS[a]}${adv ? ` <em title="Advantage on this save">(adv)</em>` : ""}</span>
 							<span class="cb__save-bonus">${fmtMod(bonus)}</span>
 						</div>`;
 					}).join("")}
@@ -2442,30 +3298,84 @@ const CB = {
 							: s.asi.ability ? [`+2 ${ABILITY_LABELS[s.asi.ability]}`] : [];
 						return `<span class="cb__pill cb__pill--static cb__pill--purple">Lvl ${esc(lvl)}: ${esc(parts.join(", ") || "—")}</span>`;
 					}).join("")}</div></div>` : ""}
+					${(ds.resistances.size || ds.immunities.size || ds.conditionImmunities.size || Object.keys(ds.senses).length) ? `<div class="cb__block">
+						<p class="cb__section-header">Resistances / Immunities / Senses</p>
+						<div>
+							${[...ds.resistances].map(r => `<span class="cb__pill cb__pill--static cb__pill--teal">${esc(traitLabel(r))} resistance</span>`).join("")}
+							${[...ds.immunities].map(r => `<span class="cb__pill cb__pill--static cb__pill--indigo">${esc(traitLabel(r))} immunity</span>`).join("")}
+							${[...ds.conditionImmunities].map(r => `<span class="cb__pill cb__pill--static cb__pill--indigo">${esc(traitLabel(r))} immune (condition)</span>`).join("")}
+							${Object.entries(ds.senses).map(([k, v]) => `<span class="cb__pill cb__pill--static cb__pill--blue">${esc(traitLabel(k))} ${esc(v)}ft</span>`).join("")}
+						</div>
+					</div>` : ""}
+					${(ds.toolProf.size || ds.languageProf.size || ds.weaponProf.size || ds.armorProf.size) ? `<div class="cb__block">
+						<p class="cb__section-header">Other Proficiencies</p>
+						<div>
+							${[...ds.toolProf].map(k => `<span class="cb__pill cb__pill--static cb__pill--green">${esc(capitalizeWords(k.replace(/[_-]+/g, " ")))}</span>`).join("")}
+							${[...ds.languageProf].map(k => `<span class="cb__pill cb__pill--static cb__pill--green">${esc(capitalizeWords(k))}</span>`).join("")}
+							${[...ds.weaponProf].map(k => `<span class="cb__pill cb__pill--static cb__pill--orange">${esc(capitalizeWords(k))} weapons</span>`).join("")}
+							${[...ds.armorProf].map(k => `<span class="cb__pill cb__pill--static cb__pill--orange">${esc(capitalizeWords(k))} armor</span>`).join("")}
+						</div>
+					</div>` : ""}
 				</div>
 				<div>
 					<p class="cb__section-header">Skills</p>
 					${ALL_SKILLS.map(skill => {
-						const isProf = allProf.has(skill.name), bonus = scoreMod(finalScores[skill.ability]) + (isProf ? pb : 0);
+						const isProf = allProf.has(skill.name) || ds.extraSkillProf.has(skill.name.toLowerCase());
+						const isExpertise = ds.extraSkillExpertise.has(skill.name.toLowerCase());
+						const profMult = isExpertise ? 2 : (isProf ? 1 : 0);
+						const bonus = scoreMod(finalScores[skill.ability]) + pb * profMult + ds.checkBonusAll + ds.skillBonusOf(skill.name);
+						const adv = ds.skillAdvantage.has(skill.name.toLowerCase().replace(/\s+/g, ""));
 						return `
 						<div class="cb__save-row cb__save-row--sm">
-							<div class="cb__skill-dot ${isProf ? "cb__skill-dot--on" : ""}"></div>
-							<span class="cb__save-name cb__save-name--sm">${esc(skill.name)}</span>
+							<div class="cb__skill-dot ${isProf || isExpertise ? "cb__skill-dot--on" : ""}"></div>
+							<span class="cb__save-name cb__save-name--sm">${esc(skill.name)}${isExpertise ? ` <em>(exp)</em>` : ""}${adv ? ` <em title="Advantage on this skill">(adv)</em>` : ""}</span>
 							<span class="cb__save-ability">${ABILITY_LABELS[skill.ability].slice(0,3)}</span>
 							<span class="cb__save-bonus">${fmtMod(bonus)}</span>
 						</div>`;
 					}).join("")}
 				</div>
 			</div>
-			${char.equipment.length ? `<div class="cb__detail-card"><p class="cb__section-header">Equipment</p><div>${pillListHtml(char.equipment.flatMap(entry => entry.parts.map(part => {
+			${(ds.attackBonus.mw || ds.attackBonus.rw || ds.damageBonus.mw || ds.damageBonus.rw || ds.spellAttackBonus || ds.spellSaveDcBonus) ? `<div class="cb__detail-card">
+				<p class="cb__section-header">Combat Bonuses (from equipped items/feats/features)</p>
+				<div>
+					${ds.attackBonus.mw ? `<span class="cb__pill cb__pill--static cb__pill--orange">${fmtMod(ds.attackBonus.mw)} melee weapon attack</span>` : ""}
+					${ds.damageBonus.mw ? `<span class="cb__pill cb__pill--static cb__pill--orange">${fmtMod(ds.damageBonus.mw)} melee weapon damage</span>` : ""}
+					${ds.attackBonus.rw ? `<span class="cb__pill cb__pill--static cb__pill--orange">${fmtMod(ds.attackBonus.rw)} ranged weapon attack</span>` : ""}
+					${ds.damageBonus.rw ? `<span class="cb__pill cb__pill--static cb__pill--orange">${fmtMod(ds.damageBonus.rw)} ranged weapon damage</span>` : ""}
+					${ds.spellAttackBonus ? `<span class="cb__pill cb__pill--static cb__pill--blue">${fmtMod(ds.spellAttackBonus)} spell attack</span>` : ""}
+					${ds.spellSaveDcBonus ? `<span class="cb__pill cb__pill--static cb__pill--blue">${fmtMod(ds.spellSaveDcBonus)} spell save DC</span>` : ""}
+				</div>
+			</div>` : ""}
+			${char.equipment.length ? `<div class="cb__detail-card"><p class="cb__section-header">Equipment <span class="cb__hint" style="font-weight:normal;">— check to equip (only equipped gear affects stats above)</span></p><div>${char.equipment.map((entry, entryIdx) => entry.parts.map((part, partIdx) => {
 				const item = part.ref ? resolveItemRef(part.ref) : null;
-				return item ? {name: part.label, body: equipItemBodyHtml(item)} : {name: part.label, isStatic: true};
-			})), {idPrefix: "sheet-equip", colorClass: "cb__pill--yellow"})}</div></div>` : ""}
+				const canEquip = !!item; // no real catalog item behind this part (gold, generic type choice, flavor text) — nothing to equip
+				const key = `sheet-equip-${entryIdx}-${partIdx}`;
+				const body = item ? equipItemBodyHtml(item) : null;
+				return `
+					<div class="cb__equip-row">
+						${canEquip ? `<input type="checkbox" class="cb__equip-checkbox" data-equip-toggle="${entryIdx}:${partIdx}" ${part.equipped ? "checked" : ""} title="Equipped">` : `<span class="cb__equip-checkbox-spacer" title="No real item behind this entry — not equippable"></span>`}
+						${item ? `
+							<button type="button" class="cb__pill cb__pill--yellow cb__feature-toggle" data-feature-toggle="${key}" title="Click to expand">${esc(part.label)}</button>
+							<div class="cb__feature-body" id="cb-feature-body-${key}" hidden>${body}</div>
+						` : `<span class="cb__pill cb__pill--yellow cb__pill--static">${esc(part.label)}</span>`}
+					</div>
+				`;
+			}).join("")).join("")}</div></div>` : ""}
 			${char.spells.length ? `<div class="cb__detail-card">
 				<p class="cb__section-header">Spells</p>
 				${cantrips.length ? `<p class="cb__detail-meta">Cantrips</p><div class="cb__block">${pillListHtml(cantrips.map(sp => ({name: sp.name, body: entriesToHtml(sp.entries)})), {idPrefix: "sheet-cantrips", colorClass: "cb__pill--blue"})}</div>` : ""}
 				${[...new Set(leveled.map(sp => sp.level))].map(lvl => `<p class="cb__detail-meta">${esc(Parser.spLevelToFull(lvl))}</p><div class="cb__block">${pillListHtml(leveled.filter(sp => sp.level === lvl).map(sp => ({name: sp.name, body: entriesToHtml(sp.entries)})), {idPrefix: `sheet-spells-lvl${lvl}`, colorClass: "cb__pill--blue"})}</div>`).join("")}
 			</div>` : ""}
+			${(() => {
+				const granted = grantedSpellsForChar(char);
+				if (!granted.length) return "";
+				const groupLabel = g => g.mode === "known" ? "Known (no slot used)" : g.mode === "prepared" ? "Always Prepared (no slot used)" : `Innate — ${g.freqLabel}`;
+				const groups = [...new Set(granted.map(groupLabel))];
+				return `<div class="cb__detail-card">
+					<p class="cb__section-header">Granted Spells <span class="cb__hint" style="font-weight:normal;">— from feats, doesn't use a spell slot</span></p>
+					${groups.map(label => `<p class="cb__detail-meta">${esc(label)}</p><div class="cb__block">${pillListHtml(granted.filter(g => groupLabel(g) === label).map(g => ({name: g.spell.name, body: entriesToHtml(g.spell.entries)})), {idPrefix: `sheet-granted-${label.replace(/\W+/g, "")}`, colorClass: "cb__pill--indigo"})}</div>`).join("")}
+				</div>`;
+			})()}
 		`;
 	},
 
@@ -2482,7 +3392,12 @@ const CB = {
 			// slots) — see migrateLevelAsi(), also called from importJSON().
 			// v4: added char.play (HP/slots/hit dice/rests/resources session tracking) — see
 			// migratePlay(), also called from importJSON().
-			_version: 4,
+			// v5: equipment parts gained `equipped` (see equipItemParts()/toggleEquipped()) — only
+			// equipped items feed the live derivedCombatStats()/collectEffects() engine (AC/HP/
+			// speed/saves/skills/resistances/etc. now recalculate from equipped items + selected
+			// feats + unlocked class/subclass features) — see migrateEquipment(), also called from
+			// importJSON(), for how a pre-v5 save's parts get a sensible default equipped state.
+			_version: 5,
 			step: this.step,
 			char: this.char,
 		};
@@ -2525,8 +3440,9 @@ const CB = {
 		const s = this.finalScores(), pb_ = this.pb(), raceName = char.race?.name || "—";
 		const allProf = this.allProfSkills();
 		const {cantrips, leveled} = chosenSpellsByTier(char);
-		const hp = char.cls ? getHP(char.cls, s.con, char.level) : 0;
-		const ac = 10 + scoreMod(s.dex);
+		const ds = this.derivedCombatStats();
+		const hp = ds.hpMax;
+		const ac = ds.ac;
 		const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>${esc(char.name || "Character")}</title>
 <style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Georgia,serif;color:#111;padding:28px;font-size:12px;}
 h1{font-size:24px;font-weight:700;margin-bottom:2px;}.sub{font-size:12px;color:#555;margin-bottom:16px;}
@@ -2543,10 +3459,10 @@ table{width:100%;border-collapse:collapse;}td{padding:2px 6px;font-size:11px;}
 @media print{body{padding:12px;}}</style></head><body>
 <h1>${esc(char.name || "Unnamed Adventurer")}</h1>
 <div class="sub">Level ${char.level} ${esc(raceName)} ${esc(char.cls?.name || "—")}${char.subclass ? ` (${esc(char.subclass.name)})` : ""} · ${esc(char.background?.name || "—")} · Prof +${pb_}</div>
-<div class="stats">${[["HP",hp],["AC",ac],["Initiative",fmtMod(scoreMod(s.dex))],["Speed",raceWalkSpeed(char.race) + "ft"],["Hit Die","d" + (char.cls?.hd?.faces || "—")]].map(([l,v]) => `<div class="stat"><div class="l">${esc(l)}</div><div class="v">${esc(v)}</div></div>`).join("")}</div>
+<div class="stats">${[["HP",hp],["AC",ac],["Initiative",fmtMod(ds.initiative)],["Speed",ds.speed + "ft"],["Hit Die","d" + (char.cls?.hd?.faces || "—")]].map(([l,v]) => `<div class="stat"><div class="l">${esc(l)}</div><div class="v">${esc(v)}</div></div>`).join("")}</div>
 <div class="grid">
 <div>${ABILITIES.map(a => `<div class="ab"><div class="an">${ABILITY_LABELS[a].slice(0,3)}</div><div class="av">${s[a]}</div><div class="am">${fmtMod(scoreMod(s[a]))}</div>${char.cls?.proficiency?.includes(a) ? '<div style="font-size:8px;color:green;">save</div>' : ""}</div>`).join("")}</div>
-<div><h3>Saving Throws</h3><table>${ABILITIES.map(a => { const p = char.cls?.proficiency?.includes(a), b = scoreMod(s[a]) + (p ? pb_ : 0); return `<tr><td>${p ? "●" : "○"}</td><td>${ABILITY_LABELS[a]}</td><td style="text-align:right;font-weight:600;">${fmtMod(b)}</td></tr>`; }).join("")}</table>
+<div><h3>Saving Throws</h3><table>${ABILITIES.map(a => { const p = char.cls?.proficiency?.includes(a) || ds.extraSaveProf.has(a), b = scoreMod(s[a]) + (p ? pb_ : 0) + ds.saveBonusAll; return `<tr><td>${p ? "●" : "○"}</td><td>${ABILITY_LABELS[a]}${ds.saveAdvantage.has(a) ? " (adv)" : ""}</td><td style="text-align:right;font-weight:600;">${fmtMod(b)}</td></tr>`; }).join("")}</table>
 ${char.cls ? `<h3>Class Features</h3><div>${classFeatureRefs(char.cls).filter(f => f.ref.level <= char.level).map(f => `<span class="tag">${esc(f.ref.name)}</span>`).join("")}</div>` : ""}
 ${char.subclass ? `<h3>Subclass: ${esc(char.subclass.name)}</h3><div>${subclassFeatureRefs(char.subclass).filter(f => f.ref.level <= char.level).map(f => `<span class="tag">${esc(f.ref.name)}</span>`).join("")}</div>` : ""}
 ${char.race ? `<h3>Racial Traits</h3><div>${namedSubEntries(char.race.entries).map(t => `<span class="tag">${esc(t.name)}</span>`).join("")}</div>` : ""}
@@ -2559,9 +3475,9 @@ ${Object.entries(char.levelAsi || {}).some(([, sl]) => sl?.type === "asi" && sl.
 	return `<span class="tag">Lvl ${esc(lvl)}: ${esc(parts.join(", ") || "—")}</span>`;
 }).join("")}</div>` : ""}
 </div>
-<div><h3>Skills</h3><table>${ALL_SKILLS.map(sk => { const p = allProf.has(sk.name), b = scoreMod(s[sk.ability]) + (p ? pb_ : 0); return `<tr><td>${p ? "●" : "○"}</td><td>${esc(sk.name)}</td><td style="color:#888;font-size:10px;">${ABILITY_LABELS[sk.ability].slice(0,3)}</td><td style="text-align:right;font-weight:600;">${fmtMod(b)}</td></tr>`; }).join("")}</table></div>
+<div><h3>Skills</h3><table>${ALL_SKILLS.map(sk => { const p = allProf.has(sk.name) || ds.extraSkillProf.has(sk.name.toLowerCase()), exp = ds.extraSkillExpertise.has(sk.name.toLowerCase()), b = scoreMod(s[sk.ability]) + pb_ * (exp ? 2 : (p ? 1 : 0)) + ds.checkBonusAll + ds.skillBonusOf(sk.name); return `<tr><td>${exp ? "◉" : (p ? "●" : "○")}</td><td>${esc(sk.name)}${ds.skillAdvantage.has(sk.name.toLowerCase().replace(/\s+/g, "")) ? " (adv)" : ""}</td><td style="color:#888;font-size:10px;">${ABILITY_LABELS[sk.ability].slice(0,3)}</td><td style="text-align:right;font-weight:600;">${fmtMod(b)}</td></tr>`; }).join("")}</table></div>
 </div>
-${char.equipment.length ? `<div class="section"><h3>Equipment</h3><div>${char.equipment.map(e => `<span class="tag">${esc(safeEquipTag(e))}</span>`).join("")}</div></div>` : ""}
+${char.equipment.length ? `<div class="section"><h3>Equipment</h3><div>${char.equipment.map(e => `<span class="tag">${esc(safeEquipTag(e))}${(e.parts || []).some(p => p.ref && p.equipped) ? " (equipped)" : ""}</span>`).join("")}</div></div>` : ""}
 ${char.spells.length ? `<div class="section"><h3>Spells</h3>${cantrips.length ? `<p style="font-size:10px;color:#666;margin-bottom:3px;">Cantrips</p><div>${cantrips.map(sp => `<span class="tag">${esc(sp.name)}</span>`).join("")}</div>` : ""}${[...new Set(leveled.map(sp => sp.level))].map(lvl => `<p style="font-size:10px;color:#666;margin:6px 0 3px;">${esc(Parser.spLevelToFull(lvl))}</p><div>${leveled.filter(sp => sp.level === lvl).map(sp => `<span class="tag">${esc(sp.name)}</span>`).join("")}</div>`).join("")}</div>` : ""}
 <div class="footer">D&D 5e Character Builder · ${new Date().toLocaleDateString()}</div>
 </body></html>`;

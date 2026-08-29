@@ -253,6 +253,11 @@
 .cb__skill-ability { font-size: 11px; color: #777; margin-right: 4px; }
 .cb__skill-bonus { font-size: 13px; font-weight: 500; min-width: 28px; text-align: right; }
 .cb__skill-tag { font-size: 10px; color: #3c763d; }
+
+/* Sheet step: equipment equip/unequip toggle */
+.cb__equip-row { display: flex; align-items: center; gap: 6px; margin: 2px 0; }
+.cb__equip-checkbox { width: 15px; height: 15px; flex-shrink: 0; cursor: pointer; }
+.cb__equip-checkbox-spacer { display: inline-block; width: 15px; flex-shrink: 0; }
 .ve-night-mode .cb__skill-tag { color: #6cc96c; }
 
 /* Equipment choice chips */
